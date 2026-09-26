@@ -33,10 +33,11 @@
 
 - [x] 接入完成（2026-09-26）：`chezmoi apply -v` 退出码 0、第二次 0 行，`diff --include=files` 与
       `status` 均为 0。本地提交未 push。
-- [x] 新增 `bootstrap/windows.bat`（winget→scoop 装 chezmoi → clone → `win/install.bat` →
-      `chezmoi init --apply`），已冒烟测试（见「下一台机器」）。
-- [ ] **在新终端里确认** clink / starship / aliases 真的起来了（当前那个终端还是 apply 之前的旧
-      会话）。配置里 alacritty / wezterm 已改为 `cmd /k %USERPROFILE%\bin\dotfiles\win\init.bat`。
+- [x] `bootstrap/windows.bat` 已重写并在本机跑通：scoop 装工具与 per-user 字体、
+      `clink autorun install`、三个用户环境变量；无提权。`win/` 整个目录已删除。
+- [ ] **在新终端里确认** clink / starship / `session.lua` 的别名真的起来了（当前那个终端还是
+      改动之前的旧会话）。alacritty / wezterm 现在只起普通 `cmd.exe`，Clink 走 `clink autorun`；
+      `chcp` 应为 65001，`pstat`/`gl`/`ll` 等别名可用。
 - [ ] `~/bin/configs` 还剩两个被旧 clink 会话占用的文件
       （`win/clink_profile/clink_history`、`clink_history_21792~`）。关掉那个终端后
       `rm -rf ~/bin/configs` 即可。`~/bin/dev-settings` 已删。
@@ -53,9 +54,9 @@
 
 - [ ] `bootstrap/macos.sh` 只做过 `bash -n` 与逐条人工核对，**从未在真正的裸机上跑过**（本机
       Homebrew 与所有包都已就位）。
-- [ ] `bootstrap/windows.bat` 同理。本机已接入，只验证过三条路径：非管理员会中止、正常流程
-      exit 0、失败步骤会记账并 exit 1（后两条用桩替掉了 `install.bat` 与 apply）。**没在裸机上
-      跑过**，字体安装那一步（需要管理员）也没实测。
+- [ ] `bootstrap/windows.bat` 在本机完整跑通（所有步骤 ok），但本机不是裸机——scoop、git、
+      Nerd Font 都已就位。**没在真正的裸机上跑过**；字体那一步只在本机已装过的情况下验证过。
+      Clink 的 `session.lua`（chcp 与别名）也只在真实交互终端里才看得到效果，需要开一次终端确认。
 - [ ] Windows 侧记得：任何新的 `run_*` 脚本都必须带 `.tmpl` + `{{ if ne .chezmoi.os "windows" -}}`
       外壳，否则 `chezmoi apply` 会因 exec(3) 失败而中止。流程见
       [`docs/onboarding-a-machine.md`](docs/onboarding-a-machine.md)。
@@ -69,8 +70,9 @@
    `nvim/lazy-lock.json`。已决定不纳入（范围严格等于两个退役仓库已有的东西），可随时
    `chezmoi add` 补。其中 `lazy-lock.json` 是 35 个插件的版本锁，纳入后新机器可复现相同的
    插件版本，单独考虑的价值最高。
-3. **`win/nu/*.nu` 是否重写**：要纳入必须先确定 nushell 版本与目标位置
-   （`%APPDATA%\nushell\`）。这是重写，不是搬移。
+3. **Windows 上 `~/bin` 的遗留**：旧的便携版 exe（alacritty / starship / fzf / …）、
+   `~/bin/clink`、`~/bin/NerdFont`。scoop shims 在用户 PATH 里排在 `~\bin` 前面，所以不会遮蔽，
+   但也没必要留着。清不清由用户决定。
 4. **旧的 `mac/config.sh` 是否整体退役**：配置迁走后它已经没有内容，`bootstrap/macos.sh` 是
    按它演化重写的，剩下的只是删掉旧文件。
 5. **GitHub 上仍有不可达的旧对象**：`git filter-repo` 加 force push 只移动了 `main`，旧 commit

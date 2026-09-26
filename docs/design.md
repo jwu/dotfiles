@@ -39,7 +39,7 @@
 bootstrap/
 ├── arch.sh        Linux：装 chezmoi → clone 到 ~/bin/dotfiles → pacman/yay 装包（sudo）→ chezmoi init --apply
 ├── macos.sh       macOS：装 chezmoi → clone 到 ~/bin/dotfiles → brew 装包（无需 sudo）→ chezmoi init --apply
-└── windows.bat    Windows：装 chezmoi（winget→scoop）→ clone → 便携工具与 Nerd Font（管理员）→ chezmoi init --apply
+└── windows.bat    Windows：装 chezmoi（winget→scoop）→ clone → scoop 装工具与字体 → clink autorun + 用户环境变量 → chezmoi init --apply
 ```
 
 新机器一行式：
@@ -65,19 +65,21 @@ curl -fsSL https://raw.githubusercontent.com/jwu/dotfiles/main/bootstrap/windows
 macOS 那份的用法写 `bash -c` 而不是 `sh -c`：系统的 `/bin/sh` 是 POSIX 模式的 bash 3.2，
 不支持数组和 `local`，而脚本两者都用。同理它全文没有 bash 4 才有的 `&>` 重定向。
 
-`bootstrap/windows.bat` 是 Windows 对应物，流程演化自已退役的 `jwu/configs`：那边是
-「clone → `win/install.bat`（便携工具）→ `win/config.bat`（生成指针文件）→ 终端拉起 `init.bat`」，
-现在 `config.bat` 这一步由 chezmoi 的真实内容取代，`init.bat` 也改成了读
-`%LOCALAPPDATA%\clink`。工具清单没有重写——脚本直接调用仓库里的 `win/install.bat`，所以那份
-版本清单仍是唯一真源。用 `.bat` 而不是 PowerShell 是为了和 `win/*.bat` 一致；批处理没有
-`curl | sh` 那样的管道形式，所以入口是「先下到 `%TEMP%` 再执行」两行。
+`bootstrap/windows.bat` 是 Windows 对应物，起点是 `jwu/configs` 的
+「clone → `win/install.bat` → `win/config.bat` → 终端拉起 `init.bat`」。现在的分层完全不同：
+工具交给 scoop，字体由 scoop 以 per-user 方式装（于是**不需要管理员**），Clink 用官方
+`clink autorun` 注册，环境变量搬进 `HKCU\Environment`，codepage 与别名搬进 Clink Lua——
+`win/` 整个目录（`install.bat` / `init.bat` / `cmds/*.cmd`）随之删除。完整推导与踩到的坑
+（尤其**批处理必须 CRLF**）见 [`docs/windows-shell.md`](windows-shell.md)。用 `.bat` 而不是
+PowerShell 是为了和原来的 Windows 脚本层一致；批处理没有 `curl | sh` 那样的管道形式，所以
+入口是「先下到 `%TEMP%` 再执行」两行。
 
-**三者都是各自平台上唯一需要 root（Windows 上：管理员）或终端的脚本。** Linux 侧的 sudo
+**Linux 与 macOS 的 bootstrap 是各自平台上唯一需要 root 或终端的脚本。** Linux 侧的 sudo
 动作：装 41 个包、yay 与 AUR 的 xwayland-satellite-git、`chsh`（走 PAM，同样需要终端）、TTY
 字体、drivetemp。macOS 侧只有两处：`chsh`，以及首次把 Homebrew 的 zsh 加进 `/etc/shells`。
-Windows 侧只有一处：字体安装——`win/cmds/addfonts.cmd` 写 `%SystemRoot%\Fonts` 与 HKLM；
-便携工具本身装在 `%USERPROFILE%\bin`，不需要提权，但整份脚本仍要求管理员终端（和 arch.sh
-要求 sudo 一样简单直接）。`run_*` 脚本只剩不需要 root 的部分——这正是 Oh My Zsh 与
+**Windows 侧不需要任何提权**：scoop 是 per-user 安装，字体 manifest 也写
+`%LOCALAPPDATA%\Microsoft\Windows\Fonts`，所以 `bootstrap/windows.bat` 与 `chezmoi apply`
+都既不需要管理员、也不需要终端。`run_*` 脚本只剩不需要 root 的部分——这正是 Oh My Zsh 与
 zsh-autosuggestions 在两侧都留在 `run_once_before_10`、而不进 bootstrap 的原因。
 
 这个切分是刻意的，而不是为了好看：sudo 的 `tty_tickets` 让凭据缓存按 TTY 隔离，非 TTY 的
@@ -333,9 +335,9 @@ call "%MY_CONFIGS%\cmds\aliases.cmd"
 最后三行原先由 `config.bat` 生成 `dofile` / `include` 指针转发到 `common/`，现在部署的是
 真实内容。
 
-`win/init.bat` 已按新架构**重写**：clink 显式读 `%LOCALAPPDATA%\clink`，`STARSHIP_CONFIG`
-已删除（starship 在 Windows 的默认位置正是 `%APPDATA%\starship.toml`）。`cmds/*.cmd` 仍从
-仓库读取，所以 Windows 上仓库位置仍需固定在 `%USERPROFILE%\bin\dotfiles`。
+`win/init.bat` 一度按新架构重写过，随后判定它不该存在：Clink 自己注册 autorun，环境变量进
+`HKCU\Environment`，codepage 与别名进 `session.lua`。`win/` 目录已删除，见
+[`docs/windows-shell.md`](windows-shell.md)。
 
 ### 未纳入，及原因
 
@@ -345,13 +347,10 @@ call "%MY_CONFIGS%\cmds\aliases.cmd"
 - **`desktop-settings/totalcmd/wincmd.ini` 不纳入**。它含
   `InstallDir=C:\Program Files\totalcmd` 等本机安装状态与窗口布局，且
   `desktop-settings/AGENTS.md` 明确说 Total Commander 属「按文档手动配置」。
-- **脚本层留在仓库**：`win/init.bat`、`config.bat`、`install.bat`、`cmds/*.cmd`。
-  `install.bat` 是便携工具下载器（clink / starship / fzf / eza / coreutils … 装到
-  `%USERPROFILE%\bin`），属装机层，等「迁脚本层」阶段处理。
 
-盘符绝对路径的其余出现都是**注释**（`clink.lua` 首行、`fzf.lua` 的用法示例、
-`addfonts.cmd` 的用法示例），不影响可移植性；`clink.lua` 实际用
-`clink.get_env('USERPROFILE')` 拼路径。
+`win/` 整个目录后来被删除：`install.bat`（便携工具下载器）与 `cmds/addfonts.cmd` 由 scoop
+取代，`init.bat` 由 `clink autorun` + `AppData/Local/clink/session.lua` 取代，
+`aliases.cmd`/`timer.cmd` 随之成了孤儿。见 [`docs/windows-shell.md`](windows-shell.md)。
 
 chezmoi 在 Windows 上以 `%USERPROFILE%` 为家目录，`%APPDATA%` 即 `AppData/Roaming`。
 
@@ -367,10 +366,9 @@ neovide 是**重复**（Windows 的真目标在 AppData 里），yazi / gitui / 
 
 **(b) 启动 clink 的接线原先只存在于生成指针里。** 旧的 `%APPDATA%\alacritty\alacritty.toml`
 不止转发内容，还带 `[terminal.shell] program=cmd /s /k init.bat`；`~/.wezterm.lua` 同理带
-`default_prog`。这段是 `config.bat` 生成的，退役后就没有落点了。现在写进部署内容本身：
-Alacritty 用 `%USERPROFILE%\bin\dotfiles\win\init.bat`（cmd 自己会展开环境变量），WezTerm 在
-`is_windows` 分支里用 `os.getenv('USERPROFILE')` 拼。两者都指向「装机层」的 `win/init.bat`，
-所以 Windows 上仓库位置仍固定在 `%USERPROFILE%\bin\dotfiles`。
+`default_prog`。这段是 `config.bat` 生成的，退役后就没有落点了。中途曾把这条接线写进部署的
+内容本身，后来判定更好的做法是不需要它：`clink autorun install` 让 Clink 在每个 cmd 里自己
+加载，终端只起一个普通的 `cmd.exe`。详见 [`docs/windows-shell.md`](windows-shell.md)。
 
 **(c) `run_*.sh` 在 Windows 上必然失败：`exec(3)` 不认 shebang。** 实测 `chezmoi apply` 把脚本
 写到临时文件后直接 exec，Windows 报 `%1 is not a valid Win32 application`。`.chezmoiignore`
@@ -407,7 +405,7 @@ Alacritty 用 `%USERPROFILE%\bin\dotfiles\win\init.bat`（cmd 自己会展开环
 | `desktop-settings/fcitx5/install-linux.sh` | `run_after_fcitx5.sh` | **必须缩水**，见下 |
 | `desktop-settings/fcitx5/update-rime-dict.sh` | 一并迁入，保持手动 | 词库维护工具，不自动化 |
 | `install-arch/install.sh` | `bootstrap/arch.sh` | 见「安装入口」 |
-| `configs/win/install.bat`、`config.bat` | 迁入 `win/`，手动执行 | Windows 装机层 |
+| `configs/win/install.bat`、`config.bat` | 转成 `bootstrap/windows.bat` 与 scoop 清单 | Windows 装机层 |
 
 `run_after_fcitx5.sh` 的缩水要点：原脚本做三件事——复制配置、下载 Rime Ice 词库、
 `rime_deployer --build` 并重启 fcitx5。复制那半由 chezmoi 接管后，只剩下后两件。**必须用
@@ -535,8 +533,8 @@ run_once_after_install-pi-config.sh
   两边会互相覆盖。脚本只负责 clone，npm 插件由 pi 自己按 `settings.json` 的 `packages` 装。
 
 迁入的文件：`docs/`（含 desktop-settings 的 6 份说明）、`scripts/`（`gpu-watch.c`、
-`waybar-niri-windows.sh`、`update-rime-dict.sh`）、`win/`（`init.bat` 已重写、
-`install.bat`、`cmds/*.cmd`）。`win/config.bat` 退役删除。
+`waybar-niri-windows.sh`、`update-rime-dict.sh`）。`win/config.bat` 退役删除，`win/` 的其余
+文件后来也整个删除（见 [`docs/windows-shell.md`](windows-shell.md)）。
 
 **注意 `chezmoi diff` 的语义**：run 脚本会出现在 `diff` 输出里（因为 apply 时会执行它们）。
 判断配置层是否干净要用 `chezmoi diff --include=files`。
@@ -686,10 +684,12 @@ reveal、render-markdown、gdscript LSP）和 `.pi/agent/themes/one-dark.json`�
 | --- | --- |
 | `.chezmoiignore` | 加 Windows 反向排除块（含空的 `.config/ghostty`） |
 | 新增 Windows 目标 | nvim / neovide 之外再补 yazi / gitui / glow / zed 的 AppData 路径，真内容，不用指针 |
-| clink 接线 | 写回 alacritty.toml 与 `dot_wezterm.lua` 的 Windows 分支 |
+| clink 接线 | 终端改为普通 `cmd.exe`；Clink 由 `clink autorun` 加载，codepage 与别名放进 `session.lua` |
 | git 公共层 | credential helper 在 Windows 上用 PATH 上的 `gh`（本机没有 `~/.local/bin`） |
 | `run_*` 6 个脚本 | 全部加 `.tmpl` 外层短路，Windows 渲染为空 |
-| `bootstrap/windows.bat` | 新增 Windows 装机入口，取代 `configs` 的 clone + `install.bat` + `config.bat` 流程 |
+| `bootstrap/windows.bat` | 新增 Windows 装机入口：scoop 装工具与字体 + `clink autorun` + 用户环境变量 |
+| `win/` 整个目录 | 删除（`install.bat` / `init.bat` / `cmds/*.cmd` 都被取代） |
+| `.gitattributes` | `*.bat`/`*.cmd` 用 `-text` 把 CRLF 固化进 blob（cmd 的 `call :label` 需要） |
 
 **未纳入**（本次决定不做）：`~/.config/lsd/config.yaml`（旧 `configs/common` 与 home 都有、
 dotfiles 漏了；但 aliases 已改用 eza）、`~/.config/git/ignore`、`~/.config/opencode/`、
@@ -703,9 +703,13 @@ Zed 的 Windows settings 与 Unix 侧那份已经对齐（补齐 `project_panel`
 （在 Unix 上不存在，无副作用）。
 
 验证：`chezmoi apply -v` 退出码 0，**第二次 0 行**；`chezmoi diff --include=files` 为 0；
-`chezmoi status` 为 0（6 个 `run_*` 在 Windows 上渲染为空，脚本条目为 0）。另外在真实 Windows
-上跑了一次 `cmd /c ...\win\init.bat`（退出码 0），之后 `clink info` 的 `settings` 指向
-`%LOCALAPPDATA%\clink\clink_settings`——重写后的 `init.bat` 得到的首次真机验证。
+`chezmoi status` 为 0（6 个 `run_*` 在 Windows 上渲染为空，脚本条目为 0）。
+`bootstrap/windows.bat` 在本机跑通（全部步骤 ok），`clink autorun show` 指向
+`scoop\apps\clink\current\clink.bat inject --autorun`，`HKCU\Environment` 里有
+`LANG`/`PI_NERD_FONTS`/`FZF_COMPLETE_OPTS`。别名逻辑用 LuaJIT 单独测过（`ls`→`eza`、
+`gl`→`git log …`、`pon`/`pstat` 展开）。**未验证**的是真机交互终端里的效果（Clink 只在真实
+控制台加载脚本，pipe/重定向的会话观察不到），需要开一次终端确认 starship 提示符、
+`chcp`=65001、别名可用。
 
 ### git 个人层与历史重写
 

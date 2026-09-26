@@ -28,8 +28,8 @@
 
 ### Windows —— 终端与 Shell 增强
 
-- **终端**：Alacritty、WezTerm，都由 `win/init.bat` 拉起 Clink 增强的 CMD
-- **Shell**：Clink，配 starship、fzf、zoxide、eza、coreutils
+- **终端**：Alacritty、WezTerm，都起一个普通的 `cmd.exe`
+- **Shell**：Clink 增强的 CMD（`clink autorun` 注册，所有 cmd 都有），配 starship、fzf、zoxide、eza、uutils coreutils
 - **输入法**：Weasel（小狼毫）
 - **编辑器**：Neovim + Neovide、Zed
 - **共用**：yazi、gitui、glow
@@ -56,18 +56,19 @@ bash -c "$(curl -fsLS https://raw.githubusercontent.com/jwu/dotfiles/main/bootst
 ```
 
 ```bat
-:: Windows（在管理员终端里跑第二行；curl 是系统自带的）
+:: Windows（curl 是系统自带的；无需管理员）
 curl -fsSL https://raw.githubusercontent.com/jwu/dotfiles/main/bootstrap/windows.bat -o "%TEMP%\dotfiles-bootstrap.bat"
 "%TEMP%\dotfiles-bootstrap.bat"
 ```
 
 三个脚本做同一件事：装 chezmoi → clone 到 `~/bin/dotfiles`（Windows 是 `%USERPROFILE%\bin\dotfiles`）
-→ 写下 chezmoi 的 `sourceDir` → 装工具 → `chezmoi init --apply`。
+→ 写下 chezmoi 的 `sourceDir` → 装工具 → `chezmoi init --apply`。Windows 那份还负责
+`clink autorun install` 与三个用户级环境变量。
 
-它们也是各自平台上**唯一**需要 root / 管理员权限或终端的地方（`chsh` 走 PAM、`/etc/shells`
-要改、TTY 字体与 `drivetemp` 要 root、Windows 的 Nerd Font 要写 `%SystemRoot%\Fonts` 与 HKLM）。
-把特权动作集中在这里，`chezmoi apply` 才能不需要密码、也不需要终端——CI、包装脚本、agent
-里都能直接跑。
+Linux 与 macOS 的 bootstrap 是各自平台上**唯一**需要 root 或终端的地方（`chsh` 走 PAM、
+`/etc/shells` 要改、TTY 字体与 `drivetemp` 要 root）。Windows 那份**不需要任何提权**：scoop
+与它装的 Nerd Font 都是 per-user。把这类动作集中在这里，`chezmoi apply` 才能不需要密码、
+也不需要终端——CI、包装脚本、agent 里都能直接跑。
 
 ### 已经接入的机器
 
@@ -118,7 +119,6 @@ dotfiles/
   ├── dot_*/             # chezmoi 源：dot_ = 目标名前置一个点
   ├── private_*/         # 0700 / 0600 的目标
   ├── AppData/           # Windows 专有目标
-  ├── win/               # Windows 装机层，手动执行
   └── docs/              # 设计记录与踩坑
 ```
 
@@ -145,6 +145,7 @@ chezmoi 的源路径与目标路径不一定逐字对应：`dot_` 加前置点�
 - [`docs/chezmoi-migration.md`](docs/chezmoi-migration.md) — chezmoi 方案成型之前的评估记录：边界划分、源目录布局、四处模板化。
 - [`docs/alacritty.md`](docs/alacritty.md) — Alacritty 与 Ghostty 的逐项对齐，以及 Wayland 下的窗口装饰。
 - [`docs/shell.md`](docs/shell.md) — zsh 配置里的两个坑：nvm 的两种装法与 Apple Silicon 的 MPS 变量。
+- [`docs/windows-shell.md`](docs/windows-shell.md) — Windows 的 shell 层：scoop、`clink autorun`、用户环境变量、批处理必须 CRLF。
 - [`docs/waybar.md`](docs/waybar.md) — 模块基线与行高约定、配色、`cffi/niri-windows`、GPU 与磁盘取值脚本。
 - [`docs/lockscreen.md`](docs/lockscreen.md) — hyprlock / swaylock、熄屏计时、按屏幕尺寸挑样式。
 - [`docs/niri.md`](docs/niri.md) — focus-follows-mouse、`warp-mouse-to-focus`、光标隐藏。

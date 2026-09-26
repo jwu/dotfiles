@@ -251,9 +251,9 @@ GTK 标题栏 CSS / `niri-*` 脚本（约 50 个文件）仍然是 managed 状�
 
 ### 5.3 Windows 侧
 
-**(a) `win/nu/*.nu` 是孤儿，已被跳过。** 它没有任何脚本部署，内含旧机器的真实路径
+**(a) `win/nu/*.nu` 没有纳入。** 它没有任何脚本部署，内含旧机器的真实路径
 （`e:\Alacritty\settings\`、`E:\Alacritty\vendor\starship.exe`），且用的是 nushell 旧语法
-`let-env`。要纳入必须先确定 nushell 版本与目标位置（`%APPDATA%\nushell\`），**这是重写，不是搬移**。
+`let-env`。后来 `win/` 整个目录被删除，所以这件事已经不存在了。
 
 **(b) `run_*.sh` 在 Windows 上必然失败，已用「渲染为空」修掉。** chezmoi 把脚本写到临时文件后
 直接 `exec(3)`，Windows 报 `%1 is not a valid Win32 application`——shebang 不被使用，
@@ -262,11 +262,12 @@ GTK 标题栏 CSS / `niri-*` 脚本（约 50 个文件）仍然是 managed 状�
 `{{ if ne .chezmoi.os "windows" -}} ... {{ end -}}`，Windows 上渲染为空字符串。
 **新增 `run_*` 脚本时记得同一套外壳**，否则 `chezmoi apply` 会立刻中止。
 
-**(c) `win/*.bat` 与 `win/cmds/*.cmd` 留在仓库里，不会被部署。** 它们属装机层，入口是
-`bootstrap/windows.bat`：装 chezmoi（winget→scoop）→ clone → 调 `win/install.bat`（便携工具 +
-Nerd Font）→ `chezmoi init --apply`。`win/init.bat` 已按新架构重写（clink 显式读
-`%LOCALAPPDATA%\clink`、`STARSHIP_CONFIG` 已删除），clink 接线写回了 alacritty.toml 与
-`dot_wezterm.lua`。字体那一步写 `%SystemRoot%\Fonts` 与 HKLM，所以 bootstrap 要求管理员终端。
+**(c) Windows 的 shell 层已不再有手写脚本。** 入口是 `bootstrap/windows.bat`：装 chezmoi
+（winget→scoop）→ clone → scoop 装工具与 per-user Nerd Font → 写三个用户环境变量 →
+`clink autorun install` → `chezmoi init --apply`。**不需要管理员**。codepage 与别名在
+`AppData/Local/clink/session.lua`，终端只起普通 `cmd.exe`。`win/` 整个目录已删除；推导见
+[`windows-shell.md`](windows-shell.md)。**新增 `bootstrap/*.bat` 记得必须 CRLF**
+（`.gitattributes` 已用 `-text` 固定）。
 
 **(d) `pi-config/settings.json` 用绝对路径**指向 `~/bin/pi-config/extensions`（Pi 不展开 `~`）。
 Windows 上对应的路径是它自己的写法，`pi-config/install.sh` 里有一处检查会警告路径不符。
@@ -317,7 +318,7 @@ macOS 15.x / Windows 11（写明版本）
 - 失败的 run_* 脚本（如有）: <名字 + 原因>
 
 ## 未解决 / 需要用户决定
-<例如：win/nu 是否重写、某处漂移不确定哪份是对的>
+<例如：某处漂移不确定哪份是对的>
 ```
 
 **最后**：回到 Linux 机器时，那边的 agent 会做三件事——`git pull` 看你推的改动、
