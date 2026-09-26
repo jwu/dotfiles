@@ -103,16 +103,21 @@ cmd.exe 的 `call :label` / `goto :label` 在 **LF-only** 的批处理文件里�
 `scoop buckets` 那步失败，转成 CRLF 后全部通过。
 
 麻烦之处在于 `git` 的 `core.autocrlf=true` 只在检出时转，仓库里存的仍是 LF；而 bootstrap 的
-用法是 `curl -fsSL … -o` 下载 **原始 blob**，拿到的就是 LF。所以仓库用 `.gitattributes` 把
-CRLF 固化进 blob：
+用法是 `curl -fsSL … -o` 下载 **原始 blob**，拿到的就是 LF。所以仓库用 `.gitattributes` 关掉
+这两个扩展名的 EOL 转换：
 
 ```
 *.bat -text
 *.cmd -text
 ```
 
-`-text` 关闭 EOL 转换（而不是 `text eol=crlf`——那仍然存 LF）。CRLF 内容没有 NUL 字节，所以
-git 仍按文本 diff，不影响审阅。
+`-text` 只是**禁止转换**（用 `text eol=crlf` 没用——那仍然把 LF 存进 blob）。blob 里的 CRLF
+来自提交时工作区本身就是 CRLF，两件事得同时成立。CRLF 内容没有 NUL 字节，所以 git 仍按
+文本 diff，不影响审阅。
+
+`AppData/Local/clink/session.cmd` 是个例外：它的 blob 实际上是 **LF**。它没有
+`call :label` / `goto`，LF 照样能跑，`-text` 只保证 git 不去动它。真正需要 CRLF 的只有
+`bootstrap/windows.bat`。
 
 ## 踩到的坑：默认配置路径不能靠猜
 
