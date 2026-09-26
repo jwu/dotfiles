@@ -1,3 +1,4 @@
+{{ if ne .chezmoi.os "windows" -}}
 #!/bin/bash
 # Fcitx5 / Rime runtime steps chezmoi cannot express as files: fetch the Rime Ice
 # dictionaries, rebuild the compiled data, restart fcitx5.
@@ -89,3 +90,4 @@ fi
 reload_fcitx5
 
 echo "Fcitx5 Rime steps done (build/ and the user frequency data were left alone)."
+{{ end -}}

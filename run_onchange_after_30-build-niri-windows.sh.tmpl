@@ -1,3 +1,4 @@
+{{ if ne .chezmoi.os "windows" -}}
 #!/bin/bash
 # Builds the niri minimap CFFI module from our fork of
 # calico32/waybar-niri-windows. Always from source: upstream's prebuilt asset
@@ -54,3 +55,4 @@ else
   echo "Rebuild failed; keeping the installed module (see docs/waybar.md)." >&2
   exit 1
 fi
+{{ end -}}

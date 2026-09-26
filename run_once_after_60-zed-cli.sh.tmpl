@@ -1,3 +1,4 @@
+{{ if ne .chezmoi.os "windows" -}}
 #!/bin/bash
 # Arch's zed package only provides `zeditor`. Also provide the upstream name,
 # which is what `zed <path>` and $EDITOR expect ($EDITOR needs `zed --wait`).
@@ -13,3 +14,4 @@ fi
 mkdir -p "$HOME/.local/bin"
 ln -sf /usr/bin/zeditor "$HOME/.local/bin/zed"
 echo "Installed $HOME/.local/bin/zed -> /usr/bin/zeditor"
+{{ end -}}

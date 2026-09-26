@@ -1,3 +1,4 @@
+{{ if ne .chezmoi.os "windows" -}}
 #!/bin/bash
 # pi CLI plus the pi-config checkout.
 #
@@ -57,3 +58,4 @@ echo ""
 echo ">>> pi-config is at $PI_DIR."
 echo "    npm packages are installed by pi itself on first start, from the"
 echo "    'packages' list in settings.json. Run /reload in pi to pick up changes."
+{{ end -}}

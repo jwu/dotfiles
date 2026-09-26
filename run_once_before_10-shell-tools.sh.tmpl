@@ -1,3 +1,4 @@
+{{ if ne .chezmoi.os "windows" -}}
 #!/bin/bash
 # Root-free shell tooling: Oh My Zsh, the autosuggestions plugin, and a one-shot
 # cleanup of a stale waybar script.
@@ -76,3 +77,4 @@ step "zsh-autosuggestions" install_zsh_autosuggestions
 step "stale script cleanup" cleanup_stale
 
 summary
+{{ end -}}

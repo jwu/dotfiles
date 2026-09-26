@@ -1,3 +1,4 @@
+{{ if ne .chezmoi.os "windows" -}}
 #!/bin/bash
 # Builds gpu-watch, which waybar's GPU modules call. dlopen means gcc is the only
 # build dependency; the embedded hash makes run_onchange_ rebuild it only when
@@ -29,3 +30,4 @@ fi
 mkdir -p "$HOME/.local/bin"
 gcc -O2 -o "$HOME/.local/bin/gpu-watch" "$SRC/scripts/gpu-watch.c" -ldl
 echo "gpu-watch installed to $HOME/.local/bin/gpu-watch"
+{{ end -}}
