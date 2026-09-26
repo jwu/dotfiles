@@ -39,17 +39,20 @@
       **注意取舍：Clink 现在由终端执行 `%LOCALAPPDATA%\clink\session.cmd` 加载（`clink autorun`
       已卸载）**，所以只有 Alacritty / WezTerm 里有 Clink；Win+R 或 VS Code 的普通 cmd 没有。
       原因（`os.setenv` 不改 cmd 环境块）记在 [`docs/windows-shell.md`](docs/windows-shell.md)。
-- [ ] `~/bin/configs` 还剩两个被旧 clink 会话占用的文件
-      （`win/clink_profile/clink_history`、`clink_history_21792~`）。关掉那个终端后
-      `rm -rf ~/bin/configs` 即可。`~/bin/dev-settings` 已删。
+- [x] `~/bin/configs` 已删（2026-09-27）：旧 clink 会话早已退出，`clink_history_21792~`
+      也不在了，剩下 `win/clink_profile/{clink_history,clink.log,clink_errorlevel_*.txt}`
+      一并删除。`~/bin/dev-settings` 此前已删。
 - [x] `~/.gitconfig` 已收成纯个人层（`[user]` + `[core] sshCommand`）；delta 等由
       `~/.config/git/config` 提供。已验证 `git config` 取值正常。
 - [x] Zed 的 Windows settings 已与 Unix 侧对齐，只保留 `ui_font_family: Inter`（Unix 是
       FiraMono Nerd Font）；共享 fallback 列表加了 `Microsoft YaHei`。
-- [ ] 本次没纳入：`~/.config/lsd/config.yaml`、`~/.config/git/ignore`、`~/.config/opencode/`、
-      `nvim/lazy-lock.json`、`~/bin/imtip-config/`、`%APPDATA%\Zed\AGENTS.md`、
-      `~/bin/dev-settings` 装机脚本（两个平台都没迁）。
-- [ ] `~/.config/{gitui,lsd,eza}` 是上一版遗留、已不受管理，仍留在本机。
+- [x] 上次「没纳入」的配置已决定不纳入、直接删除（2026-09-27）：
+      `~/.config/lsd/config.yaml`、`~/.config/git/ignore`、`~/.config/opencode/`、
+      `%LOCALAPPDATA%\nvim\lazy-lock.json`、`~/bin/imtip-config/`、`%APPDATA%\Zed\AGENTS.md`
+      全部删除。`~/bin/dev-settings` 此前已删。
+- [x] `~/.config/{gitui,lsd,eza}` 上一版遗留已删（2026-09-27）：gitui 是 Windows 上被
+      ignore 排除的冗余副本（真实配置在 %APPDATA%\gitui），eza 是空目录，lsd 的 config.yaml
+      与「没纳入」项一并删除。
 
 ### 下一台机器
 
@@ -67,13 +70,13 @@
 1. **`settings.json` 的排除边界**：`pi-config/settings.json` 含 pi 的 npm 插件列表
    （`@eko24ive/pi-ask` 等），这对跨机器一致有值，但它同时含本机 provider / 模型状态。
    要不要把「插件列表」单独抽成模板纳入？
-2. **家目录里从未被管过的配置**：`~/.config/{chrome,chromium}-flags.conf`、`mimeapps.list`、
-   `nvim/lazy-lock.json`。已决定不纳入（范围严格等于两个退役仓库已有的东西），可随时
-   `chezmoi add` 补。其中 `lazy-lock.json` 是 35 个插件的版本锁，纳入后新机器可复现相同的
-   插件版本，单独考虑的价值最高。
-3. **Windows 上 `~/bin` 的遗留**：旧的便携版 exe（alacritty / starship / fzf / …）、
-   `~/bin/clink`、`~/bin/NerdFont`。scoop shims 在用户 PATH 里排在 `~\bin` 前面，所以不会遮蔽，
-   但也没必要留着。清不清由用户决定。
+2. **家目录里从未被管过的配置**：`~/.config/{chrome,chromium}-flags.conf`、`mimeapps.list`。
+   已决定不纳入（范围严格等于两个退役仓库已有的东西），可随时 `chezmoi add` 补。
+   `nvim/lazy-lock.json` 已随 Windows 收尾一并删除（lazy.nvim 会在下次更新时重新生成）。
+3. ~~Windows 上 `~/bin` 的遗留~~ 已清理（2026-09-27）：删掉与 scoop 重复的便携版
+   （alacritty / starship / fzf / zoxide / eza / fd / delta / bat / rg / coreutils 的 exe，
+   以及 clink、clink-completions、NerdFont 目录和 zoxide 的 completions/man/文档）。
+   非 scoop 工具（zig、nvim、nvm、godot、mpv、Everything、ImTip、yazi、yt-dlp 等）保留。
 4. **旧的 `mac/config.sh` 是否整体退役**：配置迁走后它已经没有内容，`bootstrap/macos.sh` 是
    按它演化重写的，剩下的只是删掉旧文件。
 5. **GitHub 上仍有不可达的旧对象**：`git filter-repo` 加 force push 只移动了 `main`，旧 commit
