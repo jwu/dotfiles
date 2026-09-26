@@ -5,10 +5,16 @@
 #   2. rebuild Rime's compiled data
 #   3. restart fcitx5 so it picks up the new build
 #
-# The profile, classicui.conf, the candidate-window theme and the *.custom.yaml
-# patches are deployed by chezmoi and are deliberately NOT copied here.
-# run_after_ guarantees this runs once those files are on disk, because
-# rime_deployer builds on top of them.
+# run_onchange_ plus the hashes of the five deployed fcitx5 files below: the
+# rebuild and the restart then happen only when one of them actually changed,
+# instead of on every apply. Combined with run_after_ this still runs after
+# chezmoi has written them, which is what rime_deployer needs.
+#
+# profile:         {{ include "dot_config/fcitx5/private_profile" | sha256sum }}
+# classicui.conf:  {{ include "dot_config/fcitx5/conf/classicui.conf" | sha256sum }}
+# theme.conf:      {{ include "dot_local/share/fcitx5/themes/jwu/theme.conf" | sha256sum }}
+# default.custom:  {{ include "dot_local/share/fcitx5/rime/default.custom.yaml" | sha256sum }}
+# rime_ice.custom: {{ include "dot_local/share/fcitx5/rime/rime_ice.custom.yaml" | sha256sum }}
 #
 # Never clear the user directory: *.userdb holds the learned frequency data,
 # which is exactly what an update must preserve. See docs/rime/rime-config.md.

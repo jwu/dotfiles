@@ -58,7 +58,7 @@ dot_config/
   alacritty/alacritty.toml             ← configs: linux/.config/alacritty/
   autostart/nm-applet.desktop          ← configs: linux/.config/autostart/
   environment.d/fcitx5.conf            ← configs: linux/.config/environment.d/
-  fcitx5/profile                       ← desktop-settings: fcitx5/profile
+  fcitx5/private_profile               ← desktop-settings: fcitx5/profile（600 → private_，见下）
   fcitx5/conf/classicui.conf           ← desktop-settings: fcitx5/classicui.conf
   ghostty/config.ghostty               ← configs: linux/.config/ghostty/
   ghostty/titlebar*.css                ← configs: linux/.config/ghostty/
@@ -111,6 +111,20 @@ run_*.sh
 
 - `linux/backgrounds/*.webp` → `~/.config/swaylock/backgrounds/`
 - `linux/neovide.desktop` → `~/.local/share/applications/neovide.desktop`
+
+### 属性前缀会进源路径
+
+chezmoi 依据权限位给源文件加前缀，所以**源路径与目标路径不一定逐字对应**。本仓库里只有
+五个，其中 `private_` 那个曾经绊了一下：`run_onchange_after_40-fcitx5.sh.tmpl` 的 `include`
+写目标路径 `profile` 会直接渲染失败，必须写源路径 `private_profile`。
+
+| 源路径 | 目标 | 权限 |
+| --- | --- | --- |
+| `dot_config/fcitx5/private_profile` | `~/.config/fcitx5/profile` | 600 |
+| `dot_config/waybar/scripts/executable_disk-temp.sh` | `~/.config/waybar/scripts/disk-temp.sh` | 755 |
+| `dot_local/bin/executable_niri-clipboard-history` | `~/.local/bin/niri-clipboard-history` | 755 |
+| `dot_local/bin/executable_niri-lock` | `~/.local/bin/niri-lock` | 755 |
+| `dot_local/bin/executable_niri-open-terminal-below` | `~/.local/bin/niri-open-terminal-below` | 755 |
 
 `configs` 的 `common/` 概念在本仓库消失：`common` + `linux` + `mac` 三份塌缩成一份文件加模板分支。
 
@@ -391,8 +405,8 @@ run_once_after_install-pi-config.sh
 | --- | --- | --- |
 | `run_once_before_10-provision-arch.sh` | 只跑一次（文件部署前） | pacman 装包、yay、AUR 的 xwayland-satellite-git、zsh 默认 shell、Oh My Zsh、TTY 字体、drivetemp、陈旧脚本清理 |
 | `run_onchange_after_20-build-gpu-watch.sh.tmpl` | **gpu-watch.c 变化时**（内嵌 `include \| sha256sum`） | gcc 编译 |
-| `run_after_30-build-niri-windows.sh.tmpl` | 每次（自带版本戳比对，有差异才重建） | 从 fork 构建 CFFI 模块 |
-| `run_after_40-fcitx5.sh` | 每次（在配置落盘后） | 下载 Rime Ice 词库、`rime_deployer --build`、重启 fcitx5 |
+| `run_onchange_after_30-build-niri-windows.sh.tmpl` | 构建助手变化时（内嵌 hash）；**不再自动跟随 fork HEAD** | 从 fork 构建 CFFI 模块 |
+| `run_onchange_after_40-fcitx5.sh.tmpl` | **fcitx5 五个配置文件变化时**（内嵌 hash） | 下载 Rime Ice 词库、`rime_deployer --build`、重启 fcitx5 |
 | `run_once_after_50-pi-config.sh` | 只跑一次 | 装 pi CLI、clone pi-config |
 | `run_once_after_60-zed-cli.sh` | 只跑一次 | `zed` → `/usr/bin/zeditor` 符号链接 |
 
@@ -478,6 +492,23 @@ TTY 的缓存不生效。
 - 保持现状，把「先在有终端的 shell 里跑 `chezmoi apply`」写进 bootstrap 的后续说明。
 - 把 5 处 sudo 拆成独立脚本，或在脚本开头检测 TTY；但要让 `run_once_` 仍能重试，就不能
   简单地 `return 0`（那会被记成已执行，失败的步骤永远不再重跑）。
+
+### chezmoi 把失败的脚本也记账
+
+首次 apply 时 provision 因无 TTY 失败（退出码 1），但它的内容 hash 仍然进了
+`scriptState`。于是它**不会因为「上次失败」而自动重跑**——只有内容变化才会。
+
+实测：修好 TTY 问题后 `chezmoi diff --include=scripts` 只列出内容被改过的脚本，失败的
+provision 不在其中。
+
+所以要让脚本重新执行，得显式清掉记账：
+
+```bash
+chezmoi state delete-bucket --bucket=scriptState
+chezmoi apply -v
+```
+
+`run_*` 脚本全部幂等，重跑一遍是安全的。
 
 ### 待做
 

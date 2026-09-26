@@ -5,12 +5,16 @@
 # (title-only change events, the state-lock deadlock, per-window activity), so
 # the module is always built from source. See docs/waybar.md.
 #
-# run_after_ so it runs once the waybar config is on disk. This does not need
-# run_onchange_: the module keeps its own revision stamp (the fork's main HEAD),
-# so it resolves the wanted commit and rebuilds only when the stamp differs.
+# run_onchange_ plus the helper hash below, so this no longer hits the network on
+# every apply. The trade-off: it stops following the fork's HEAD by itself -- when
+# the fork gets a new commit, bump the helper (or clear chezmoi's script state)
+# to force a rebuild. The module still compares its revision stamp, so a rebuild
+# only happens when the wanted commit really differs.
 #
 # The heavy lifting lives in scripts/waybar-niri-windows.sh, which stayed a plain
 # sourced library: the build details are long and do not belong in a run_ script.
+#
+# helper hash: {{ include "scripts/waybar-niri-windows.sh" | sha256sum }}
 set -uo pipefail
 
 SRC="{{ .chezmoi.sourceDir }}"
