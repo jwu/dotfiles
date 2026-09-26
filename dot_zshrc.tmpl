@@ -15,9 +15,10 @@ export ZSH=~/.oh-my-zsh
 export EDITOR=nvim
 export LANG=en_US.UTF-8
 export STARSHIP_CONFIG=~/.config/starship.toml
+{{ if eq .chezmoi.os "linux" -}}
 export PI_NERD_FONTS=1
 export COLORTERM=truecolor
-
+{{ end }}
 # ------------------------------
 # zsh & oh-my-zsh
 # ------------------------------
@@ -99,21 +100,32 @@ function pstat() {
   echo "HTTPS: ${https_proxy:-Direct}"
   echo "ALL:   ${all_proxy:-Direct}"
 }
+{{ if eq .chezmoi.os "darwin" }}
+# ------------------------------
+# MacOS Applications
+# ------------------------------
 
+alias neovide="/Applications/Neovide.app/Contents/MacOS/neovide --fork"
+alias zed="/Applications/Zed.app/Contents/MacOS/cli"
+{{ end }}
 # ------------------------------
 # dev envs
 # ------------------------------
-
+{{ if eq .chezmoi.os "linux" }}
 # ZVM
 export ZVM_INSTALL="$HOME/.zvm/self"
 export PATH="$PATH:$HOME/.zvm/bin"
 export PATH="$PATH:$ZVM_INSTALL/"
-
+{{ end }}
 # nvm
 export NVM_DIR="$HOME/.nvm"
+{{ if eq .chezmoi.os "linux" -}}
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-
+{{ else -}}
+[ -s "$(brew --prefix nvm)/nvm.sh" ] && source "$(brew --prefix nvm)/nvm.sh"  # This loads nvm
+[ -s "$(brew --prefix nvm)/etc/bash_completion.d/nvm" ] && source "$(brew --prefix nvm)/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
+{{ end }}
 # cargo
 export PATH=~/.cargo/bin:$PATH
 
@@ -128,7 +140,7 @@ export PATH=~/.opencode/bin:$PATH
 
 # Android SDK
 export PATH=~/Library/Android/sdk/platform-tools:$PATH
-
+{{ if eq .chezmoi.os "linux" }}
 # ------------------------------
 # waybar niri-windows module
 # ------------------------------
@@ -136,3 +148,4 @@ export PATH=~/Library/Android/sdk/platform-tools:$PATH
 # Announce this shell's pid in the window title, so the module measures this
 # window on its own instead of the whole terminal process. See docs/waybar.md.
 [ -r ~/.config/waybar/zsh-announce.zsh ] && source ~/.config/waybar/zsh-announce.zsh
+{{ end -}}

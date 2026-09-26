@@ -14,6 +14,25 @@ docs
 bootstrap
 scripts
 
-# chezmoi 自身的特殊文件不需要列，但显式写出来避免误伤
-# .chezmoiignore
-# .chezmoitemplates
+# Windows 专有目标
+{{ if ne .chezmoi.os "windows" }}
+AppData
+{{ end }}
+
+# macOS 专有目标
+{{ if ne .chezmoi.os "darwin" }}
+.aerospace.toml
+Library
+.config/ghostty/config
+{{ end }}
+
+# Linux 专有目标：ghostty 在两侧的目标文件名不同
+{{ if ne .chezmoi.os "linux" }}
+.config/ghostty/config.ghostty
+{{ end }}
+
+# Windows 上不部署 Unix shell 配置
+{{ if eq .chezmoi.os "windows" }}
+.zshrc
+.config/starship.toml
+{{ end }}
