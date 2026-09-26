@@ -48,19 +48,26 @@ pi 的 agent 配置（`agents` / `skills` / `prompts` / `themes` / 键位）、g
 装 chezmoi 这一步不可能由 chezmoi 自己完成，所以入口脚本独立于源之外：
 
 ```bash
-# Arch Linux
+# Linux
 sh -c "$(curl -fsLS https://raw.githubusercontent.com/jwu/dotfiles/main/bootstrap/arch.sh)"
 
 # macOS（Homebrew 要先装好）
 bash -c "$(curl -fsLS https://raw.githubusercontent.com/jwu/dotfiles/main/bootstrap/macos.sh)"
 ```
 
-两个脚本做同一件事：装 chezmoi → clone 到 `~/bin/dotfiles` → 写下 `~/.config/chezmoi/chezmoi.toml`
-里的 `sourceDir` → 装包 → `chezmoi init --apply`。
+```bat
+:: Windows（在管理员终端里跑第二行；curl 是系统自带的）
+curl -fsSL https://raw.githubusercontent.com/jwu/dotfiles/main/bootstrap/windows.bat -o "%TEMP%\dotfiles-bootstrap.bat"
+"%TEMP%\dotfiles-bootstrap.bat"
+```
 
-它们也是各自平台上**唯一**需要 root 或终端的地方（`chsh` 走 PAM、`/etc/shells` 要改、TTY 字体
-与 `drivetemp` 要 root）。把特权动作集中在这里，`chezmoi apply` 才能不需要密码、也不需要终端
-——CI、包装脚本、agent 里都能直接跑。
+三个脚本做同一件事：装 chezmoi → clone 到 `~/bin/dotfiles`（Windows 是 `%USERPROFILE%\bin\dotfiles`）
+→ 写下 chezmoi 的 `sourceDir` → 装工具 → `chezmoi init --apply`。
+
+它们也是各自平台上**唯一**需要 root / 管理员权限或终端的地方（`chsh` 走 PAM、`/etc/shells`
+要改、TTY 字体与 `drivetemp` 要 root、Windows 的 Nerd Font 要写 `%SystemRoot%\Fonts` 与 HKLM）。
+把特权动作集中在这里，`chezmoi apply` 才能不需要密码、也不需要终端——CI、包装脚本、agent
+里都能直接跑。
 
 ### 已经接入的机器
 

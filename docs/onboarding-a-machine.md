@@ -71,6 +71,11 @@ chezmoi diff --include=files      # 先看会改什么
 
 ## 3. 步骤
 
+> **捷径**：全新机器不用照下面手工来，直接跑 `bootstrap/arch.sh` / `bootstrap/macos.sh` /
+> `bootstrap/windows.bat`。它们已经把 §3.1–3.3 与装包做完了。但**§3.4 的对账与 §3.6 的验证
+> 仍要自己做**——那才是这个任务的核心，bootstrap 不替你做。下面保留手工步骤，用于排查
+> bootstrap 到底干了什么，或者它的步骤不适合这台机器时。
+
 ### 3.1 安装 chezmoi
 
 **macOS**
@@ -257,10 +262,11 @@ GTK 标题栏 CSS / `niri-*` 脚本（约 50 个文件）仍然是 managed 状�
 `{{ if ne .chezmoi.os "windows" -}} ... {{ end -}}`，Windows 上渲染为空字符串。
 **新增 `run_*` 脚本时记得同一套外壳**，否则 `chezmoi apply` 会立刻中止。
 
-**(c) `win/*.bat` 与 `win/cmds/*.cmd` 留在仓库里，不会被部署。** 它们属装机层。
-`win/init.bat` 已按新架构重写（clink 显式读 `%LOCALAPPDATA%\clink`、`STARSHIP_CONFIG` 已删除），
-且 clink 接线现在写回了 alacritty.toml 与 `dot_wezterm.lua`；但 `install.bat` 仍从未在裸机上
-完整跑过。
+**(c) `win/*.bat` 与 `win/cmds/*.cmd` 留在仓库里，不会被部署。** 它们属装机层，入口是
+`bootstrap/windows.bat`：装 chezmoi（winget→scoop）→ clone → 调 `win/install.bat`（便携工具 +
+Nerd Font）→ `chezmoi init --apply`。`win/init.bat` 已按新架构重写（clink 显式读
+`%LOCALAPPDATA%\clink`、`STARSHIP_CONFIG` 已删除），clink 接线写回了 alacritty.toml 与
+`dot_wezterm.lua`。字体那一步写 `%SystemRoot%\Fonts` 与 HKLM，所以 bootstrap 要求管理员终端。
 
 **(d) `pi-config/settings.json` 用绝对路径**指向 `~/bin/pi-config/extensions`（Pi 不展开 `~`）。
 Windows 上对应的路径是它自己的写法，`pi-config/install.sh` 里有一处检查会警告路径不符。

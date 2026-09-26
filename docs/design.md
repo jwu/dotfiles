@@ -37,8 +37,9 @@
 
 ```
 bootstrap/
-├── arch.sh      Linux：装 chezmoi → clone 到 ~/bin/dotfiles → pacman/yay 装包（sudo）→ chezmoi init --apply
-└── macos.sh     macOS：装 chezmoi → clone 到 ~/bin/dotfiles → brew 装包（无需 sudo）→ chezmoi init --apply
+├── arch.sh        Linux：装 chezmoi → clone 到 ~/bin/dotfiles → pacman/yay 装包（sudo）→ chezmoi init --apply
+├── macos.sh       macOS：装 chezmoi → clone 到 ~/bin/dotfiles → brew 装包（无需 sudo）→ chezmoi init --apply
+└── windows.bat    Windows：装 chezmoi（winget→scoop）→ clone → 便携工具与 Nerd Font（管理员）→ chezmoi init --apply
 ```
 
 新机器一行式：
@@ -50,6 +51,12 @@ sh -c "$(curl -fsLS https://raw.githubusercontent.com/jwu/dotfiles/main/bootstra
 bash -c "$(curl -fsLS https://raw.githubusercontent.com/jwu/dotfiles/main/bootstrap/macos.sh)"
 ```
 
+```bat
+:: Windows（在管理员终端里跑第二行）
+curl -fsSL https://raw.githubusercontent.com/jwu/dotfiles/main/bootstrap/windows.bat -o "%TEMP%\dotfiles-bootstrap.bat"
+"%TEMP%\dotfiles-bootstrap.bat"
+```
+
 `bootstrap/arch.sh` 由 `install-arch/install.sh` 演化而来，但编排目标从「clone 三个仓库并按序
 跑各自的脚本」变成「clone 本仓库 + 装包 + `chezmoi init --apply`」。`macos.sh` 是它的 macOS
 对应物：包清单演化自已退役的 `jwu/configs` 的 `mac/install.sh`（`ripgrep` 出自同一份仓库的
@@ -58,11 +65,20 @@ bash -c "$(curl -fsLS https://raw.githubusercontent.com/jwu/dotfiles/main/bootst
 macOS 那份的用法写 `bash -c` 而不是 `sh -c`：系统的 `/bin/sh` 是 POSIX 模式的 bash 3.2，
 不支持数组和 `local`，而脚本两者都用。同理它全文没有 bash 4 才有的 `&>` 重定向。
 
-**两者都是各自平台上唯一需要 root 或终端的脚本。** Linux 侧的 sudo 动作：装 41 个包、yay 与
-AUR 的 xwayland-satellite-git、`chsh`（走 PAM，同样需要终端）、TTY 字体、drivetemp。macOS 侧
-只有两处：`chsh`，以及首次把 Homebrew 的 zsh 加进 `/etc/shells`。`run_*` 脚本只剩不需要 root
-的部分——这正是 Oh My Zsh 与 zsh-autosuggestions 在两侧都留在 `run_once_before_10`、而不进
-bootstrap 的原因。
+`bootstrap/windows.bat` 是 Windows 对应物，流程演化自已退役的 `jwu/configs`：那边是
+「clone → `win/install.bat`（便携工具）→ `win/config.bat`（生成指针文件）→ 终端拉起 `init.bat`」，
+现在 `config.bat` 这一步由 chezmoi 的真实内容取代，`init.bat` 也改成了读
+`%LOCALAPPDATA%\clink`。工具清单没有重写——脚本直接调用仓库里的 `win/install.bat`，所以那份
+版本清单仍是唯一真源。用 `.bat` 而不是 PowerShell 是为了和 `win/*.bat` 一致；批处理没有
+`curl | sh` 那样的管道形式，所以入口是「先下到 `%TEMP%` 再执行」两行。
+
+**三者都是各自平台上唯一需要 root（Windows 上：管理员）或终端的脚本。** Linux 侧的 sudo
+动作：装 41 个包、yay 与 AUR 的 xwayland-satellite-git、`chsh`（走 PAM，同样需要终端）、TTY
+字体、drivetemp。macOS 侧只有两处：`chsh`，以及首次把 Homebrew 的 zsh 加进 `/etc/shells`。
+Windows 侧只有一处：字体安装——`win/cmds/addfonts.cmd` 写 `%SystemRoot%\Fonts` 与 HKLM；
+便携工具本身装在 `%USERPROFILE%\bin`，不需要提权，但整份脚本仍要求管理员终端（和 arch.sh
+要求 sudo 一样简单直接）。`run_*` 脚本只剩不需要 root 的部分——这正是 Oh My Zsh 与
+zsh-autosuggestions 在两侧都留在 `run_once_before_10`、而不进 bootstrap 的原因。
 
 这个切分是刻意的，而不是为了好看：sudo 的 `tty_tickets` 让凭据缓存按 TTY 隔离，非 TTY 的
 子进程无法输入密码；而 chezmoi 又会在任一 run 脚本失败时中止整个 apply。把 root 工作集中
@@ -673,6 +689,7 @@ reveal、render-markdown、gdscript LSP）和 `.pi/agent/themes/one-dark.json`�
 | clink 接线 | 写回 alacritty.toml 与 `dot_wezterm.lua` 的 Windows 分支 |
 | git 公共层 | credential helper 在 Windows 上用 PATH 上的 `gh`（本机没有 `~/.local/bin`） |
 | `run_*` 6 个脚本 | 全部加 `.tmpl` 外层短路，Windows 渲染为空 |
+| `bootstrap/windows.bat` | 新增 Windows 装机入口，取代 `configs` 的 clone + `install.bat` + `config.bat` 流程 |
 
 **未纳入**（本次决定不做）：`~/.config/lsd/config.yaml`（旧 `configs/common` 与 home 都有、
 dotfiles 漏了；但 aliases 已改用 eza）、`~/.config/git/ignore`、`~/.config/opencode/`、
