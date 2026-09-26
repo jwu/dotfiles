@@ -5,14 +5,6 @@
 
 ## 需要动手
 
-### Linux 机器（Arch）
-
-- [ ] **先手工建 `~/.gitconfig`，再 `chezmoi apply`。** 源里的 `.config/git/config` 只剩公共层，
-      `[user]` 与 `[http] proxy` 移进了个人层；个人层不在仓库里，apply 补不回来，中间态会丢掉
-      身份与代理。个人层的分层见 [`docs/design.md`](docs/design.md) 的「公共层与个人层」。
-- [ ] 若已经拉过历史重写之前的那批提交：`git fetch && git reset --hard origin/main`（或重新
-      clone），因为 `43655d4` 之后的 hash 全变了。
-
 ### 这台 macOS
 
 - [ ] 决定 `.config/glow/one-dark.json` 与 `.config/zellij/config.kdl` 是否要留在这台机器上。
