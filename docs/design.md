@@ -233,18 +233,22 @@ waybar 的 `module_path` 和 swaylock 都不展开 `~`（见 `docs/waybar.md`、
 `~/.config/git/config`，不管里面有没有 include，它照样会往这个文件里写，只是把冲突
 换了个位置。
 
-实际采用的方案是**把 credential 段模板化**，`/home/jwu` 换成 `.chezmoi.homeDir`：
+实际采用的方案是**把 credential 段模板化**：Linux 用 `.chezmoi.homeDir` 拼出的绝对路径，
+其余平台用 PATH 上的 `gh`。
 
 ```ini
 # dot_config/git/config.tmpl
 [credential "https://github.com"]
 	helper =
-	helper = !{{ .chezmoi.homeDir }}/.local/bin/gh auth git-credential
+	helper = !{{ if eq .chezmoi.os "linux" }}{{ .chezmoi.homeDir }}/.local/bin/gh{{ else }}gh{{ end }} auth git-credential
 ```
 
-选择的理由：渲染结果与 `gh` 写入的内容一致，`diff` 稳定且保持为空，硬编码路径同时
-消除。代价是 chezmoi 与 `gh` 名义上共管一个文件——若 `gh` 某次改了格式，`chezmoi diff`
-会显示差异，`chezmoi apply` 规范化回去，功能不受影响。
+选择的理由：Linux 那边的 gh 是 `~/.local/bin` 下的便携版，绝对路径正是 `gh` 自己会回填的
+内容，`diff` 稳定且保持为空，硬编码 `/home/jwu` 同时消除。macOS 的 gh 来自 Homebrew
+（`/opt/homebrew/bin/gh`），Windows 的来自 `~/bin`，两者都在 PATH 上，写死绝对路径反而
+会绑死 brew 前缀（Apple Silicon 与 Intel 不同）。代价是 chezmoi 与 `gh` 名义上共管一个
+文件——若 `gh` 某次改了格式，`chezmoi diff` 会显示差异，`chezmoi apply` 规范化回去，功能
+不受影响。
 
 同时保持 XDG 路径 `~/.config/git/config` 而**不是** `~/.gitconfig`，否则会在 `~` 下意外
 创建 `~/.gitconfig`。
@@ -271,7 +275,10 @@ git 先读 XDG 那份、再读 `~/.gitconfig`，后者覆盖前者，所以个�
 源条目但保留家目录文件，所以那几份文件原样留在家里，只是不再由 chezmoi 过问。新机器上要手工
 配一次身份。
 
-`gh` 仍然只往 `~/.config/git/config` 写，所以它回填的 credential 段落在公共层，与机器无关。
+`gh` 回填 credential 段时走的是 git 的 global 写入路径：`~/.gitconfig` 存在就写它，不存在
+才落到 `~/.config/git/config`。所以个人层建好之后，`gh auth login` 不再污染仓库管的公共层，
+两次 apply 之间的 `diff` 也不会因为一次登录而变脏。macOS 那台实测过写入落点
+（`git config --global --add` 写的是 `~/.gitconfig`）。
 
 ## pi 的可变状态
 
