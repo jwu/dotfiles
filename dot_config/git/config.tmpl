@@ -16,12 +16,14 @@
   line-numbers = true
   side-by-side = true
   syntax-theme = OneHalfDark
+# gh is a portable install under ~/bin on Windows (there is no ~/.local/bin), so
+# the helper there relies on PATH instead of an absolute path.
 [credential "https://github.com"]
 	helper = 
-	helper = !{{ .chezmoi.homeDir }}/.local/bin/gh auth git-credential
+	helper = !{{ if eq .chezmoi.os "windows" }}gh{{ else }}{{ .chezmoi.homeDir }}/.local/bin/gh{{ end }} auth git-credential
 [credential "https://gist.github.com"]
 	helper = 
-	helper = !{{ .chezmoi.homeDir }}/.local/bin/gh auth git-credential
+	helper = !{{ if eq .chezmoi.os "windows" }}gh{{ else }}{{ .chezmoi.homeDir }}/.local/bin/gh{{ end }} auth git-credential
 [i18n]
 	logOutputEncoding = utf-8
 	commitEncoding = utf-8
