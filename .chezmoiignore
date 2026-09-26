@@ -38,3 +38,26 @@ Library
 .zshrc
 .config/starship.toml
 {{ end }}
+
+# Linux 专有目标。它们是 Linux 机器上的真源，但 macOS 上 hyprland / niri / waybar /
+# swaylock / fcitx5 都不存在，GTK 标题栏 CSS 更是只对 Linux 的 GTK 版 Ghostty 有意义
+# （见 docs/ghostty-titlebar.md）。不排除的话，apply 会在 macOS 家目录里铺一整套
+# Linux 配置，包括 6 张壁纸和三个 niri-* 脚本。
+{{ if ne .chezmoi.os "linux" }}
+.config/autostart
+.config/environment.d
+.config/fcitx5
+.config/gtk-4.0
+.config/ghostty/titlebar.css
+.config/ghostty/titlebar-colors-default.css
+.config/ghostty/titlebar-colors-onedark.css
+.config/ghostty/titlebar-colors-onedark-purple.css
+.config/hypr
+.config/niri
+.config/swaylock
+.config/waybar
+# ~/.local 下源里的一切都是 Linux 专有（三个 niri-* 脚本、fcitx5 的 rime 配置与
+# 主题、图标、neovide.desktop），所以整棵子树都不部署。逐个文件排除是不够的：
+# 那样 chezmoi 仍会为了空的父目录而创建 ~/.local/share/applications。
+.local
+{{ end }}
