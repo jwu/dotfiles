@@ -107,9 +107,8 @@ padding = { x = 0, y = 0}
 [general]
 live_config_reload = true
 
-# cmd /k init.bat is what injects clink and the aliases.cmd macros; every terminal
-# in the old setup carried this wiring in a generated pointer file. See docs/design.md.
+# cmd, because that is the shell Clink enhances. Clink loads through its own
+# cmd.exe AutoRun entry, so no /k script is needed. See docs/design.md.
 [terminal]
 [terminal.shell]
 program = "cmd.exe"
-args = ["/s", "/k", "%USERPROFILE%\\bin\\dotfiles\\win\\init.bat"]
