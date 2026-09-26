@@ -8,9 +8,12 @@
 > 管理，`chezmoi diff --include=files` 为 0，二次 apply 输出 0 行。**把那台机器当作参考实现**，
 > 当本文与现状冲突时，以 `README.md` 和实际的源文件为准。
 >
-> **macOS 已于 2026-09-26 接入完成**（Apple Silicon，macOS 27.0，提交 `ac55046`..`885f51c`）。
+> **macOS 已于 2026-09-26 接入完成**（Apple Silicon，macOS 27.0，提交 `ac55046`..`e489f45`）。
 > 那次接入的结论已经回写进本文：§5 原来列的三处缺口全部修掉，并新记录了两处当时才发现的
 > 系统性问题。Windows 侧尚未开始。
+>
+> 该区间的 hash 在 2026-09-26 的历史重写后已更新（git 个人层被摘出仓库并从历史里抹掉）；
+> 若你手上的 clone 是重写之前拉的，需要重新 clone 或 `git fetch && git reset --hard origin/main`。
 
 ---
 

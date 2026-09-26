@@ -590,7 +590,7 @@ chezmoi apply -v
 ### 已完成：macOS 接入（2026-09-26）
 
 macOS 机器（Apple Silicon，macOS 27.0）按 `docs/onboarding-a-machine.md` 执行完毕，共 7 个提交
-`ac55046`..`885f51c`。对账出 12 处差异，方向都不是「源是对的」：
+`ac55046`..`e489f45`。对账出 12 处差异，方向都不是「源是对的」：
 
 | 类别 | 处理 |
 | --- | --- |
@@ -642,10 +642,15 @@ chezmoi 的 fail-fast 会让一个注定失败的脚本永久拖住 apply）。
 > 源里的 macOS / Windows 配置是在 Linux 上从**旧仓库的副本**复制进来的，不是从那些机器的家目录
 > 导入的，所以**可能比机器上那份旧**。对账之前不要 `apply`。
 
-**macOS 已完成接入**（2026-09-26，`ac55046`..`885f51c`）：对账出 12 处差异、加了 Linux 目标的
+**macOS 已完成接入**（2026-09-26，`ac55046`..`e489f45`）：对账出 12 处差异、加了 Linux 目标的
 反向排除、补了 `bootstrap/macos.sh`。同一次接入也修掉了该文档原先列的三处缺口，并新发现两处
 （`.chezmoiignore` 只做了单向排除、`.zshrc` 的 nvm 分支指向未安装的 brew formula）。细节见该
 文档的 §5。
+
+**补记（历史重写）**：那次接入里 git 个人层曾被短暂纳管（`dot_gitconfig.tmpl` 与两个身份文件），
+随后用 `chezmoi forget` 摘出仓库；因为仓库是 public，又用 `git filter-repo` 把那三条路径连同
+雇主名一起从历史里抹掉。所以上面那个区间的 hash 已经不是重写前的值。Linux 机器若已经拉过这
+批提交，需要 `git fetch && git reset --hard origin/main`（或重新 clone）。
 
 Windows 侧尚未开始，那部分的三处已知问题（`win/nu` 孤儿、`win/*.bat` 从未在真实 Windows 上跑过、
 `settings.json` 用绝对路径）原样保留。
