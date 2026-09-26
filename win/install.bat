@@ -75,7 +75,7 @@ call :CREATE_DIR_IF_NOT_EXISTS "%MY_NERD_FONT%\FiraMono"
 call :DOWNLOAD_AND_EXTRACT "https://github.com/ryanoasis/nerd-fonts/releases/download/%FONT_VER%/FiraMono.zip" "%MY_NERD_FONT%\FiraMono.zip" "%MY_NERD_FONT%\FiraMono"
 
 echo install FiraMono fonts
-call cmds\addfonts.cmd %MY_NERD_FONT%\FiraMono\
+call "%~dp0cmds\addfonts.cmd" %MY_NERD_FONT%\FiraMono\
 echo FiraMono fonts installed successfully
 echo ========================================
 goto:eof
