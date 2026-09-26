@@ -6,6 +6,14 @@
 # survives package updates. Skips itself when zed is not installed.
 set -uo pipefail
 
+{{ if ne .chezmoi.os "linux" -}}
+# `zeditor` is Arch's name for the CLI and the package owns /usr/bin/zeditor.
+# macOS ships its own `zed` shim from the app, so this can never apply there:
+# exit 0 instead of failing an apply. Same reasoning as the gpu-watch
+# short-circuit.
+echo "not Linux; skipping the zed CLI symlink"
+exit 0
+{{ end }}
 if ! command -v zeditor &> /dev/null; then
   echo "zeditor not found; skipping (install the zed package first)."
   exit 0
