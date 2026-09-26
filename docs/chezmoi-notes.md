@@ -1,6 +1,6 @@
 # chezmoi 的坑
 
-这一页记录的是「看起来会工作、实际不会」的那几处。设计推导看 `README.md`。
+这一页记录的是「看起来会工作、实际不会」的那几处。设计推导看 [`design.md`](design.md)。
 
 ## `.chezmoiignore` 匹配的是**目标**路径
 
@@ -25,7 +25,7 @@ chezmoi 依据权限位给源文件加前缀，所以源路径与目标路径不
 `run_onchange_after_40-fcitx5.sh.tmpl` 的 `include` 写目标路径 `profile` 会直接渲染
 失败，必须写源路径 `private_profile`。
 
-完整清单见 `README.md` 的「属性前缀会进源路径」。
+完整清单见 [`design.md`](design.md) 的「属性前缀会进源路径」。
 
 ## git 不记录目录权限
 

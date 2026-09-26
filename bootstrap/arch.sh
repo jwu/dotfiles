@@ -4,7 +4,7 @@
 # clone the repo, point chezmoi at it, apply.
 #
 # All sudo work lives here so `chezmoi apply` stays root-free and works without a
-# TTY. See docs/chezmoi-notes.md and README.md, the bootstrap section.
+# TTY. See docs/chezmoi-notes.md and docs/design.md, the bootstrap section.
 #
 # Usage:
 #   sh -c "$(curl -fsLS https://raw.githubusercontent.com/jwu/dotfiles/main/bootstrap/arch.sh)"

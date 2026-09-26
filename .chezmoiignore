@@ -5,6 +5,7 @@
 # See docs/chezmoi-notes.md.
 README.md
 AGENTS.md
+TODO.md
 LICENSE
 .gitignore
 .gitattributes

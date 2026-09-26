@@ -7,7 +7,9 @@
 
 ### 入口
 
-- `README.md` —— 仓库的完整设计推导，中文，**遇到结构性问题先读它**
+- `README.md` —— 项目简介、快速上手与文档索引；给人读
+- `docs/design.md` —— 仓库的完整设计推导，**遇到结构性问题先读它**
+- `TODO.md` —— 有意留下的开放事项，不是未完成的施工清单
 - `docs/onboarding-a-machine.md` —— 新机器接入说明，给那台机器上运行的 agent 读
 - `bootstrap/arch.sh`、`bootstrap/macos.sh` —— 装机入口，唯一需要 root 或终端的一层
 - `run_*.sh` —— chezmoi 在 apply 期间执行的动作脚本
@@ -47,16 +49,18 @@ dotfiles/
   ├── AppData/                # Windows 专有目标
   ├── private_Library/        # macOS 专有目标
   ├── win/                    # Windows 装机层，手动执行
-  ├── docs/                   # 中文设计记录，按主题一份文件
-  ├── AGENTS.md               # 本文件：协作规则
-  └── README.md               # 项目简介与完整设计推导
+  ├── docs/                     # 中文设计记录，按主题一份文件
+  │   └── design.md               # 设计推导与实施记录
+  ├── AGENTS.md                 # 本文件：协作规则
+  ├── README.md                 # 项目简介、快速上手与文档索引
+  └── TODO.md                   # 有意留下的开放事项
 ```
 
 ## 工作流程
 
 `改动源` → `chezmoi diff --include=files` → `apply` → 再 `apply` 确认 no-op → 提交。
 
-任何改变仓库结构的改动，先看 `README.md` 有没有对应章节需要同步——它是设计真源，
+任何改变仓库结构的改动，先看 `docs/design.md` 有没有对应章节需要同步——它是设计真源，
 文档与源不一致时以源为准，但要把文档修回来。
 
 ## 协作规则

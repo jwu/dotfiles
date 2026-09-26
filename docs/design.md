@@ -1,4 +1,12 @@
-# dotfiles
+# 设计记录
+
+`jwu/dotfiles` 的设计推导与实施记录。
+
+- 项目简介、快速上手与用法：见 [`../README.md`](../README.md)
+- 有意留下的开放事项：见 [`../TODO.md`](../TODO.md)
+- 协作规则（含注释规范）：见 [`../AGENTS.md`](../AGENTS.md)
+
+---
 
 用 [chezmoi](https://www.chezmoi.io/) 管理的机器配置与装机脚本**唯一真源**。
 
@@ -612,65 +620,19 @@ chezmoi 的 fail-fast 会让一个注定失败的脚本永久拖住 apply）。
 **apply 之前**先手工建好 `~/.gitconfig`（补回 `[user]` 与 `[http] proxy`），否则中间态会丢掉
 身份与代理——个人层不在仓库里，chezmoi 补不回来。
 
-### 待做
+### git 个人层与历史重写
 
-迁移已完成。下面「待确认」里列的是有意留下的开放问题，不是未完成的迁移步骤。
+接入时曾把 git 个人层做成 `dot_gitconfig.tmpl` 纳管，随后判定它不该在仓库里——它含邮箱、
+人名与 `~/dev/<雇主>/` 这样的工作目录结构。用 `chezmoi forget` 摘出：它删除源条目但保留
+家目录文件，所以那几份文件原样留在家中，只是不再由 chezmoi 过问。个人层现在手工维护在
+`~/.gitconfig`，分层见「公共层与个人层」。
 
-## 待确认
+因为仓库是 public，又用 `git filter-repo` 把那三条路径连同雇主名从全部历史里抹掉，所以
+`43655d4` 及之后的 hash 都是重写后的值。
 
-1. **`settings.json` 的排除边界**：`pi-config/settings.json` 含 pi 的 npm 插件列表
-   （`@eko24ive/pi-ask` 等），这对跨机器一致有值，但它同时含本机 provider/模型状态。
-   要不要把「插件列表」单独抽成模板纳入？
-2. **家目录里从未被管过的配置**：`~/.config/chrome-flags.conf`、`chromium-flags.conf`、
-   `mimeapps.list`、`nvim/lazy-lock.json`。**本轮已决定不纳入**（保持范围严格等于两个
-   退役仓库已有的东西），可随时 `chezmoi add` 补。其中 `lazy-lock.json` 是 35 个插件的
-   版本锁，纳入后新机器可复现相同插件版本，单独考虑的价值最高。
-3. **`win/nu/*.nu` 是否重写**：现在是过时孤儿（旧路径 + nushell 旧语法），要纳入必须先
-   确定 nushell 版本与目标位置。
-4. **`mac/config.sh` 是否整体退役**：它只有 95 行且全是 `cp`，配置迁走后没有内容，
-   剩余的 `aerospace reload-config` 可并入 `run_*`。macOS 接入时已按它演化出新写的
-   `bootstrap/macos.sh`，所以这一步只剩下删旧文件。
-5. **git 代理已配置**：直连 GitHub 为 SSL 失败（`unexpected eof while reading`），已给
-   `github.com` 配持久代理 `127.0.0.1:7890`。它随个人层一起移出了仓库，所以现在只存在于
-   那台 Linux 机器的 `~/.gitconfig` 里，不会再跟着公共层污染另一台机器。
+**force push 不等于在 GitHub 上消失**：旧 commit 在 GitHub 自行 GC 之前仍可按 SHA 读取
+（实测 `gh api repos/jwu/dotfiles/contents/...?ref=<旧SHA>` 与 commit 网页都是 200），要立即
+失效只能联系 GitHub Support 或删除重建仓库。已决定不再处理。
 
-## 在另一台机器上接入
-
-**[`docs/onboarding-a-machine.md`](docs/onboarding-a-machine.md)** 是给那些机器上运行的 agent
-读的自包含说明。核心是一条铁律：
-
-> 源里的 macOS / Windows 配置是在 Linux 上从**旧仓库的副本**复制进来的，不是从那些机器的家目录
-> 导入的，所以**可能比机器上那份旧**。对账之前不要 `apply`。
-
-**macOS 已完成接入**（2026-09-26，`ac55046`..`e489f45`）：对账出 12 处差异、加了 Linux 目标的
-反向排除、补了 `bootstrap/macos.sh`。同一次接入也修掉了该文档原先列的三处缺口，并新发现两处
-（`.chezmoiignore` 只做了单向排除、`.zshrc` 的 nvm 分支指向未安装的 brew formula）。细节见该
-文档的 §5。
-
-**补记（历史重写）**：那次接入里 git 个人层曾被短暂纳管（`dot_gitconfig.tmpl` 与两个身份文件），
-随后用 `chezmoi forget` 摘出仓库；因为仓库是 public，又用 `git filter-repo` 把那三条路径连同
-雇主名一起从历史里抹掉。所以上面那个区间的 hash 已经不是重写前的值。Linux 机器若已经拉过这
-批提交，需要 `git fetch && git reset --hard origin/main`（或重新 clone）。
-
-**但重写并不等于在 GitHub 上消失。** force push 只移动了分支；旧 commit 在 GitHub 自行 GC
-之前仍可按 SHA 读取（实测 `gh api repos/jwu/dotfiles/contents/...?ref=<旧SHA>` 与 commit 网页
-都是 200），要立即失效只能联系 GitHub Support 或删除重建仓库。本例中已决定不再处理：需要知道
-40 位 SHA 才能读到，爬虫不会遍历随机 SHA。
-
-Windows 侧尚未开始，那部分的三处已知问题（`win/nu` 孤儿、`win/*.bat` 从未在真实 Windows 上跑过、
-`settings.json` 用绝对路径）原样保留。
-
-准备好后：
-
-1. 在那台机器上让 agent 读该文档并执行，它会把对账结果与仓库改动 push 回来。
-2. 回到本机：`git pull`，核对源仍然自洽（`chezmoi diff --include=files` 必须回到 0），
-   并确认新加的平台短路没有破坏 Linux 分支——`20` / `30` 在本机仍应正常构建。
-
-## 参考
-
-- 快速上手 <https://www.chezmoi.io/quick-start/>
-- 源目录命名与模板函数 <https://www.chezmoi.io/reference/>
-- 脚本与前缀 <https://www.chezmoi.io/reference/target-types/#scripts>
-- 与其它 dotfile 管理方式的对比 <https://www.chezmoi.io/comparison/>
-- 早期评估（`configs` 视角，含 `gh` 抢写与模板化的详细推导）
-  `configs/docs/chezmoi-migration.md`
+仓库的开放事项——含 Windows 侧接入、Linux 机器需要手工补的 `~/.gitconfig`——都记在
+[`TODO.md`](../TODO.md)。
