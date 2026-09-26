@@ -4,3 +4,9 @@
 # gets the raw blob. 'text eol=crlf' would still store LF, so use -text.
 *.bat -text
 *.cmd -text
+
+# pi prompt files must stay LF in the working tree too, not only in the blob:
+# @johnnywu/pi-subagents parses agent frontmatter with a literal '---\n' check
+# and never normalizes CRLF, so autocrlf=true would break every subagent
+# definition on Windows. pi core normalizes it; that loader does not.
+private_dot_pi/private_agent/**/*.md text eol=lf
