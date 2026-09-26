@@ -129,6 +129,13 @@ AppData/Roaming/starship.toml              ← configs: win/starship.toml
 AppData/Roaming/Rime/weasel.custom.yaml    ← desktop-settings: rime/weasel.custom.yaml
 AppData/Local/clink/clink_settings         ← configs: win/clink_profile/
 AppData/Local/clink/{clink,fzf,zoxide}.lua ← configs: win/clink_scripts/
+AppData/Local/nvim/init.lua                ← configs: common/.config/nvim/init.lua
+AppData/Roaming/neovide/config.toml        ← configs: common/.config/neovide/
+AppData/Local/glow/Config/one-dark.json    ← configs: common/.config/glow/
+AppData/Roaming/gitui/theme.ron            ← configs: common/.config/gitui/
+AppData/Roaming/yazi/config/*.toml         ← configs: common/.config/yazi/
+AppData/Roaming/Zed/private_settings.json  ← Windows 接入时从本机收进（Unix 侧是 dot_config/zed/）
+.wezterm.lua                               ← configs: common/.wezterm.lua（仅 Windows）
 .chezmoiignore
 bootstrap/arch.sh
 run_*.sh
@@ -169,6 +176,8 @@ chezmoi 依据权限位给源文件加前缀，所以**源路径与目标路径�
 阶段 1 与平台搬入已完成（见「实施状态」）。源里共 **77 个文件** = 67 个 Linux 目标 +
 3 个 macOS 专有 + 7 个 Windows 专有；5 个模板。`chezmoi diff` 在 Linux 上为空，macOS /
 Windows 目标由 `.chezmoiignore` 按 OS 排除。
+
+> Windows 接入又添了 5 个 Windows 目标（yazi / gitui / glow / zed），见「Windows 侧」。
 
 ## 模板化的文件
 
@@ -329,6 +338,30 @@ call "%MY_CONFIGS%\cmds\aliases.cmd"
 `clink.get_env('USERPROFILE')` 拼路径。
 
 chezmoi 在 Windows 上以 `%USERPROFILE%` 为家目录，`%APPDATA%` 即 `AppData/Roaming`。
+
+### Windows 接入时补的三处
+
+**(a) Unix 目标在 Windows 上仍被 managed，`.chezmoiignore` 只有单向排除。** 和 macOS 那次
+（见「已完成：macOS 接入」）同一个形状：Windows 目标在 Linux 上被排除，反过来 Linux/macOS 的
+`~/.config` 目标却没在 Windows 上排除。`managed` 从 35 降到 31。其中 nvim / alacritty /
+neovide 是**重复**（Windows 的真目标在 AppData 里），yazi / gitui / glow / zed 是**错位置**
+（这些应用在 Windows 上读 `%APPDATA%` / `%LOCALAPPDATA%`，不读 `~/.config`），zellij 根本没装。
+`.config/ghostty` 是空父目录的特例：它的每个文件都被平台块排除了，只剩目录，chezmoi 仍会创建
+`~/.config/ghostty`——所以整目录也要排。
+
+**(b) 启动 clink 的接线原先只存在于生成指针里。** 旧的 `%APPDATA%\alacritty\alacritty.toml`
+不止转发内容，还带 `[terminal.shell] program=cmd /s /k init.bat`；`~/.wezterm.lua` 同理带
+`default_prog`。这段是 `config.bat` 生成的，退役后就没有落点了。现在写进部署内容本身：
+Alacritty 用 `%USERPROFILE%\bin\dotfiles\win\init.bat`（cmd 自己会展开环境变量），WezTerm 在
+`is_windows` 分支里用 `os.getenv('USERPROFILE')` 拼。两者都指向「装机层」的 `win/init.bat`，
+所以 Windows 上仓库位置仍固定在 `%USERPROFILE%\bin\dotfiles`。
+
+**(c) `run_*.sh` 在 Windows 上必然失败：`exec(3)` 不认 shebang。** 实测 `chezmoi apply` 把脚本
+写到临时文件后直接 exec，Windows 报 `%1 is not a valid Win32 application`。`.chezmoiignore`
+拦不住脚本（脚本没有目标路径），`20`/`30` 那种「`exit 0` 短路」也**执行不到**——失败发生在
+解释器起来之前。按 chezmoi 官方做法改成：6 个脚本全部带 `.tmpl`，最外层
+`{{ if ne .chezmoi.os "windows" -}} ... {{ end -}}`，Windows 上渲染为**空字符串**，chezmoi
+就不执行它。Linux / macOS 的渲染逐字节不变（已逐个比对）。
 
 ## 脚本层：`run_` 前缀
 
@@ -619,6 +652,33 @@ chezmoi 的 fail-fast 会让一个注定失败的脚本永久拖住 apply）。
 `~/.config/zed/settings.json` 会收敛到 0700/0600；`~/.config/git/config` 只剩公共层。那边要在
 **apply 之前**先手工建好 `~/.gitconfig`（补回 `[user]` 与 `[http] proxy`），否则中间态会丢掉
 身份与代理——个人层不在仓库里，chezmoi 补不回来。
+
+### Windows 接入（源侧完成，apply 待执行）
+
+Windows 这台（Windows 11 10.0.26200）此前**从未接过 chezmoi**：scoop 装了 binary，但没有
+`%USERPROFILE%\.config\chezmoi\chezmoi.toml`、没有 state，家目录一直跑在旧 `~/bin/configs` 上
+（`~/.wezterm.lua`、`%APPDATA%\alacritty\alacritty.toml`、`%APPDATA%\neovide\config.toml`
+都是 `config.bat` 生成的指针，clink 由 `init.bat` 注入）。
+
+对账结论：10 个 Windows 目标**都是源更新**，没有任何一份 home 配置更新。其中最旧的是
+`AppData/Local/nvim/init.lua`（1645 行，早于仓库的 1718 行：缺 `is_win` 分支、explorer
+reveal、render-markdown、gdscript LSP）和 `.pi/agent/themes/one-dark.json`（5 月版）。
+
+源侧为此改了：
+
+| 改动 | 内容 |
+| --- | --- |
+| `.chezmoiignore` | 加 Windows 反向排除块（含空的 `.config/ghostty`） |
+| 新增 Windows 目标 | nvim / neovide 之外再补 yazi / gitui / glow / zed 的 AppData 路径，真内容，不用指针 |
+| clink 接线 | 写回 alacritty.toml 与 `dot_wezterm.lua` 的 Windows 分支 |
+| git 公共层 | credential helper 在 Windows 上用 PATH 上的 `gh`（本机没有 `~/.local/bin`） |
+| `run_*` 6 个脚本 | 全部加 `.tmpl` 外层短路，Windows 渲染为空 |
+
+**未纳入**（本次决定不做）：`~/.config/lsd/config.yaml`（旧 `configs/common` 与 home 都有、
+dotfiles 漏了；但 aliases 已改用 eza）、`~/.config/git/ignore`、`~/.config/opencode/`、
+`AppData/Local/nvim/lazy-lock.json`、`~/bin/imtip-config/`、`~/bin/dev-settings/`。
+Zed 的 Windows settings 目前是直接从本机收进来的独立文件，还没和 Unix 侧那份（`dot_config/zed/`）
+统一（只差字体与几处默认值）。
 
 ### git 个人层与历史重写
 

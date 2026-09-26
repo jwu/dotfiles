@@ -29,14 +29,28 @@
       `./images/*.png|jpeg` 从未随文档一起迁入，链接是死的（全仓 markdown 链接检查会报 6 处）。
       要么补图，要么删掉引用。
 
+### 这台 Windows
+
+- [ ] **源侧改造已完成，但 `chezmoi apply` 还没执行**（`sourceDir` 已写好，`chezmoi diff` 已对过）。
+      执行前先看一眼 `chezmoi diff --include=files`，然后 `apply -v` 跑两次，第二次必须 0 行。
+      当前 status：`chezmoi status` 中文件改动 30 余条、脚本 0 条（6 个 `run_*.sh` 在 Windows 上
+      渲染为空）。风险低：对账下来 10 个 Windows 目标全部是源更新，没有 home 更新的情况。
+- [ ] apply 之后确认 alacritty / wezterm 真的用 `cmd /k %USERPROFILE%\bin\dotfiles\win\init.bat`
+      启动（clink、aliases、starship 都能用），并把 `~/bin/configs`、`~/bin/dev-settings` 删掉。
+- [ ] `~/.gitconfig` 收成纯个人层（`[user]` + `[core] sshCommand`），delta 等公共设置已由
+      `~/.config/git/config` 提供。
+- [ ] Zed 的 Windows settings 目前是直接收进来的独立文件，还没和 Unix 侧 `dot_config/zed/`
+      统一（只差字体与几处默认值）。要么合并成模板，要么接受两份。
+- [ ] 本次没纳入：`~/.config/lsd/config.yaml`、`~/.config/git/ignore`、`~/.config/opencode/`、
+      `nvim/lazy-lock.json`、`~/bin/imtip-config/`、`~/bin/dev-settings/`（dev-settings 两个平台都没迁）。
+
 ### 下一台机器
 
 - [ ] `bootstrap/macos.sh` 只做过 `bash -n` 与逐条人工核对，**从未在真正的裸机上跑过**（本机
       Homebrew 与所有包都已就位）。
-- [ ] Windows 侧尚未接入。已知三处：`win/nu/*.nu` 是过时孤儿（旧路径 + nushell 旧语法）；
-      `win/*.bat` 与 `win/cmds/*.cmd` 从未在真实 Windows 上执行过；
-      `pi-config/settings.json` 用绝对路径指向 `~/bin/pi-config/extensions`，Windows 上写法不同。
-      流程见 [`docs/onboarding-a-machine.md`](docs/onboarding-a-machine.md)。
+- [ ] Windows 侧记得：任何新的 `run_*` 脚本都必须带 `.tmpl` + `{{ if ne .chezmoi.os "windows" -}}`
+      外壳，否则 `chezmoi apply` 会因 exec(3) 失败而中止。流程见
+      [`docs/onboarding-a-machine.md`](docs/onboarding-a-machine.md)。
 
 ## 待决定
 

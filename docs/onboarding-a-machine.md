@@ -10,7 +10,13 @@
 >
 > **macOS 已于 2026-09-26 接入完成**（Apple Silicon，macOS 27.0，提交 `ac55046`..`e489f45`）。
 > 那次接入的结论已经回写进本文：§5 原来列的三处缺口全部修掉，并新记录了两处当时才发现的
-> 系统性问题。Windows 侧尚未开始。
+> 系统性问题。
+>
+> **Windows 侧的源改造已完成**（Windows 11 10.0.26200）：`.chezmoiignore` 加了反向排除、补了
+> yazi / gitui / glow / zed 的 AppData 目标、把 clink 接线写回内容、修了 git credential helper，
+> 并给 6 个 `run_*.sh` 加了「Windows 渲染为空」的外层短路。结论记在 §5.3 与 `docs/design.md`
+> 的「Windows 接入」一节。**在这台机器上的 `chezmoi apply` 还没执行**，所以 §3 的对账与验证
+> 仍需跑一遍。
 >
 > 该区间的 hash 在 2026-09-26 的历史重写后已更新（git 个人层被摘出仓库并从历史里抹掉）；
 > 若你手上的 clone 是重写之前拉的，需要重新 clone 或 `git fetch && git reset --hard origin/main`。
@@ -238,18 +244,28 @@ GTK 标题栏 CSS / `niri-*` 脚本（约 50 个文件）仍然是 managed 状�
 在于 `brew --prefix nvm` 对**没安装的** formula 也会打印一个路径**并以 0 退出**，所以它不会
 报错，只会让 nvm 静默消失。已改成先探 `$NVM_DIR`、再回落 brew。
 
-### 5.3 Windows 侧的已知问题
+### 5.3 Windows 侧
 
 **(a) `win/nu/*.nu` 是孤儿，已被跳过。** 它没有任何脚本部署，内含旧机器的真实路径
 （`e:\Alacritty\settings\`、`E:\Alacritty\vendor\starship.exe`），且用的是 nushell 旧语法
 `let-env`。要纳入必须先确定 nushell 版本与目标位置（`%APPDATA%\nushell\`），**这是重写，不是搬移**。
 
-**(b) `win/*.bat` 与 `win/cmds/*.cmd` 留在仓库里，不会被部署。** 它们属装机层。
-`win/init.bat` 已在 Linux 上按新架构重写（clink 显式读 `%LOCALAPPDATA%\clink`、
-`STARSHIP_CONFIG` 已删除），但**从未在真实 Windows 上执行过**——你的验证很有价值。
+**(b) `run_*.sh` 在 Windows 上必然失败，已用「渲染为空」修掉。** chezmoi 把脚本写到临时文件后
+直接 `exec(3)`，Windows 报 `%1 is not a valid Win32 application`——shebang 不被使用，
+`.chezmoiignore` 也拦不住脚本（脚本没有目标路径）。所以 `20`/`30` 里那种「非 Linux 就 `exit 0`」
+在 Windows 上**根本执行不到**。现在的做法是 6 个脚本全部带 `.tmpl`，最外层
+`{{ if ne .chezmoi.os "windows" -}} ... {{ end -}}`，Windows 上渲染为空字符串。
+**新增 `run_*` 脚本时记得同一套外壳**，否则 `chezmoi apply` 会立刻中止。
 
-**(c) `pi-config/settings.json` 用绝对路径**指向 `~/bin/pi-config/extensions`（Pi 不展开 `~`）。
+**(c) `win/*.bat` 与 `win/cmds/*.cmd` 留在仓库里，不会被部署。** 它们属装机层。
+`win/init.bat` 已按新架构重写（clink 显式读 `%LOCALAPPDATA%\clink`、`STARSHIP_CONFIG` 已删除），
+且 clink 接线现在写回了 alacritty.toml 与 `dot_wezterm.lua`；但 `install.bat` 仍从未在裸机上
+完整跑过。
+
+**(d) `pi-config/settings.json` 用绝对路径**指向 `~/bin/pi-config/extensions`（Pi 不展开 `~`）。
 Windows 上对应的路径是它自己的写法，`pi-config/install.sh` 里有一处检查会警告路径不符。
+注意 `run_once_after_50-pi-config.sh.tmpl` 在 Windows 上渲染为空，所以 pi-config 不会被自动
+clone；这台机器一直是直接跑 pi、不依赖 pi-config。
 
 ---
 

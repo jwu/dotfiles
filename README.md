@@ -28,10 +28,11 @@
 
 ### Windows —— 终端与 Shell 增强
 
-- **终端**：Alacritty、WezTerm
-- **Shell**：Clink 增强的 CMD，配 starship、fzf、zoxide、eza
+- **终端**：Alacritty、WezTerm，都由 `win/init.bat` 拉起 Clink 增强的 CMD
+- **Shell**：Clink，配 starship、fzf、zoxide、eza、coreutils
 - **输入法**：Weasel（小狼毫）
-- **编辑器**：Neovim + Neovide
+- **编辑器**：Neovim + Neovide、Zed
+- **共用**：yazi、gitui、glow
 
 ### 三台共用
 
