@@ -1,18 +1,11 @@
 #!/bin/bash
-# The niri window minimap CFFI module, built from our fork of
-# calico32/waybar-niri-windows. Upstream ships a prebuilt x86_64 asset, but
-# installing that would silently overwrite the fixes that live only on the fork
-# (title-only change events, the state-lock deadlock, per-window activity), so
-# the module is always built from source. See docs/waybar.md.
+# Builds the niri minimap CFFI module from our fork of
+# calico32/waybar-niri-windows. Always from source: upstream's prebuilt asset
+# would silently drop the fixes that live only on the fork.
 #
-# run_onchange_ plus the helper hash below, so this no longer hits the network on
-# every apply. The trade-off: it stops following the fork's HEAD by itself -- when
-# the fork gets a new commit, bump the helper (or clear chezmoi's script state)
-# to force a rebuild. The module still compares its revision stamp, so a rebuild
-# only happens when the wanted commit really differs.
-#
-# The heavy lifting lives in scripts/waybar-niri-windows.sh, which stayed a plain
-# sourced library: the build details are long and do not belong in a run_ script.
+# run_onchange_ plus the helper hash below, so the trade-off is that it no longer
+# follows the fork's HEAD by itself -- bump the helper to force a rebuild. The
+# build details live in the sourced library. See docs/waybar.md.
 #
 # helper hash: {{ include "scripts/waybar-niri-windows.sh" | sha256sum }}
 set -uo pipefail

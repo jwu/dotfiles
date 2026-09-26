@@ -1,19 +1,10 @@
 #!/bin/bash
 # One entry point for a bare Arch Linux machine, and the only script here that
-# needs root and an interactive terminal: it installs chezmoi, provisions the
-# packages, clones the repo, points chezmoi at it, and applies.
+# needs root and an interactive terminal: install chezmoi, provision packages,
+# clone the repo, point chezmoi at it, apply.
 #
-# Everything root-free -- the two waybar builds, the Rime dictionaries, the
-# pi-config checkout, the zed symlink -- is done by this repo's run_* scripts,
-# which chezmoi executes during apply. Keeping the sudo work *here* is what lets
-# `chezmoi apply` run without a terminal at all (CI, a wrapper script, an agent):
-# sudo's tty_tickets isolates its credential cache per TTY, so a credential
-# cached in one terminal is invisible in a non-TTY child, and chezmoi aborts the
-# entire apply as soon as a run_ script fails.
-#
-# It replaces install-arch, which cloned three repositories (configs,
-# desktop-settings, pi-config) and ran each one's installer. Those two retired
-# repos are gone; pi-config is now cloned by run_once_after_50-pi-config.sh.
+# All sudo work lives here so `chezmoi apply` stays root-free and works without a
+# TTY. See docs/chezmoi-notes.md and README.md, "安装入口：bootstrap/".
 #
 # Usage:
 #   sh -c "$(curl -fsLS https://raw.githubusercontent.com/jwu/dotfiles/main/bootstrap/arch.sh)"

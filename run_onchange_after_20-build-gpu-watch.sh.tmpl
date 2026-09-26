@@ -1,13 +1,7 @@
 #!/bin/bash
-# gpu-watch: replaces the old scripts/gpu.sh, which spawned bash and nvidia-smi
-# every two seconds (16.8 ms of CPU per call; with the usage and temperature
-# modules both running that was 1.68% of a core, more than waybar itself uses).
-# It opens libnvidia-ml with dlopen, so it needs no headers and links against
-# nothing -- gcc is the only build dependency.
-#
-# run_onchange_ plus the source hash embedded below: the script's own content
-# changes whenever gpu-watch.c does, which is exactly what triggers a rebuild.
-# See docs/waybar.md.
+# Builds gpu-watch, which waybar's GPU modules call. dlopen means gcc is the only
+# build dependency; the embedded hash makes run_onchange_ rebuild it only when
+# gpu-watch.c changes. See docs/waybar.md.
 #
 # source hash: {{ include "scripts/gpu-watch.c" | sha256sum }}
 set -euo pipefail

@@ -1,23 +1,17 @@
 #!/bin/bash
-# Fcitx5 / Rime runtime steps that chezmoi cannot express as files:
-#   1. fetch the Rime Ice dictionaries on the first run (~16 MB, a third-party
-#      release that moves independently of this repo, so it is not vendored)
-#   2. rebuild Rime's compiled data
-#   3. restart fcitx5 so it picks up the new build
+# Fcitx5 / Rime runtime steps chezmoi cannot express as files: fetch the Rime Ice
+# dictionaries, rebuild the compiled data, restart fcitx5.
 #
-# run_onchange_ plus the hashes of the five deployed fcitx5 files below: the
-# rebuild and the restart then happen only when one of them actually changed,
-# instead of on every apply. Combined with run_after_ this still runs after
-# chezmoi has written them, which is what rime_deployer needs.
+# run_onchange_ plus the hashes below, so this only reruns when one of the five
+# deployed files changed -- and `after`, because rime_deployer needs them on disk.
+# Never clear the user directory: *.userdb holds the learned frequency data.
+# See docs/rime/rime-config.md.
 #
 # profile:         {{ include "dot_config/fcitx5/private_profile" | sha256sum }}
 # classicui.conf:  {{ include "dot_config/fcitx5/conf/classicui.conf" | sha256sum }}
 # theme.conf:      {{ include "dot_local/share/fcitx5/themes/jwu/theme.conf" | sha256sum }}
 # default.custom:  {{ include "dot_local/share/fcitx5/rime/default.custom.yaml" | sha256sum }}
 # rime_ice.custom: {{ include "dot_local/share/fcitx5/rime/rime_ice.custom.yaml" | sha256sum }}
-#
-# Never clear the user directory: *.userdb holds the learned frequency data,
-# which is exactly what an update must preserve. See docs/rime/rime-config.md.
 set -uo pipefail
 
 FCITX_CONFIG_DIR="$HOME/.config/fcitx5"

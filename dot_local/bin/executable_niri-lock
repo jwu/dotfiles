@@ -1,31 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
-# Lock the screen with hyprlock; fall back to swaylock if it is not installed.
-#
-# The session locks on demand only (Mod+L); there is no idle auto-lock. While it
-# stays locked, the monitors are powered off (DPMS) after every
-# SCREEN_OFF_TIMEOUT seconds of inactivity -- the timer lives in this script, so
-# it starts when the lock is taken, not from the last input event.
-#
-# niri handles the wake-up itself: it activates the monitors on any key press or
-# pointer motion, and its IPC accepts PowerOffMonitors/PowerOnMonitors while
-# locked (see niri src/input/mod.rs).
-#
-# The lock screen style is picked here as a whole file rather than inside the
-# config: hyprlock matches widgets to monitors by port name or EDID description
-# only, and never looks at the resolution, so naming outputs is the only way to
-# put several layouts in one file. Instead the layouts live in
-# hyprlock-large.conf (the Style-10 layout, and the default -- this repo targets
-# ordinary desktop displays), hyprlock-medium.conf (the same elements at
-# readable sizes, placed in percentages of the output, for mid-size panels where
-# the large layout overflows) and hyprlock-small.conf (compact, time only, plus
-# a boxless password prompt, for panels too small for the full layout), each
-# leaving `monitor` empty. hyprlock.conf sources the large one, so a bare
-# `hyprlock` still shows something. See docs/lockscreen.md.
-#
-# A dead locker is recovered with niri's Mod+Alt+L (allow-when-locked), which
-# kills whatever holds the lock and starts swaylock directly (see
+# Lock the screen with hyprlock, falling back to swaylock. While the session stays
+# locked, the monitors are powered off after SCREEN_OFF_TIMEOUT seconds of
+# inactivity; the timer lives here, so it starts when the lock is taken rather
+# than from the last input event. The lock style is a whole file, picked by output
+# width, because hyprlock matches widgets to monitors by port name or EDID only
+# and never by resolution. A dead locker is recovered with niri's Mod+Alt+L (see
 # docs/lockscreen.md).
 
 # Seconds the locked session may stay idle before the monitors go off.
@@ -39,8 +20,8 @@ MEDIUM_MIN_WIDTH=900
 
 if command -v hyprlock >/dev/null 2>&1; then
   # Default to the large style. Dropping to a smaller one requires a positive
-  # sighting -- outputs were read and none of them is wide enough -- so a failure
-  # to query niri keeps the default instead of guessing.
+  # sighting -- outputs were read and none is wide enough -- so a failed query
+  # keeps the default instead of guessing.
   style="hyprlock-large.conf"
   detected="$(niri msg outputs 2>/dev/null | awk -v full="$FULL_MIN_WIDTH" -v medium="$MEDIUM_MIN_WIDTH" '
         /Logical size: / { seen = 1; split($3, d, "x"); w = d[1] + 0
@@ -60,7 +41,7 @@ else
   locker=(swaylock -f)
 fi
 
-# The screen-off timer exists exactly as long as the session is locked: swayidle
+# The screen-off timer lives exactly as long as the session is locked: swayidle
 # re-arms after every activity, so the monitors go off again after each further
 # idle period while the lock is held.
 swayidle -w timeout "$SCREEN_OFF_TIMEOUT" "niri msg action power-off-monitors" &

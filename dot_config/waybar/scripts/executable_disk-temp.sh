@@ -1,25 +1,14 @@
 #!/usr/bin/env bash
 # Hottest disk in this machine, as waybar JSON.
 #
-# Disks are discovered from /sys/block and matched to their temperature sensor
-# through the hwmon device symlink, so nothing is tied to a PCI address or a
-# drive count: a machine with only a SATA disk reports HDD, one with NVMe
-# reports SSD, and a mixed machine reports the kind of whichever disk it picks.
+# Disks come from /sys/block, matched to their temperature sensor through the hwmon
+# device symlink, so nothing is tied to a PCI address or a drive count. Warning and
+# critical are the drive's own temp1_max / temp1_crit, so the reading shown is the
+# disk in the worst state, not simply the hottest. SATA disks need the drivetemp
+# module; without it they report --°C.
 #
-# Warning/critical are the drive's own limits, not ours: temp1_max and
-# temp1_crit come from the drive (NVMe: the standard WCTEMP/CCTEMP fields,
-# SATA: whatever drivetemp reports), so an HDD and an NVMe get thresholds that
-# actually fit them. A drive exposing neither falls back to DEFAULT_* below.
-# Because the limits differ per drive, the reading shown is from the disk in
-# the worst state - not simply the hottest one.
-#
-# SATA/HDD temperatures need the drivetemp kernel module (loaded at boot by
-# /etc/modules-load.d/drivetemp.conf, see linux/config.sh); without it those
-# disks are listed as --°C. See docs/waybar.md.
-#
-# Everything below is a bash builtin. waybar re-runs this on a timer, and the
-# fork/exec of cat/sed/readlink cost several times the logic itself: measured
-# ~19ms per run with them, ~10ms without.
+# Everything below is a bash builtin: waybar re-runs this on a timer, and the
+# fork/exec of cat/sed/readlink costs more than the logic itself. See docs/waybar.md.
 
 # Fallback limits for a drive that reports none of its own.
 DEFAULT_WARN=60

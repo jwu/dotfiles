@@ -2,13 +2,7 @@
 # Root-free shell tooling: Oh My Zsh, the autosuggestions plugin, and a one-shot
 # cleanup of a stale waybar script.
 #
-# Everything that needs sudo (packages, yay, the AUR package, chsh, the TTY font,
-# drivetemp) lives in bootstrap/arch.sh instead. That split is deliberate: it is
-# what lets `chezmoi apply` run without root and without a terminal. See the
-# header of bootstrap/arch.sh for the full reasoning.
-#
-# Triggered by run_once_, so it runs once and is skipped while its content is
-# unchanged.
+# Everything needing sudo lives in bootstrap/arch.sh. See docs/chezmoi-notes.md.
 set -uo pipefail
 
 FAILED_STEPS=()

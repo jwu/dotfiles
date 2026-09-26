@@ -1,18 +1,9 @@
 #!/bin/bash
 # pi CLI plus the pi-config checkout.
 #
-# pi-config is the one repository that stays separate from dotfiles: it carries
-# the TypeScript extension project and the npm plugins, and its settings.json
-# points at ~/bin/pi-config/extensions -- a path that must not move. That is also
-# why the clone target is fixed here.
-#
-# Its static resources (agents/, skills/, prompts/, themes/, keybindings.json,
-# APPEND_SYSTEM.md) are owned by chezmoi now, so pi-config/install.sh was trimmed
-# down to deploying settings.json alone -- the one file chezmoi does not manage,
-# because it carries the machine's provider, model and auth state. It is called
-# below.
-#
-# Degrades to a warning: pi is optional on a machine that does not use it.
+# pi-config stays a separate repository because its settings.json points at
+# ~/bin/pi-config/extensions by absolute path, so the clone target is fixed.
+# See README.md, "pi-config 的编排".
 set -uo pipefail
 
 PI_REPO_SSH="${PI_REPO_SSH:-git@github.com:jwu/pi-config.git}"

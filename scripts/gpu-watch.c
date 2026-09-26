@@ -1,23 +1,16 @@
 /* gpu-watch: waybar's GPU module backend. One long-lived process per module,
- * printing one JSON line every INTERVAL_MS.
- *
- * It replaces scripts/gpu.sh, which spawned bash and nvidia-smi every two
- * seconds: 16.8 ms of CPU per call, and with the usage and the temperature
- * module both running that was 1.68% of one core -- more than waybar itself
- * uses. Almost all of it is nvidia-smi's own startup (nvmlInit alone is
- * ~9.9 ms, paid on every call) plus ~5 ms for its --query-gpu sample; the same
- * two device queries in-process cost 0.017 ms, so this loop is 0.003%.
- * docs/waybar.md has the measurements.
+ * printing one JSON line every INTERVAL_MS. It replaces a bash + nvidia-smi pair
+ * whose per-call startup dominated the cost; docs/waybar.md has the numbers.
  *
  *   gpu-watch util    ->  󰬎󰬗󰬜 11%    class "" | warning >= 70 | critical >= 90
  *   gpu-watch temp    ->  40°C      class "" | warning >= 75 | critical >= 85
  *   gpu-watch ... -once             print one line, then exit
  *
- * The driver is opened with dlopen, so nothing here links against
- * libnvidia-ml: the same binary is fine on a machine without it. When the
- * driver is missing, or a query stops answering (suspend, a driver reload), the
- * module prints the "off" line and exits. waybar's restart-interval then runs
- * it again, which is also how the device handle gets re-created after a resume.
+ * The driver is opened with dlopen, so nothing links against libnvidia-ml and
+ * the same binary is fine on a machine without it. When the driver is missing or
+ * a query stops answering (suspend, a driver reload), the module prints the "off"
+ * line and exits; waybar's restart-interval then runs it again, which is also how
+ * the device handle gets re-created after a resume.
  */
 
 #include <dlfcn.h>
@@ -27,9 +20,9 @@
 #include <string.h>
 #include <time.h>
 
-/* Pango markup, the same strings gpu.sh emitted: two zero-width struts keep
- * this module's line box as tall as its neighbours (docs/waybar.md), and the
- * label is the MDI box letters "GPU" at 15pt (= 20px; Pango size has no px). */
+/* Pango markup: two zero-width struts keep this module's line box as tall as its
+ * neighbours, and the label is the MDI box letters "GPU" at 15pt (= 20px; Pango
+ * size has no px). See docs/waybar.md. */
 #define STRUT "<span size='15pt'>\u200b</span><span size='15pt' rise='-1536'>\u200b</span>"
 #define GPU_LABEL "<span size='15pt' rise='-1536'>\U000F0B0E\U000F0B17\U000F0B1C</span>"
 

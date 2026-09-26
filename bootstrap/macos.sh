@@ -1,27 +1,14 @@
 #!/bin/bash
-# One entry point for a bare macOS machine. It is the counterpart of
-# bootstrap/arch.sh: the same three steps (clone the repo, point chezmoi at it,
-# apply) and the same split of responsibilities, so read that file's header for
-# the full reasoning. In short: every action that needs root or a terminal lives
-# here, which is what lets `chezmoi apply` run root-free and without a TTY.
+# One entry point for a bare macOS machine: install chezmoi, provision packages
+# with Homebrew, clone the repo, point chezmoi at it, apply. The counterpart of
+# bootstrap/arch.sh, with the same split -- every action needing root or a
+# terminal lives here so `chezmoi apply` stays root-free and works without a TTY.
+# See docs/chezmoi-notes.md.
 #
-# Differences from the Arch script:
-#   - no pacman/yay/AUR; the package layer is Homebrew, and the formula list is
-#     evolved from the retired jwu/configs mac/install.sh rather than invented
-#     (plus ripgrep, which that repo kept in its mac/install_x86_64.sh).
-#   - the interactive actions are `chsh` (PAM prompts for the password) and
-#     adding Homebrew's zsh to /etc/shells the first time.
-#   - Oh My Zsh and zsh-autosuggestions are NOT installed here. They need no
-#     root, so run_once_before_10-shell-tools.sh does them during apply, exactly
-#     as on Arch.
-#   - this script is written for the bash 3.2 macOS still ships: no `&>`
-#     redirection and no `${var^^}`. Use `bash -c`, not `sh -c` -- macOS's
-#     /bin/sh is bash in POSIX mode, where `local` and arrays do not exist.
+# Homebrew is the one chicken-and-egg step this script cannot solve; install it
+# first (https://brew.sh).
 #
-# Homebrew itself is the one chicken-and-egg step this script cannot solve:
-# install it first (https://brew.sh) and re-run.
-#
-# Usage:
+# Usage (bash, not sh: macOS /bin/sh is bash in POSIX mode, without arrays):
 #   bash -c "$(curl -fsLS https://raw.githubusercontent.com/jwu/dotfiles/main/bootstrap/macos.sh)"
 set -uo pipefail
 
