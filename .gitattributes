@@ -1,0 +1,6 @@
+# Windows batch files must keep CRLF in the blob, not just in the working tree:
+# cmd.exe's 'call :label' and 'goto :label' fail to find labels in an LF-only
+# file, and bootstrap/windows.bat is documented to be fetched with curl, which
+# gets the raw blob. 'text eol=crlf' would still store LF, so use -text.
+*.bat -text
+*.cmd -text

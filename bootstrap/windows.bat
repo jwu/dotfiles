@@ -6,16 +6,15 @@ setlocal enabledelayedexpansion
 ::
 :: Replaces the retired jwu/configs flow: clone the config repo, run
 :: win/install.bat for the portable tools, then win/config.bat to generate the
-:: pointer files. config.bat is gone -- chezmoi deploys the real content now --
-:: and win/init.bat no longer points Clink at the repo.
+:: pointer files. All three are gone -- scoop installs the tools, chezmoi
+:: deploys the real content, and Clink registers itself in cmd.exe's AutoRun.
 ::
-:: Everything needing administrator rights lives here: win/install.bat installs
-:: the Nerd Font through win/cmds/addfonts.cmd, which writes %SystemRoot%\Fonts
-:: and HKLM. Run this from an elevated terminal; from then on `chezmoi apply`
-:: needs neither elevation nor a terminal. See docs/chezmoi-notes.md and
-:: docs/design.md, the bootstrap section.
+:: Needs no administrator rights: scoop installs per-user and the Nerd Font goes
+:: to %LOCALAPPDATA%\Microsoft\Windows\Fonts, so nothing here -- or in
+:: `chezmoi apply` -- needs elevation or a terminal. See docs/design.md, the
+:: bootstrap section.
 ::
-:: Usage (curl.exe ships with Windows 10+; run the second line elevated):
+:: Usage (curl.exe ships with Windows 10+):
 ::   curl -fsSL https://raw.githubusercontent.com/jwu/dotfiles/main/bootstrap/windows.bat -o "%TEMP%\dotfiles-bootstrap.bat"
 ::   "%TEMP%\dotfiles-bootstrap.bat"
 :: ========================================
@@ -24,26 +23,30 @@ if not defined REPO_SSH set "REPO_SSH=git@github.com:jwu/dotfiles.git"
 if not defined REPO_HTTPS set "REPO_HTTPS=https://github.com/jwu/dotfiles.git"
 if not defined SRC_DIR set "SRC_DIR=%USERPROFILE%\bin\dotfiles"
 set "CONFIG_DIR=%USERPROFILE%\.config\chezmoi"
-set "WIN_DIR=%SRC_DIR%\win"
+set "SCOOP_APPS=clink clink-completions starship fzf zoxide fd bat delta ripgrep eza uutils-coreutils alacritty"
+set "SCOOP_FONT=FiraMono-NF"
 set "ERROR_COUNT=0"
 
 echo ^>^>^> dotfiles bootstrap ^(Windows^)
 echo     repo:      %REPO_SSH%
 echo     sourceDir: %SRC_DIR%
 
-call :REQUIRE "administrator terminal" :CHECK_ADMIN || goto :ABORT
-call :REQUIRE "git and curl" :CHECK_TOOLS || goto :ABORT
+call :REQUIRE "git, curl and scoop" :CHECK_TOOLS || goto :ABORT
 call :REQUIRE "install chezmoi" :INSTALL_CHEZMOI || goto :ABORT
 call :REQUIRE "clone/update dotfiles" :ENSURE_REPO || goto :ABORT
 call :REQUIRE "configure chezmoi sourceDir" :WRITE_CONFIG || goto :ABORT
 
-call :DO "portable tools and Nerd Font (win\install.bat)" :INSTALL_TOOLS
+call :DO "scoop buckets (extras, nerd-fonts)" :SCOOP_BUCKETS
+call :DO "scoop packages" :SCOOP_PACKAGES
+call :DO "user environment variables" :WRITE_ENV
+call :DO "clink autorun (loads Clink in every cmd)" :CLINK_AUTORUN
 
 call :REQUIRE "chezmoi init --apply" :CHEZMOI_APPLY || goto :ABORT
 
 call :SUMMARY
 echo.
-echo ^>^>^> Restart your terminal for the Clink and Starship setup to take effect.
+echo ^>^>^> Restart your terminal: Clink now loads from cmd.exe's AutoRun in every
+echo     cmd, so nothing has to launch a setup script any more.
 echo     From now on 'chezmoi apply' needs neither elevation nor a terminal.
 exit /b %ERROR_COUNT%
 
@@ -95,24 +98,15 @@ exit /b 1
 :: Steps
 :: ========================================
 
-:CHECK_ADMIN
->nul 2>&1 fltmc
-if errorlevel 1 (
-  echo     Run this from an elevated terminal: right-click Command Prompt, then 'Run as administrator' 1>&2
-  exit /b 1
-)
-exit /b 0
-
 :CHECK_TOOLS
-where git >nul 2>&1
-if errorlevel 1 (
-  echo     git is required; install Git for Windows and re-run 1>&2
-  exit /b 1
-)
-where curl >nul 2>&1
-if errorlevel 1 (
-  echo     curl is required; it ships with Windows 10 and later 1>&2
-  exit /b 1
+:: scoop is the package manager for the shell tools; git and curl are what this
+:: script itself needs. All three are per-user installs.
+for %%t in (git curl scoop) do (
+  where %%t >nul 2>&1
+  if errorlevel 1 (
+    echo     %%t is required; install it and re-run 1>&2
+    exit /b 1
+  )
 )
 exit /b 0
 
@@ -181,13 +175,38 @@ set "SRC_TOML=%SRC_DIR:\=/%"
 echo     wrote %CONFIG_DIR%\chezmoi.toml
 exit /b 0
 
-:INSTALL_TOOLS
-:: install.bat reads cmds\addfonts.cmd relative to the working directory.
-pushd "%WIN_DIR%"
-call install.bat
-set "RC=%errorlevel%"
-popd
-exit /b %RC%
+:SCOOP_BUCKETS
+:: extras has alacritty; nerd-fonts has FiraMono-NF. Adding a bucket that is
+:: already there only prints a message, so both are safe to re-run.
+call scoop bucket add extras
+call scoop bucket add nerd-fonts
+exit /b 0
+
+:SCOOP_PACKAGES
+echo     Installing: %SCOOP_APPS%
+call scoop install %SCOOP_APPS%
+if errorlevel 1 exit /b 1
+:: The font manifest installs into %LOCALAPPDATA%\Microsoft\Windows\Fonts on
+:: Windows 10 1809 and later, which is why this no longer needs admin.
+echo     Installing %SCOOP_FONT%
+call scoop install %SCOOP_FONT%
+exit /b %errorlevel%
+
+:WRITE_ENV
+:: Per-user variables, so every process sees them -- not only the terminal that
+:: happened to launch a setup script. PATH already carries ~\bin and the scoop
+:: shims, so nothing is added there.
+call setx LANG "en_US.utf8" >nul || exit /b 1
+call setx PI_NERD_FONTS "1" >nul || exit /b 1
+call setx FZF_COMPLETE_OPTS "-e" >nul || exit /b 1
+exit /b 0
+
+:CLINK_AUTORUN
+:: Registers Clink in cmd.exe's AutoRun for this user, so it loads in every cmd
+:: -- VS Code terminals included -- instead of only where a config launched
+:: 'cmd /k init.bat'. Undo with 'clink autorun uninstall'.
+call clink autorun install
+exit /b %errorlevel%
 
 :CHEZMOI_APPLY
 chezmoi init --apply

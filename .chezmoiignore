@@ -10,11 +10,10 @@ LICENSE
 .gitignore
 .gitattributes
 
-# Docs, scripts and the Windows provisioning layer: none of them are targets.
+# Docs and scripts: neither is a target.
 docs
 bootstrap
 scripts
-win
 
 # Windows-only targets.
 {{ if ne .chezmoi.os "windows" }}

@@ -11,7 +11,7 @@
 - `docs/design.md` —— 仓库的完整设计推导，**遇到结构性问题先读它**
 - `TODO.md` —— 有意留下的开放事项，不是未完成的施工清单
 - `docs/onboarding-a-machine.md` —— 新机器接入说明，给那台机器上运行的 agent 读
-- `bootstrap/arch.sh`、`bootstrap/macos.sh` —— 装机入口，唯一需要 root 或终端的一层
+- `bootstrap/arch.sh`、`bootstrap/macos.sh`、`bootstrap/windows.bat` —— 装机入口，唯一需要 root 或终端的一层（Windows 那份两者都不需要）
 - `run_*.sh` —— chezmoi 在 apply 期间执行的动作脚本
 - `.chezmoiignore` —— 决定哪些源文件**不**落到家目录
 
@@ -41,14 +41,14 @@ dotfiles/
   ├── .chezmoiignore          # 目标路径的排除规则（本身是模板）
   ├── bootstrap/              # 装机入口：唯一需要 root / 终端的层
   │   ├── arch.sh
-  │   └── macos.sh
+  │   ├── macos.sh
+  │   └── windows.bat
   ├── run_*.sh                # chezmoi 动作脚本，按前缀决定触发时机
   ├── scripts/                # run_* 的辅助文件与被编译的源码，不部署到家目录
   ├── dot_*/                  # chezmoi 源（dot_ = 目标名前置一个点）
   ├── private_*/              # 0700 / 0600 的目标（git 不记录目录权限，只能写进文件名）
   ├── AppData/                # Windows 专有目标
   ├── private_Library/        # macOS 专有目标
-  ├── win/                    # Windows 装机层，手动执行
   ├── docs/                     # 中文设计记录，按主题一份文件
   │   └── design.md               # 设计推导与实施记录
   ├── AGENTS.md                 # 本文件：协作规则
@@ -129,7 +129,7 @@ dotfiles/
 
 - 严禁让仓库里的脚本引用、clone 或依赖已退役的 `configs` / `desktop-settings`（已删除）。
   `pi-config` 是唯一允许 clone 的外部仓库。
-- 严禁把 `bootstrap/`、`docs/`、`scripts/`、`win/` 从 `.chezmoiignore` 里去掉——那会在家目录
+- 严禁把 `bootstrap/`、`docs/`、`scripts/` 从 `.chezmoiignore` 里去掉——那会在家目录
   里造出 `~/bootstrap/arch.sh` 这类文件。
 - 严禁跳过对账直接 `apply` 到一台尚未接入的机器：`apply` 会让家目录匹配源，源里那份可能更旧。
 - 严禁把个人身份写进仓库：邮箱、姓名、工作目录。git 的个人层在 `~/.gitconfig`，每台机器手工维护。
