@@ -10,3 +10,10 @@
 # and never normalizes CRLF, so autocrlf=true would break every subagent
 # definition on Windows. pi core normalizes it; that loader does not.
 private_dot_pi/private_agent/**/*.md text eol=lf
+
+# Clink's Lua and ini are not batch files: pin LF so autocrlf cannot flip the
+# working tree after every checkout, which made chezmoi rewrite them unchanged.
+# session.cmd keeps the '*.cmd -text' rule above; it has no call/goto label, so
+# LF works there.
+AppData/Local/clink/*.lua text eol=lf
+AppData/Local/clink/clink_settings text eol=lf
