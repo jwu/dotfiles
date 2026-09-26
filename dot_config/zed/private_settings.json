@@ -38,14 +38,15 @@
   "buffer_line_height": "standard",
   "tab_size": 2,
   "vim_mode": true,
-  // Menlo/Monaco/Consolas cover macOS and Windows; the CJK entries keep Linux
-  // from silently substituting a non-monospace face for CJK glyphs.
+  // The monospace entries cover macOS, Windows and Linux; the CJK entries keep
+  // each platform from silently substituting a non-monospace face for CJK glyphs.
   "buffer_font_fallbacks": [
     "Menlo",
     "Monaco",
     "Consolas",
     "Sarasa Mono SC",
     "Noto Sans Mono CJK SC",
+    "Microsoft YaHei",
     "Courier New",
     "monospace",
   ],
