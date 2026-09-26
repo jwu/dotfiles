@@ -132,7 +132,7 @@ binds {
     Mod+Shift+V { spawn "~/.local/bin/niri-clipboard-history"; }
     Mod+Shift+Q { quit; }
 
-    Mod+O repeat=false { toggle-overview; }
+    Mod+Tab repeat=false { toggle-overview; }
 
     Mod+Left  { focus-column-left; }
     Mod+Down  { focus-window-down; }
