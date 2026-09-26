@@ -274,8 +274,14 @@ Clink；这里**不能**改用 `clink autorun`：Clink 的 `os.setenv` 改不了
 
 **(d) `pi-config/settings.json` 用绝对路径**指向 `~/bin/pi-config/extensions`（Pi 不展开 `~`）。
 Windows 上对应的路径是它自己的写法，`pi-config/install.sh` 里有一处检查会警告路径不符。
-注意 `run_once_after_50-pi-config.sh.tmpl` 在 Windows 上渲染为空，所以 pi-config 不会被自动
-clone；这台机器一直是直接跑 pi、不依赖 pi-config。
+注意 `run_once_after_50-pi-config.sh.tmpl` 在 Windows 上渲染为空，所以 `~/bin/pi-config` 不会
+被自动 clone。
+
+而这台 Windows 是**手工** clone 到 `C:\dev\pi-config`，再让 `~/.pi/agent/settings.json` 的
+`extensions` 指向 `c:/dev/pi-config/extensions`——也就是说它实际上**依赖** pi-config，只是用的
+不是 `~/bin/pi-config` 那一份。`~/.pi/agent/settings.json` 不在 chezmoi 里（见 §4 的表），这条
+接线只存在于本机磁盘上：**`C:\dev\pi-config` 一丢，那里的 8 个扩展就静默失效**。新机器接手
+时需要手工补这两处。
 
 ---
 
