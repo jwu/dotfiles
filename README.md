@@ -29,7 +29,7 @@
 
 ```
 bootstrap/
-└── arch.sh      装 chezmoi → clone 本仓库到 ~/bin/dotfiles → chezmoi init --apply
+└── arch.sh      装 chezmoi → clone 到 ~/bin/dotfiles → 装包（sudo）→ chezmoi init --apply
 ```
 
 新机器一行式：
@@ -39,8 +39,16 @@ sh -c "$(curl -fsLS https://raw.githubusercontent.com/jwu/dotfiles/main/bootstra
 ```
 
 `bootstrap/arch.sh` 由 `install-arch/install.sh` 演化而来，但编排目标从「clone 三个仓库并按序
-跑各自的脚本」变成「clone 本仓库 + `chezmoi init --apply`」。之后所有装机动作由 `run_*`
-脚本接管，不再需要外部编排器。
+跑各自的脚本」变成「clone 本仓库 + 装包 + `chezmoi init --apply`」。
+
+**它也是唯一需要 root 和终端的脚本。** 所有 sudo 动作都在这里：装 41 个包、yay 与 AUR 的
+xwayland-satellite-git、`chsh`（走 PAM，同样需要终端）、TTY 字体、drivetemp。`run_*` 脚本
+只剩不需要 root 的部分。
+
+这个切分是刻意的，而不是为了好看：sudo 的 `tty_tickets` 让凭据缓存按 TTY 隔离，非 TTY 的
+子进程无法输入密码；而 chezmoi 又会在任一 run 脚本失败时中止整个 apply。把 root 工作集中
+在 bootstrap，`chezmoi apply` 才能在没有终端的自动化环境（CI、包装脚本、agent）里跑——
+实测退出码 0。
 
 `bootstrap/` 和 `docs/`、`scripts/` 一样必须在 `.chezmoiignore` 里排除——否则 chezmoi 会在
 家目录创建 `~/bootstrap/arch.sh`。
@@ -403,7 +411,7 @@ run_once_after_install-pi-config.sh
 
 | 脚本 | 触发时机 | 内容 |
 | --- | --- | --- |
-| `run_once_before_10-provision-arch.sh` | 只跑一次（文件部署前） | pacman 装包、yay、AUR 的 xwayland-satellite-git、zsh 默认 shell、Oh My Zsh、TTY 字体、drivetemp、陈旧脚本清理 |
+| `run_once_before_10-shell-tools.sh` | 只跑一次（文件部署前） | Oh My Zsh、zsh-autosuggestions、陈旧脚本清理（全部无需 root） |
 | `run_onchange_after_20-build-gpu-watch.sh.tmpl` | **gpu-watch.c 变化时**（内嵌 `include \| sha256sum`） | gcc 编译 |
 | `run_onchange_after_30-build-niri-windows.sh.tmpl` | 构建助手变化时（内嵌 hash）；**不再自动跟随 fork HEAD** | 从 fork 构建 CFFI 模块 |
 | `run_onchange_after_40-fcitx5.sh.tmpl` | **fcitx5 五个配置文件变化时**（内嵌 hash） | 下载 Rime Ice 词库、`rime_deployer --build`、重启 fcitx5 |
@@ -431,27 +439,31 @@ run_once_after_install-pi-config.sh
 **注意 `chezmoi diff` 的语义**：run 脚本会出现在 `diff` 输出里（因为 apply 时会执行它们）。
 判断配置层是否干净要用 `chezmoi diff --include=files`。
 
-### 已完成：首次运行验证（5/6）
+### 已完成：apply 完整跑通
 
-六个 run 脚本里已有五个在本机真实执行过（直接 `bash <script>`，不是 `chezmoi apply`）：
+`chezmoi apply -v` 退出码 **0**，六个脚本全部执行：
 
 | 脚本 | 结果 |
 | --- | --- |
-| `60-zed-cli` | 建出 `~/.local/bin/zed -> /usr/bin/zeditor` |
-| `20-gpu-watch` | 编译成功，产物 16632 字节 |
-| `30-niri-windows` | 正确识别已是最新（`3f30472`），跳过重建 |
-| `40-fcitx5` | 词库已存在 → 只 rebuild + 重启 fcitx5 |
-| `50-pi-config` | `Already up to date.`，pi CLI 已存在故跳过 npm 安装 |
+| `10-shell-tools` | Oh My Zsh 已装、autosuggestions pull、cleanup —— 全绿 |
+| `20-build-gpu-watch` | 编译成功 |
+| `30-build-niri-windows` | `cffi/niri-windows module up to date (3f30472)` |
+| `40-fcitx5` | 词库已在 → rebuild + `Restarted fcitx5` |
+| `50-pi-config` | `Already up to date.` |
+| `60-zed-cli` | `~/.local/bin/zed -> /usr/bin/zeditor` |
 
-这验证了整条技术链：`.tmpl` 的 `sourceDir` 渲染、`include \| sha256sum`、脚本能 source 到被
-`.chezmoiignore` 排除的 `scripts/` 辅助文件、`wnmw_*` 函数与网络比对。
+**再跑一次 `chezmoi apply -v`：退出码 0、输出 0 行**——文件层与脚本层都是彻底的 no-op
+（`diff --include=files` 与 `--include=scripts` 均为 0）。这就是最终稳态：日常 apply 只做配置
+同步，装包与重建只发生在首次、或相关源文件真的变化时。
 
-**注意**：这些是手动 `bash` 执行的，没有记进 chezmoi 的 state，所以将来 `chezmoi apply`
-会再跑一遍（都幂等）。
+期间验证了整条技术链：`.tmpl` 的 `sourceDir` 渲染、`include | sha256sum` 的变更检测、脚本
+能 source 到被 `.chezmoiignore` 排除的 `scripts/` 辅助文件、`wnmw_*` 函数与网络比对。
 
-`run_once_before_10-provision-arch.sh` 尚未执行：它的唯一实质动作是 `sudo pacman -Syu`，
-需要单独确认（`pacman -Qu` 当时为 0，且 41 个包全部已装、`xwayland-satellite-git` 已装、
-`FONT=ter-v16n` 已设、`drivetemp.conf` 已存在）。
+### 首次 apply 的失败（推动了两处修正）
+
+第一次 apply 在 provision 里中止：5 处 sudo 无法在无 TTY 的子进程里提示密码。这直接把
+root 动作赶进了 `bootstrap/arch.sh`。也顺带发现 chezmoi 会把**失败的**脚本一并记账（见下
+节），所以修完还得手动清一次记账才能重跑。
 
 ### 现有机器需要先写 sourceDir
 
@@ -487,11 +499,9 @@ TTY 的缓存不生效。
 更麻烦的是 chezmoi 的 fail-fast：run 脚本失败会**中止整个 apply**，所以 provision 失败时后
 面五个脚本根本不会执行。首次 apply 实测就是这个结果（文件层仍是 0 变更）。
 
-两个可选的处理方向：
-
-- 保持现状，把「先在有终端的 shell 里跑 `chezmoi apply`」写进 bootstrap 的后续说明。
-- 把 5 处 sudo 拆成独立脚本，或在脚本开头检测 TTY；但要让 `run_once_` 仍能重试，就不能
-  简单地 `return 0`（那会被记成已执行，失败的步骤永远不再重跑）。
+**已解决**：5 处 sudo 动作全部移进了 `bootstrap/arch.sh`（它本来就是装 chezmoi 的入口，已经
+需要终端）。现在 `run_*` 脚本里没有任何 `sudo` / `chsh` 调用，`chezmoi apply` 可以在没有
+终端的自动化环境里完整跑通——实测退出码 0。
 
 ### chezmoi 把失败的脚本也记账
 
@@ -515,9 +525,6 @@ chezmoi apply -v
 1. **阶段 5 — pi-config 缩水**：改 `pi-config/install.sh` 只处理扩展工程相关的事，之后
    `run_once_after_50-pi-config.sh` 才能重新调用它。
 2. **阶段 6 — 退役两个仓库**并清理 96 个 `.bak`。
-3. **首次适用验证**：`run_*` 脚本只做过语法检查与渲染验证，**从未真正执行**。
-   `chezmoi apply` 会真的装包、编译、下载 16 MB 词库——先跑 `chezmoi apply -n -v` 看它
-   要做什么，确认后再实跑。
 
 ## 待确认
 
