@@ -39,7 +39,7 @@ call :REQUIRE "configure chezmoi sourceDir" :WRITE_CONFIG || goto :ABORT
 call :DO "scoop buckets (extras, nerd-fonts)" :SCOOP_BUCKETS
 call :DO "scoop packages" :SCOOP_PACKAGES
 call :DO "user environment variables" :WRITE_ENV
-call :DO "clink autorun (loads Clink in every cmd)" :CLINK_AUTORUN
+call :DO "clink: lazy completions only" :CLINK_SCRIPTS
 
 call :REQUIRE "chezmoi init --apply" :CHEZMOI_APPLY || goto :ABORT
 
@@ -203,12 +203,14 @@ call setx FZF_COMPLETE_OPTS "-e" >nul || exit /b 1
 call setx STARSHIP_CONFIG "%USERPROFILE%\.config\starship.toml" >nul || exit /b 1
 exit /b 0
 
-:CLINK_AUTORUN
-:: Registers Clink in cmd.exe's AutoRun for this user, so it loads in every cmd
-:: -- VS Code terminals included -- instead of only where a config launched
-:: 'cmd /k init.bat'. Undo with 'clink autorun uninstall'.
-call clink autorun install
-exit /b %errorlevel%
+:CLINK_SCRIPTS
+:: The scoop clink-completions package registers its own directory with
+:: 'clink installscripts', which makes Clink eager-load every top-level script in
+:: it. The session launcher points CLINK_COMPLETIONS_DIR at just the completions
+:: subdirectory instead (Clink loads those on demand), so drop the registration.
+:: Not fatal if it is absent: 'clink uninstallscripts' then just reports it.
+call clink uninstallscripts "%USERPROFILE%\scoop\apps\clink-completions\current"
+exit /b 0
 
 :CHEZMOI_APPLY
 chezmoi init --apply
