@@ -126,6 +126,13 @@ starship 用的是内置默认值（提示符在，但 config 不生效）。
 `%APPDATA%` 只对一部分 app 成立（alacritty、neovide、Zed、gitui、yazi、Rime），starship 不在其中；
 `~/.config` 也不是“Unix 专用”。
 
+而且**光靠默认路径还不够**：旧 `init.bat` 每一次都 `set STARSHIP_CONFIG`，所以任何从旧会话
+继承下来的 `STARSHIP_CONFIG`（指向已删的 `~/bin/configs/win/starship.toml`）都会盖过默认路径，
+让 starship 退回内置默认值——这正是删掉旧脚本后暴露出来的那个现象。现在 `clink.lua` 在加载
+starship 之前显式 `os.setenv('STARSHIP_CONFIG', '%USERPROFILE%\.config\starship.toml')`：
+用 clink 自己的 `os.setenv`（它把变量写进 cmd 进程，子进程看得见——`LS_COLORS` 也是这么设的），
+于是**会话里残留什么值都不影响**。
+
 ## 已知遗留
 
 - `LS_COLORS` 在 `clink.lua`（`os.setenv`）与 `dot_wezterm.lua`（`set_environment_variables`）

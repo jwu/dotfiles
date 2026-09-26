@@ -30,6 +30,12 @@ end
 -- use starship for prompt
 ----------------------------------------
 
+-- Pin the config path. Starship defaults to ~/.config/starship.toml, but a stale
+-- STARSHIP_CONFIG inherited from the retired init.bat would point into the
+-- deleted ~/bin/configs and shadow it. The old init.bat always set this
+-- explicitly; keep that. See docs/windows-shell.md.
+os.setenv('STARSHIP_CONFIG', os.getenv('USERPROFILE')..'\\.config\\starship.toml')
+
 load(io.popen('starship init cmd'):read("*a"))()
 
 -- clink-completions used to be loaded by hand from %USERPROFILE%\bin; the scoop

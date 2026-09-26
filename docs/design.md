@@ -687,6 +687,7 @@ reveal、render-markdown、gdscript LSP）和 `.pi/agent/themes/one-dark.json`�
 | 新增 Windows 目标 | nvim / neovide 之外再补 yazi / gitui / glow / zed 的 AppData 路径，真内容，不用指针 |
 | clink 接线 | 终端改为普通 `cmd.exe`；Clink 由 `clink autorun` 加载，codepage 与别名放进 `session.lua` |
 | git 公共层 | credential helper 在 Windows 上用 PATH 上的 `gh`（本机没有 `~/.local/bin`） |
+| starship 配置 | 目标从 `%APPDATA%` 改到 `~/.config`（真正的默认），并在 `clink.lua` 里 `os.setenv('STARSHIP_CONFIG', …)` 钉死，免受旧 `init.bat` 残留值影响 |
 | `run_*` 6 个脚本 | 全部加 `.tmpl` 外层短路，Windows 渲染为空 |
 | `bootstrap/windows.bat` | 新增 Windows 装机入口：scoop 装工具与字体 + `clink autorun` + 用户环境变量 |
 | `win/` 整个目录 | 删除（`install.bat` / `init.bat` / `cmds/*.cmd` 都被取代） |
