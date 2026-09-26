@@ -9,14 +9,16 @@ LICENSE
 .gitignore
 .gitattributes
 
-# 文档与脚本目录
+# 文档、脚本与 Windows 装机层（都不是 chezmoi 源）
 docs
 bootstrap
 scripts
+win
 
 # Windows 专有目标
 {{ if ne .chezmoi.os "windows" }}
 AppData
+.wezterm.lua
 {{ end }}
 
 # macOS 专有目标

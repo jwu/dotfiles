@@ -1,0 +1,52 @@
+#!/bin/bash
+# The niri window minimap CFFI module, built from our fork of
+# calico32/waybar-niri-windows. Upstream ships a prebuilt x86_64 asset, but
+# installing that would silently overwrite the fixes that live only on the fork
+# (title-only change events, the state-lock deadlock, per-window activity), so
+# the module is always built from source. See docs/waybar.md.
+#
+# run_after_ so it runs once the waybar config is on disk. This does not need
+# run_onchange_: the module keeps its own revision stamp (the fork's main HEAD),
+# so it resolves the wanted commit and rebuilds only when the stamp differs.
+#
+# The heavy lifting lives in scripts/waybar-niri-windows.sh, which stayed a plain
+# sourced library: the build details are long and do not belong in a run_ script.
+set -uo pipefail
+
+SRC="{{ .chezmoi.sourceDir }}"
+
+if [ ! -f "$SRC/scripts/waybar-niri-windows.sh" ]; then
+  echo "Missing $SRC/scripts/waybar-niri-windows.sh" >&2
+  exit 1
+fi
+# shellcheck source=/dev/null
+source "$SRC/scripts/waybar-niri-windows.sh"
+
+want="$(wnmw_want_commit)"
+
+if wnmw_is_installed "$want"; then
+  echo "cffi/niri-windows module up to date (${want:0:7})"
+  exit 0
+fi
+
+have="$(wnmw_stamp_commit)"
+if [ -n "$have" ]; then
+  echo "cffi/niri-windows module is stale: installed ${have:0:7}, fork main is ${want:0:7}"
+else
+  echo "cffi/niri-windows module has no version stamp"
+fi
+
+missing="$(wnmw_missing_tools)"
+if [ -n "$missing" ]; then
+  echo "Cannot rebuild without: $missing" >&2
+  echo "Run 'chezmoi apply' again once the provisioning script has installed them." >&2
+  exit 1
+fi
+
+if wnmw_build_and_install "$want"; then
+  echo "Rebuilt cffi/niri-windows module at ${want:0:7}"
+  wnmw_restart_hint
+else
+  echo "Rebuild failed; keeping the installed module (see docs/waybar.md)." >&2
+  exit 1
+fi

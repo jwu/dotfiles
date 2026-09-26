@@ -202,9 +202,9 @@ waybar 的 `module_path` 和 swaylock 都不展开 `~`（见 `docs/waybar.md`、
 
 ## Windows 侧
 
-`win/config.bat` 不是复制内容，而是**生成引用文件**：`%APPDATA%\alacritty\alacritty.toml` 里写
-`import = ["%MY_CONFIGS%\alacritty.toml"]`，nvim / neovide / wezterm 同理。已在「仓库即源」的
-方向上，本仓库可以直接接管内容文件，少一层指针。
+`win/config.bat` 原本不是复制内容，而是**生成引用文件**：`%APPDATA%\alacritty\alacritty.toml`
+里写 `import = ["%MY_CONFIGS%\alacritty.toml"]`，nvim / neovide / wezterm 同理。chezmoi 接管
+内容文件后这些指针全部失去意义，`config.bat` 已**退役删除**。
 
 ### 已确定的目标路径
 
@@ -217,7 +217,7 @@ set "STARSHIP_CONFIG=%MY_CONFIGS%\starship.toml"
 call "%MY_CONFIGS%\cmds\aliases.cmd"
 ```
 
-按「改成 chezmoi 复制到位」的决定，已搬入的 7 个文件及目标：
+按「改成 chezmoi 复制到位」的决定，已搬入的 10 个文件及目标：
 
 | 源（仓库） | chezmoi 目标 |
 | --- | --- |
@@ -226,10 +226,16 @@ call "%MY_CONFIGS%\cmds\aliases.cmd"
 | `win/clink_profile/clink_settings` | `AppData/Local/clink/clink_settings` |
 | `win/clink_scripts/{clink,fzf,zoxide}.lua` | `AppData/Local/clink/` |
 | `desktop-settings/rime/weasel.custom.yaml` | `AppData/Roaming/Rime/weasel.custom.yaml` |
+| `configs/common/.config/nvim/init.lua` | `AppData/Local/nvim/init.lua` |
+| `configs/common/.config/neovide/config.toml` | `AppData/Roaming/neovide/config.toml` |
+| `configs/common/.wezterm.lua` | `.wezterm.lua`（仅 Windows） |
 
-clink 侧用**显式**的 `--profile` / `--scripts` 指向 `%LOCALAPPDATA%\clink`，不依赖 clink
-的默认 profile 位置。相应地 `init.bat` 需要重写：去掉 `STARSHIP_CONFIG`（starship 在
-Windows 的默认位置正是 `%APPDATA%\starship.toml`）与生成的 `import` / `dofile` 指针。
+最后三行原先由 `config.bat` 生成 `dofile` / `include` 指针转发到 `common/`，现在部署的是
+真实内容。
+
+`win/init.bat` 已按新架构**重写**：clink 显式读 `%LOCALAPPDATA%\clink`，`STARSHIP_CONFIG`
+已删除（starship 在 Windows 的默认位置正是 `%APPDATA%\starship.toml`）。`cmds/*.cmd` 仍从
+仓库读取，所以 Windows 上仓库位置仍需固定在 `%USERPROFILE%\bin\dotfiles`。
 
 ### 未纳入，及原因
 
@@ -373,12 +379,52 @@ run_once_after_install-pi-config.sh
 `desktop-settings` 的全部 6 个配置与 `pi-config` 的静态资源（`agents` / `prompts` / `skills` /
 `themes`）逐字节一致。
 
+### 已完成：阶段 4 脚本层
+
+`bootstrap/arch.sh` 取代了 `install-arch`：装 chezmoi → clone 到 `~/bin/dotfiles` →
+写 `~/.config/chezmoi/chezmoi.toml`（`sourceDir`）→ `chezmoi init --apply`。它只做这些，
+因为装 chezmoi 不可能由 chezmoi 自己完成。
+
+六个 `run_*` 脚本接管了原来两个仓库的脚本逻辑：
+
+| 脚本 | 触发时机 | 内容 |
+| --- | --- | --- |
+| `run_once_before_10-provision-arch.sh` | 只跑一次（文件部署前） | pacman 装包、yay、AUR 的 xwayland-satellite-git、zsh 默认 shell、Oh My Zsh、TTY 字体、drivetemp、陈旧脚本清理 |
+| `run_onchange_after_20-build-gpu-watch.sh.tmpl` | **gpu-watch.c 变化时**（内嵌 `include \| sha256sum`） | gcc 编译 |
+| `run_after_30-build-niri-windows.sh.tmpl` | 每次（自带版本戳比对，有差异才重建） | 从 fork 构建 CFFI 模块 |
+| `run_after_40-fcitx5.sh` | 每次（在配置落盘后） | 下载 Rime Ice 词库、`rime_deployer --build`、重启 fcitx5 |
+| `run_once_after_50-pi-config.sh` | 只跑一次 | 装 pi CLI、clone pi-config |
+| `run_once_after_60-zed-cli.sh` | 只跑一次 | `zed` → `/usr/bin/zeditor` 符号链接 |
+
+四处设计要点：
+
+- `run_after_40-fcitx5.sh` 的 `after` 是必须的：`rime_deployer` 要在 `profile` /
+  `classicui.conf` / `*.custom.yaml` 落盘之后才能在其上构建。它**只保留词库、rebuild 和
+  重启**，复制配置那半已由 chezmoi 接管。
+- `run_onchange_after_20` 用 `{{ include "scripts/gpu-watch.c" | sha256sum }}` 嵌一个源文件
+  哈希，所以「源变则重编」不需要任何额外的状态文件。
+- 脚本用 `.tmpl` 后缀拿 `{{ .chezmoi.sourceDir }}`，因为辅助文件
+  （`scripts/gpu-watch.c`、`scripts/waybar-niri-windows.sh`）放在被 `.chezmoiignore` 排除的
+  `scripts/` 里；不这做它们会被部署到家目录。
+- `run_once_after_50-pi-config.sh` **不调用** `pi-config/install.sh`：它现在还会往
+  `~/.pi/agent/` 复制 `agents/` / `skills/` / `prompts/` / `themes/`，而这些已归 chezmoi，
+  两边会互相覆盖。脚本只负责 clone，npm 插件由 pi 自己按 `settings.json` 的 `packages` 装。
+
+迁入的文件：`docs/`（含 desktop-settings 的 6 份说明）、`scripts/`（`gpu-watch.c`、
+`waybar-niri-windows.sh`、`update-rime-dict.sh`）、`win/`（`init.bat` 已重写、
+`install.bat`、`cmds/*.cmd`）。`win/config.bat` 退役删除。
+
+**注意 `chezmoi diff` 的语义**：run 脚本会出现在 `diff` 输出里（因为 apply 时会执行它们）。
+判断配置层是否干净要用 `chezmoi diff --include=files`。
+
 ### 待做
 
-1. **阶段 4 — 迁入脚本层**。`bootstrap/arch.sh`、`run_*` 脚本、`win/` 的 bat 与 `cmds/`、
-   `docs/`、`src/gpu-watch.c`、`waybar-niri-windows.sh`；并按「Windows 侧」重写 `init.bat`。
-2. **阶段 5 — pi-config 缩水**，并加 `run_once_after_install-pi-config.sh`。
-3. **阶段 6 — 退役两个仓库**并清理 96 个 `.bak`。
+1. **阶段 5 — pi-config 缩水**：改 `pi-config/install.sh` 只处理扩展工程相关的事，之后
+   `run_once_after_50-pi-config.sh` 才能重新调用它。
+2. **阶段 6 — 退役两个仓库**并清理 96 个 `.bak`。
+3. **首次适用验证**：`run_*` 脚本只做过语法检查与渲染验证，**从未真正执行**。
+   `chezmoi apply` 会真的装包、编译、下载 16 MB 词库——先跑 `chezmoi apply -n -v` 看它
+   要做什么，确认后再实跑。
 
 ## 待确认
 
