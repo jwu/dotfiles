@@ -520,11 +520,31 @@ chezmoi apply -v
 
 `run_*` 脚本全部幂等，重跑一遍是安全的。
 
+### 已完成：阶段 5 与阶段 6
+
+**阶段 5 — pi-config 缩水**
+
+`pi-config/install.sh` 现在只部署 `settings.json`（唯一无法交给 chezmoi 的文件，因为它记录本机
+的认证、provider 与模型），并检查仓库是否位于 `~/bin/pi-config`（`settings.json` 用绝对路径指向
+它的 `extensions/`）。`run_once_after_50-pi-config.sh` 恢复了调用。
+
+同时从 `pi-config` 删掉 14 个已迁移的文件（`agents/`、`skills/`、`prompts/`、`themes/`、
+`keybindings.json`、`APPEND_SYSTEM.md`）——删除前逐个逐字节比对确认都在本仓库源里。`mcp.json`
+与 `extensions-settings/` 保留为参考模板但不再部署：它们是 Pi 自己写入的状态。
+
+**阶段 6 — 退役三个仓库并清理备份**
+
+- 删除前扫描：无活引用（脚本、符号链接、shell 配置全部干净），三个远程仓库都还在。
+- 删除 `~/bin/configs`、`~/bin/desktop-settings`、`~/bin/install-arch`。`configs` 的迁移评估
+  文档先提交推送（`717ddd7`）才删，保留了当时的决策记录。
+- 清理 95 个 `*.bak.*`（`backup_file()` 机制的遗留）。剩下一个
+  `~/.oh-my-zsh.bak.1790327059` 是目录且不是那个机制产生的，保留未动。
+
+`~/bin` 现在只剩 `dotfiles`、`pi-config`，以及一个 `pi` 符号链接。
+
 ### 待做
 
-1. **阶段 5 — pi-config 缩水**：改 `pi-config/install.sh` 只处理扩展工程相关的事，之后
-   `run_once_after_50-pi-config.sh` 才能重新调用它。
-2. **阶段 6 — 退役两个仓库**并清理 96 个 `.bak`。
+迁移已完成。下面「待确认」里列的是有意留下的开放问题，不是未完成的迁移步骤。
 
 ## 待确认
 
