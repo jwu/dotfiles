@@ -12,6 +12,14 @@
 # source hash: {{ include "scripts/gpu-watch.c" | sha256sum }}
 set -euo pipefail
 
+{{ if ne .chezmoi.os "linux" -}}
+# gpu-watch reads NVIDIA GPU metrics through libnvidia-ml, opened with dlopen.
+# Neither exists here, and macOS has no libdl either, so the gcc line below
+# would fail and chezmoi would abort the whole apply on a script that can never
+# succeed. Exit successfully instead of doing nothing.
+echo "not Linux; skipping gpu-watch"
+exit 0
+{{ end }}
 SRC="{{ .chezmoi.sourceDir }}"
 
 if ! command -v gcc &> /dev/null; then

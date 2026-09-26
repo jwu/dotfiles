@@ -17,6 +17,13 @@
 # helper hash: {{ include "scripts/waybar-niri-windows.sh" | sha256sum }}
 set -uo pipefail
 
+{{ if ne .chezmoi.os "linux" -}}
+# niri, waybar and Wayland are all Linux-only, and the CFFI module is never
+# loaded without them. Same reasoning as the gpu-watch short-circuit: exit 0 so
+# a script that cannot apply here does not abort the whole apply.
+echo "not Linux; skipping the niri-windows module"
+exit 0
+{{ end }}
 SRC="{{ .chezmoi.sourceDir }}"
 
 if [ ! -f "$SRC/scripts/waybar-niri-windows.sh" ]; then
