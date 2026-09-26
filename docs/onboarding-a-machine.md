@@ -7,6 +7,10 @@
 > 写这份文档的机器是 **Linux（Arch）**，那里的迁移已经**完成并验证**：67 个文件由 chezmoi
 > 管理，`chezmoi diff --include=files` 为 0，二次 apply 输出 0 行。**把那台机器当作参考实现**，
 > 当本文与现状冲突时，以 `README.md` 和实际的源文件为准。
+>
+> **macOS 已于 2026-09-26 接入完成**（Apple Silicon，macOS 27.0，提交 `ac55046`..`885f51c`）。
+> 那次接入的结论已经回写进本文：§5 原来列的三处缺口全部修掉，并新记录了两处当时才发现的
+> 系统性问题。Windows 侧尚未开始。
 
 ---
 
@@ -76,7 +80,7 @@ winget install twpayne.chezmoi
 ### 3.2 克隆到固定路径
 
 路径**不能随意选**：`pi-config` 的 `settings.json` 用绝对路径指向 `~/bin/pi-config/extensions`
-（见 §5.4），而 `run_once_after_50-pi-config.sh` 只会 clone 到 `~/bin/pi-config`。
+（见 §5.3），而 `run_once_after_50-pi-config.sh` 只会 clone 到 `~/bin/pi-config`。
 
 ```bash
 # macOS
@@ -128,8 +132,11 @@ chezmoi managed --include=files      # 源认为它管着哪些文件
 
 ### 3.5 补齐平台缺口（见 §5）
 
-§5 列的三处缺口是**已知的**，你在 apply 之前需要处理掉，否则 apply 会失败（chezmoi 是
-fail-fast：一个 `run_*` 脚本失败，后面所有脚本都不再执行）。
+§5 列出的缺口要**在 apply 之前处理掉**，否则 apply 会失败（chezmoi 是 fail-fast：一个 `run_*`
+脚本失败，后面所有脚本都不再执行）。
+
+macOS 侧的那几处已经修好了，所以现在照本文执行不会再撞上它们。§5 保留下来是为了记录问题的
+形状（Windows 侧可能还有同类问题），以及那两处当时才发现的系统性不一致。
 
 ### 3.6 apply 与验证
 
@@ -188,55 +195,46 @@ git push
 
 ---
 
-## 5. 已知的平台缺口
+## 5. 平台缺口
 
-### 5.1 `run_onchange_after_20-build-gpu-watch.sh.tmpl` 在 macOS 上会失败
+### 5.1 已在 macOS 接入时修掉的三处
 
-它执行 `gcc -O2 -o ... -ldl`。macOS 没有 `libdl`（`dlopen` 在 `libSystem` 里），链接器会报
-`ld: library not found for -ldl`。而且 `gpu-watch` 读的是 NVIDIA GPU，macOS 上本就没有意义。
+这一节原来叫「已知的平台缺口」。三处现在都已修复，列在这里是为了记录它们长什么样：
 
-**处理**：在脚本顶部加平台短路，让它成功退出但不做事。**必须 `exit 0`**：非零会让 chezmoi
-中止整个 apply，而 `run_onchange_` 的记账只认「脚本内容」，一个注定失败的脚本会永远拖住 apply。
+| 原缺口 | 修法 | 提交 |
+| --- | --- | --- |
+| `20` 脚本在 macOS 上 `gcc -ldl` 失败（macOS 没有 `libdl`，而 gpu-watch 读的是 NVIDIA GPU） | 脚本顶部加 `{{ if ne .chezmoi.os "linux" }}` 短路，`exit 0` | `73edcc4` |
+| `30` 脚本要求 niri / waybar / Wayland | 同上 | `73edcc4` |
+| `bootstrap/` 只有 Arch 版 | 新增 `bootstrap/macos.sh` | `ac55046` |
 
-```bash
-{{ if ne .chezmoi.os "linux" -}}
-# gpu-watch reads NVIDIA GPU metrics through libnvidia-ml; neither exists here.
-echo "not Linux; skipping gpu-watch"
-exit 0
-{{ end -}}
-```
+两点经验值得留着，因为 Windows 侧还会遇到同类的：
 
-改完后**记住**：脚本内容变了 → `run_onchange_` 会在下次 apply 重跑它（这次会走短路分支）。
+- 短路**必须 `exit 0`**。`run_onchange_` 只按脚本内容记账，非零会让 chezmoi 中止整个 apply，
+  而一个注定失败的脚本会永远拖住后续每一次 apply。
+- `run_onchange_after_40-fcitx5.sh.tmpl` 和 `run_once_after_60-zed-cli.sh` 本来就会优雅降级
+  （先 `command -v fcitx5` / `command -v zeditor`，不存在就 `exit 0`）。**不要**给它们加短路，
+  那反而会破坏 Linux 侧的行为。
+- `bootstrap/macos.sh` 的用法是 `bash -c` 而不是 `sh -c`：macOS 的 `/bin/sh` 是 POSIX 模式的
+  bash 3.2，不支持数组和 `local`。
 
-### 5.2 `run_onchange_after_30-build-niri-windows.sh.tmpl` 在 macOS 上会失败
+### 5.2 macOS 接入时新发现的两处
 
-niri / waybar / Wayland 都是 Linux 专有。脚本会去 `source scripts/waybar-niri-windows.sh`，
-然后尝试 `git ls-remote` 拉 fork、要求 go/gcc/gtk3、最后编译一个 `.so`。
+这两处不是「某个脚本会失败」，而是**源与机器系统性地不一致**，局部修补挡不住：
 
-**处理**：同一个短路模式，`exit 0`。
+**(a) `.chezmoiignore` 只做了单向排除。** 它把 macOS / Windows 目标在 Linux 上排除了，但没有
+反过来排除 Linux 目标，所以在 darwin 上整套 hyprland / niri / waybar / swaylock / fcitx5 /
+GTK 标题栏 CSS / `niri-*` 脚本（约 50 个文件）仍然是 managed 状态，`apply` 会在 macOS 家目录里
+把它们铺开。已加反向排除块。
 
-（`run_onchange_after_40-fcitx5.sh.tmpl` 和 `run_once_after_60-zed-cli.sh` 已经优雅降级：
-它们先 `command -v fcitx5` / `command -v zeditor`，不存在就 `exit 0`。**不要**给它们加短路，
-反而会破坏 Linux 侧的行为。）
+注意 `~/.local` 是**整棵子树**排除的：只忽略里面的文件仍然会让 chezmoi 创建
+`~/.local/share/applications`，因为源里有那个目录，与它的文件是否被忽略无关。
 
-### 5.3 `bootstrap/` 没有 macOS 与 Windows 版本
+**(b) `.zshrc` 的 nvm 分支指向未安装的 brew formula。** 模板写的是
+`$(brew --prefix nvm)/nvm.sh`，但那台机器上 nvm 是 `git clone` 装的，在 `$NVM_DIR`。麻烦之处
+在于 `brew --prefix nvm` 对**没安装的** formula 也会打印一个路径**并以 0 退出**，所以它不会
+报错，只会让 nvm 静默消失。已改成先探 `$NVM_DIR`、再回落 brew。
 
-现在只有 `bootstrap/arch.sh`（pacman / yay 专用）。macOS 需要一份 brew 版，内容参考：
-
-- 装 chezmoi（`brew install chezmoi`）
-- clone 到 `~/bin/dotfiles`、写 `sourceDir`
-- 装包：原 `jwu/configs` 的 `mac/install.sh`（已退役，但 GitHub 上还能读到）里有完整的
-  Homebrew formula / cask 清单，**照它演化**，不要凭空臆造包名
-- `chsh -s $(brew --prefix)/bin/zsh` 之类需要终端与密码的动作，和 Arch 一样留在 bootstrap
-- 最后 `chezmoi init --apply`
-
-`bootstrap/arch.sh` 的头部注释解释了「为什么 root 动作必须集中在这里」，新脚本请沿用同样的
-结构与风格（`step` / `step_required` / `summary`）。
-
-Windows 的对应物是原来的 `win/install.bat`（下载便携工具到 `%USERPROFILE%\bin`），它**没有**
-迁进本仓库——见 §5.4。
-
-### 5.4 Windows 侧的两个已知问题
+### 5.3 Windows 侧的已知问题
 
 **(a) `win/nu/*.nu` 是孤儿，已被跳过。** 它没有任何脚本部署，内含旧机器的真实路径
 （`e:\Alacritty\settings\`、`E:\Alacritty\vendor\starship.exe`），且用的是 nushell 旧语法

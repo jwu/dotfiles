@@ -29,21 +29,32 @@
 
 ```
 bootstrap/
-└── arch.sh      装 chezmoi → clone 到 ~/bin/dotfiles → 装包（sudo）→ chezmoi init --apply
+├── arch.sh      Linux：装 chezmoi → clone 到 ~/bin/dotfiles → pacman/yay 装包（sudo）→ chezmoi init --apply
+└── macos.sh     macOS：装 chezmoi → clone 到 ~/bin/dotfiles → brew 装包（无需 sudo）→ chezmoi init --apply
 ```
 
 新机器一行式：
 
 ```bash
+# Linux
 sh -c "$(curl -fsLS https://raw.githubusercontent.com/jwu/dotfiles/main/bootstrap/arch.sh)"
+# macOS（Homebrew 本身要先装好）
+bash -c "$(curl -fsLS https://raw.githubusercontent.com/jwu/dotfiles/main/bootstrap/macos.sh)"
 ```
 
 `bootstrap/arch.sh` 由 `install-arch/install.sh` 演化而来，但编排目标从「clone 三个仓库并按序
-跑各自的脚本」变成「clone 本仓库 + 装包 + `chezmoi init --apply`」。
+跑各自的脚本」变成「clone 本仓库 + 装包 + `chezmoi init --apply`」。`macos.sh` 是它的 macOS
+对应物：包清单演化自已退役的 `jwu/configs` 的 `mac/install.sh`（`ripgrep` 出自同一份仓库的
+`mac/install_x86_64.sh`），不是凭空写的。
 
-**它也是唯一需要 root 和终端的脚本。** 所有 sudo 动作都在这里：装 41 个包、yay 与 AUR 的
-xwayland-satellite-git、`chsh`（走 PAM，同样需要终端）、TTY 字体、drivetemp。`run_*` 脚本
-只剩不需要 root 的部分。
+macOS 那份的用法写 `bash -c` 而不是 `sh -c`：系统的 `/bin/sh` 是 POSIX 模式的 bash 3.2，
+不支持数组和 `local`，而脚本两者都用。同理它全文没有 bash 4 才有的 `&>` 重定向。
+
+**两者都是各自平台上唯一需要 root 或终端的脚本。** Linux 侧的 sudo 动作：装 41 个包、yay 与
+AUR 的 xwayland-satellite-git、`chsh`（走 PAM，同样需要终端）、TTY 字体、drivetemp。macOS 侧
+只有两处：`chsh`，以及首次把 Homebrew 的 zsh 加进 `/etc/shells`。`run_*` 脚本只剩不需要 root
+的部分——这正是 Oh My Zsh 与 zsh-autosuggestions 在两侧都留在 `run_once_before_10`、而不进
+bootstrap 的原因。
 
 这个切分是刻意的，而不是为了好看：sudo 的 `tty_tickets` 让凭据缓存按 TTY 隔离，非 TTY 的
 子进程无法输入密码；而 chezmoi 又会在任一 run 脚本失败时中止整个 apply。把 root 工作集中
@@ -122,17 +133,26 @@ run_*.sh
 
 ### 属性前缀会进源路径
 
-chezmoi 依据权限位给源文件加前缀，所以**源路径与目标路径不一定逐字对应**。本仓库里只有
-五个，其中 `private_` 那个曾经绊了一下：`run_onchange_after_40-fcitx5.sh.tmpl` 的 `include`
+chezmoi 依据权限位给源文件加前缀，所以**源路径与目标路径不一定逐字对应**。本仓库里目前有
+九个，其中 `private_` 那个曾经绊了一下：`run_onchange_after_40-fcitx5.sh.tmpl` 的 `include`
 写目标路径 `profile` 会直接渲染失败，必须写源路径 `private_profile`。
 
 | 源路径 | 目标 | 权限 |
 | --- | --- | --- |
 | `dot_config/fcitx5/private_profile` | `~/.config/fcitx5/profile` | 600 |
+| `dot_config/zed/private_settings.json` | `~/.config/zed/settings.json` | 600 |
+| `private_dot_pi/private_agent/**` | `~/.pi/agent/**` | 700（目录） |
+| `private_Library/Rime/squirrel.custom.yaml` | `~/Library/Rime/squirrel.custom.yaml` | 700（目录） |
 | `dot_config/waybar/scripts/executable_disk-temp.sh` | `~/.config/waybar/scripts/disk-temp.sh` | 755 |
 | `dot_local/bin/executable_niri-clipboard-history` | `~/.local/bin/niri-clipboard-history` | 755 |
 | `dot_local/bin/executable_niri-lock` | `~/.local/bin/niri-lock` | 755 |
 | `dot_local/bin/executable_niri-open-terminal-below` | `~/.local/bin/niri-open-terminal-below` | 755 |
+
+后加的三个 `private_` 来自 macOS 接入，它们不是风格选择：git **完全不记录目录权限**，文件也
+只记录可执行位，所以家目录上的 `0700` / `0600` 除了写进源文件名没有别处可以表达。chezmoi 的
+默认值是目录 `0755`、文件 `0644`，而 `~/.pi` 里躺着 `auth.json`、`~/Library` 是 macOS 的私有
+目录，两者都不该被放宽成「本机其他用户可浏览」。代价是同一份源在 Linux 上也会收敛到相同的
+权限位——这正是想要的，Linux 侧没有理由比 macOS 更宽松。
 
 `configs` 的 `common/` 概念在本仓库消失：`common` + `linux` + `mac` 三份塌缩成一份文件加模板分支。
 
@@ -151,6 +171,8 @@ Windows 目标由 `.chezmoiignore` 按 OS 排除。
 | `waybar/modules.json` | 当前是 `__WAYBAR_MODULE_DIR__` 占位符经 `sed` 生成的绝对路径 | `{{ .chezmoi.homeDir }}/.config/waybar` |
 | `swaylock/config` | 同理，`__SWAYLOCK_BACKGROUND_DIR__` | `{{ .chezmoi.homeDir }}/.config/swaylock/backgrounds` |
 | `git/config.tmpl` | `gh` 写入的 credential 段含 `/home/jwu` | 模板化 `{{ .chezmoi.homeDir }}`，见下 |
+| `alacritty.toml.tmpl` | 两侧是**两份独立配置**而不是新旧版本：macOS 那份绑 `cmd+n` / `cmd+w`、字号 16；Linux 那份对着 `config.ghostty` 重写过，注释全在讲 niri / Wayland / `sctk-adwaita` | `{{ if eq .chezmoi.os }}` 两分支各放全文，两侧渲染逐字节一致 |
+| `dot_gitconfig.tmpl` | 个人层：Linux 是单一身份 + mihomo 代理，macOS 是 `useConfigOnly` + 7 条 `includeIf` 切身份 | 同上，见「公共层与个人层」 |
 
 waybar 的 `module_path` 和 swaylock 都不展开 `~`（见 `docs/waybar.md`、`docs/lockscreen.md`，
 两文件随 `configs` 迁入），必须有绝对路径，`.chezmoi.homeDir` 正好提供这个，且不再需要
@@ -189,6 +211,26 @@ waybar 的 `module_path` 和 swaylock 都不展开 `~`（见 `docs/waybar.md`、
 
 同时保持 XDG 路径 `~/.config/git/config` 而**不是** `~/.gitconfig`，否则会在 `~` 下意外
 创建 `~/.gitconfig`。
+
+### 公共层与个人层
+
+macOS 接入后发现两个平台其实共用同一批设置，只是各自把「身份」放进了不同的文件：Linux 把
+`[user]` 与 `[http] proxy` 硬编码进 `~/.config/git/config`，macOS 用 `~/.gitconfig` 的
+`includeIf` 按目录切换身份。同一份 `[delta]` / `[core]` / `[i18n]` 于是被维护了两遍。
+
+现在按 git 自己的读取顺序分层：
+
+| 层 | 文件 | 内容 |
+| --- | --- | --- |
+| 公共 | `~/.config/git/config`（`dot_config/git/config.tmpl`） | `[init]`、`[core]`、`[interactive]`、`[delta]`、`[i18n]`、`[credential]` |
+| 个人 | `~/.gitconfig`（`dot_gitconfig.tmpl`，按 OS 分支） | Linux：`[user]` + `[http] proxy`；macOS：`[user] useConfigOnly` + `includeIf` |
+
+git 先读 XDG 那份、再读 `~/.gitconfig`，后者覆盖前者，所以个人层天然优先——不需要任何
+`[include]` 把两者缝起来，也不存在「谁先加载」的顺序问题。
+
+macOS 的两个身份文件（`dot_gitconfig-jwu`、`dot_gitconfig-work`）也一并纳管，否则
+`includeIf` 指向的目标会在新机器上缺失。`gh` 仍然只往 `~/.config/git/config` 写，所以它回填的
+credential 段落在公共层，与机器无关。
 
 ## pi 的可变状态
 
@@ -542,6 +584,30 @@ chezmoi apply -v
 
 `~/bin` 现在只剩 `dotfiles`、`pi-config`，以及一个 `pi` 符号链接。
 
+### 已完成：macOS 接入（2026-09-26）
+
+macOS 机器（Apple Silicon，macOS 27.0）按 `docs/onboarding-a-machine.md` 执行完毕，共 7 个提交
+`ac55046`..`885f51c`。对账出 12 处差异，方向都不是「源是对的」：
+
+| 类别 | 处理 |
+| --- | --- |
+| Linux 专有目标在 darwin 上仍被 managed（约 50 个文件） | `.chezmoiignore` 加反向排除块，`managed` 从 69 降到 33 |
+| `alacritty.toml` 两侧是两份独立配置 | 合进 `alacritty.toml.tmpl`，两分支渲染逐字节一致 |
+| `.zshrc` 的 MPS 变量、`ghostty` 的 `auto-update-channel` | 收回源 |
+| `.zshrc` 的 nvm 分支指向未安装的 brew formula | 改成先探 `$NVM_DIR`、再回落 brew |
+| `~/.pi`、`~/.pi/agent`、`~/Library`、zed settings 的 0700/0600 | 加 `private_` 前缀 |
+| git 配置在两个平台上重复维护 | 拆成公共层 + 个人层，见「公共层与个人层」 |
+
+另外补了 `bootstrap/macos.sh`，并给 `20` / `30` 两个脚本加了非 Linux 短路（`exit 0`，因为
+chezmoi 的 fail-fast 会让一个注定失败的脚本永久拖住 apply）。
+
+验证：`chezmoi diff --include=files` 为 0、二次 `chezmoi apply -v` 输出 0 行、6 个 `run_*` 全部
+`exit 0`、权限目标逐个核对、`zsh -c 'source ~/.zshrc'` 后 nvm 与 node 均可用。
+
+**这 7 个提交对 Linux 侧同样生效**：`~/.pi`、`~/.pi/agent`、`~/Library`、
+`~/.config/zed/settings.json` 会收敛到 0700/0600，`~/.config/git/config` 变成只剩公共层，
+`[user]` 与 `[http] proxy` 移到新增的 `~/.gitconfig`。
+
 ### 待做
 
 迁移已完成。下面「待确认」里列的是有意留下的开放问题，不是未完成的迁移步骤。
@@ -558,23 +624,27 @@ chezmoi apply -v
 3. **`win/nu/*.nu` 是否重写**：现在是过时孤儿（旧路径 + nushell 旧语法），要纳入必须先
    确定 nushell 版本与目标位置。
 4. **`mac/config.sh` 是否整体退役**：它只有 95 行且全是 `cp`，配置迁走后没有内容，
-   剩余的 `aerospace reload-config` 可并入 `run_*`。
+   剩余的 `aerospace reload-config` 可并入 `run_*`。macOS 接入时已按它演化出新写的
+   `bootstrap/macos.sh`，所以这一步只剩下删旧文件。
 5. **git 代理已配置**：直连 GitHub 为 SSL 失败（`unexpected eof while reading`），已给
-   `github.com` 配持久代理 `127.0.0.1:7890`，并同步进 `dot_config/git/config.tmpl`。
-   注意这段是**机器相关**的——没有 mihomo 的机器需要调整或删除。
+   `github.com` 配持久代理 `127.0.0.1:7890`。macOS 接入把它移进了**个人层**
+   （`dot_gitconfig.tmpl` 的 linux 分支），所以它不再跟着公共层污染另一台机器。
 
 ## 在另一台机器上接入
 
-macOS / Windows 机器上的接入说明是单独一份，因为那些机器的家目录尚未对账过：
-
-**[`docs/onboarding-a-machine.md`](docs/onboarding-a-machine.md)** —— 给那台机器上运行的 agent 读的
-自包含说明。核心是一条铁律：
+**[`docs/onboarding-a-machine.md`](docs/onboarding-a-machine.md)** 是给那些机器上运行的 agent
+读的自包含说明。核心是一条铁律：
 
 > 源里的 macOS / Windows 配置是在 Linux 上从**旧仓库的副本**复制进来的，不是从那些机器的家目录
 > 导入的，所以**可能比机器上那份旧**。对账之前不要 `apply`。
 
-文档还列出了三处已知的平台缺口（`20` / `30` 脚本在 macOS 上会因 `-ldl` 和 Wayland 依赖而失败、
-`bootstrap/` 只冇 Arch 版、`win/nu` 是孤儿）以及回报格式。
+**macOS 已完成接入**（2026-09-26，`ac55046`..`885f51c`）：对账出 12 处差异、加了 Linux 目标的
+反向排除、补了 `bootstrap/macos.sh`。同一次接入也修掉了该文档原先列的三处缺口，并新发现两处
+（`.chezmoiignore` 只做了单向排除、`.zshrc` 的 nvm 分支指向未安装的 brew formula）。细节见该
+文档的 §5。
+
+Windows 侧尚未开始，那部分的三处已知问题（`win/nu` 孤儿、`win/*.bat` 从未在真实 Windows 上跑过、
+`settings.json` 用绝对路径）原样保留。
 
 准备好后：
 
