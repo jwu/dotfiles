@@ -3,7 +3,6 @@
 `jwu/dotfiles` 的设计推导与实施记录。
 
 - 项目简介、快速上手与用法：见 [`../README.md`](../README.md)
-- 有意留下的开放事项：见 [`../TODO.md`](../TODO.md)
 - 协作规则（含注释规范）：见 [`../AGENTS.md`](../AGENTS.md)
 
 ---
@@ -727,6 +726,3 @@ Zed 的 Windows settings 与 Unix 侧那份已经对齐（补齐 `project_panel`
 **force push 不等于在 GitHub 上消失**：旧 commit 在 GitHub 自行 GC 之前仍可按 SHA 读取
 （实测 `gh api repos/jwu/dotfiles/contents/...?ref=<旧SHA>` 与 commit 网页都是 200），要立即
 失效只能联系 GitHub Support 或删除重建仓库。已决定不再处理。
-
-仓库的开放事项——含 Windows 侧接入、Linux 机器需要手工补的 `~/.gitconfig`——都记在
-[`TODO.md`](../TODO.md)。

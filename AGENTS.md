@@ -9,7 +9,6 @@
 
 - `README.md` —— 项目简介、快速上手与文档索引；给人读
 - `docs/design.md` —— 仓库的完整设计推导，**遇到结构性问题先读它**
-- `TODO.md` —— 有意留下的开放事项，不是未完成的施工清单
 - `docs/onboarding-a-machine.md` —— 新机器接入说明，给那台机器上运行的 agent 读
 - `bootstrap/arch.sh`、`bootstrap/macos.sh`、`bootstrap/windows.bat` —— 装机入口，唯一需要 root 或终端的一层（Windows 那份两者都不需要）
 - `run_*.sh` —— chezmoi 在 apply 期间执行的动作脚本
@@ -52,8 +51,7 @@ dotfiles/
   ├── docs/                     # 中文设计记录，按主题一份文件
   │   └── design.md               # 设计推导与实施记录
   ├── AGENTS.md                 # 本文件：协作规则
-  ├── README.md                 # 项目简介、快速上手与文档索引
-  └── TODO.md                   # 有意留下的开放事项
+  └── README.md                 # 项目简介、快速上手与文档索引
 ```
 
 ## 工作流程
