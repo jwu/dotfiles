@@ -106,9 +106,9 @@ run_*.sh
 
 `configs` 的 `common/` 概念在本仓库消失：`common` + `linux` + `mac` 三份塌缩成一份文件加模板分支。
 
-### 已导入的 66 个文件
+### 已导入的 67 个文件
 
-阶段 1 已完成（见「实施状态」）。当前源里是 66 个文件 + 46 个目录条目，`chezmoi diff`
+阶段 1 已完成（见「实施状态」）。当前源里是 67 个文件 + 47 个目录条目，`chezmoi diff`
 为空。
 
 ## 模板化的文件
@@ -119,15 +119,15 @@ run_*.sh
 | `starship.toml.tmpl` | 4 行 | 同上 |
 | `waybar/modules.json` | 当前是 `__WAYBAR_MODULE_DIR__` 占位符经 `sed` 生成的绝对路径 | `{{ .chezmoi.homeDir }}/.config/waybar` |
 | `swaylock/config` | 同理，`__SWAYLOCK_BACKGROUND_DIR__` | `{{ .chezmoi.homeDir }}/.config/swaylock/backgrounds` |
-| `git/config.tmpl` | 见下 | `[include]` 分离 |
+| `git/config.tmpl` | `gh` 写入的 credential 段含 `/home/jwu` | 模板化 `{{ .chezmoi.homeDir }}`，见下 |
 
 waybar 的 `module_path` 和 swaylock 都不展开 `~`（见 `docs/waybar.md`、`docs/lockscreen.md`，
 两文件随 `configs` 迁入），必须有绝对路径，`.chezmoi.homeDir` 正好提供这个，且不再需要
 `sed` 这一步。
 
-**注意**：阶段 1 导入的 `waybar/modules.json` 与 `swaylock/config` 里存的是**已替换的绝对
-路径**（`/home/jwu/...`），因为它们是从家目录读的。模板化时要用 `.tmpl` 后缀并替换成
-`.chezmoi.homeDir`，否则换机器会带着 `/home/jwu` 这个错误路径。
+**已完成**：阶段 1 导入时，`waybar/modules.json` 与 `swaylock/config` 存的是**已替换的绝对
+路径**（`/home/jwu/...`），因为它们是从家目录读的。两者已加 `.tmpl` 后缀并替换成
+`.chezmoi.homeDir`，是等价变换（`diff` 保持为空）。
 
 ### `~/.config/git/config` 与 gh 抢写
 
@@ -139,16 +139,25 @@ waybar 的 `module_path` 和 swaylock 都不展开 `~`（见 `docs/waybar.md`、
 	helper = !/home/jwu/.local/bin/gh auth git-credential
 ```
 
-`gh` 会改写这个文件，整个交给 chezmoi 会导致两边互相覆盖。用 `[include]` 分离：
+**`[include]` 分离解决不了这个问题**：`gh` 写的是 git 的默认全局位置
+`~/.config/git/config`，不管里面有没有 include，它照样会往这个文件里写，只是把冲突
+换了个位置。
+
+实际采用的方案是**把 credential 段模板化**，`/home/jwu` 换成 `.chezmoi.homeDir`：
 
 ```ini
 # dot_config/git/config.tmpl
-[include]
-	path = config.local
+[credential "https://github.com"]
+	helper =
+	helper = !{{ .chezmoi.homeDir }}/.local/bin/gh auth git-credential
 ```
 
-`config.local` 不纳入本仓库。同时保持 XDG 路径 `~/.config/git/config` 而**不是**
-`~/.gitconfig`，否则会在 `~` 下意外创建 `~/.gitconfig`。
+选择的理由：渲染结果与 `gh` 写入的内容一致，`diff` 稳定且保持为空，硬编码路径同时
+消除。代价是 chezmoi 与 `gh` 名义上共管一个文件——若 `gh` 某次改了格式，`chezmoi diff`
+会显示差异，`chezmoi apply` 规范化回去，功能不受影响。
+
+同时保持 XDG 路径 `~/.config/git/config` 而**不是** `~/.gitconfig`，否则会在 `~` 下意外
+创建 `~/.gitconfig`。
 
 ## pi 的可变状态
 
@@ -266,15 +275,23 @@ run_once_after_install-pi-config.sh
 
 ## 实施状态
 
-### 已完成：阶段 0-1
+### 已完成：阶段 0-1 + 基线
 
 - chezmoi `v2.72.2`（pacman，`extra` 仓库）已装
-- 源目录 `~/bin/dotfiles` 已 `init`（chezmoi 自动建了 git 仓库，尚无 commit）
-- `.chezmoiignore` 已建，拦住了 `README.md` / `docs` / `bootstrap` / `scripts`
-- **66 个配置文件已从家目录导入**，`chezmoi diff` 为空
+- 源目录 `~/bin/dotfiles` 已 `init`；`.chezmoiignore` 拦住了 `README.md` / `docs` /
+  `bootstrap` / `scripts`
+- **67 个配置文件已从家目录导入**（66 个首批 + 对账补入的 `niri/config.kdl`），
+  `chezmoi diff` 为空
+- 3 个含 `/home/jwu` 的文件已模板化（阶段 3 的一部分），全部是等价变换：
+  `waybar/modules.json.tmpl`、`swaylock/config.tmpl`、`git/config.tmpl`
+- 基线已 commit（`1aabe1e`）并 push 到 <https://github.com/jwu/dotfiles>（public）
 
-阶段 1 刻意用「从家目录导入」而非「从仓库导入」，所以首次 `apply` 是空操作，
-**不存在覆盖风险**。这是零风险起点。
+两处关键做法：
+
+- 导入用「从家目录读取」而非「从仓库读取」，所以首次 `apply` 是空操作，**不存在覆盖
+  风险**。3 个模板化同样是等价变换，`diff` 始终为空，Git credential helper 功能不变。
+- 对账用脚本把 `configs` 里所有 `$HOME/*` 写入目标与 `chezmoi managed` 逐条比对，而非
+  人工读脚本——`niri/config.kdl` 的遗漏就是这样发现并补上的。
 
 ### 待做：阶段 2-6
 
@@ -282,8 +299,9 @@ run_once_after_install-pi-config.sh
    副本，找出「手改过家目录但没回写仓库」的文件。已知至少 2 处漂移：
    `~/.config/git/config`（多 gh helper）、`~/.pi/agent/settings.json`（本机 provider 状态，
    已决定排除）。**这些文件里可能有仓库版本没有的内容，直接以仓库为准会丢。**
-2. **阶段 3 — 模板化**。合并 `.zshrc` 与 `starship.toml`，把两个占位符换成
-   `.chezmoi.homeDir`，切分 `git/config`。每步用
+2. **阶段 3 — 模板化（3/5 已完成）**。已模板化 `waybar/modules.json`、`swaylock/config`、
+   `git/config`。剩余：合并 `linux/.zshrc` 与 `mac/.zshrc` 成 `dot_zshrc.tmpl`、合并两侧
+   `starship.toml`（本机没有 mac 版本，需先从 `configs` 仓库搬入）。每步用
    `chezmoi execute-template < x.tmpl | diff - 目标文件` 验证渲染等价。
 3. **阶段 4 — 迁入脚本层**。`bootstrap/arch.sh`、`run_*` 脚本、`win/`、
    `docs/`、`src/gpu-watch.c`、`waybar-niri-windows.sh`。
@@ -301,7 +319,12 @@ run_once_after_install-pi-config.sh
 3. **`mac/config.sh` 是否整体退役**：它只有 95 行且全是 `cp`，配置迁走后没有内容，
    剩余的 `aerospace reload-config` 可并入 `run_*`。
 4. **win 侧本轮是否纳入**：上文两处缺口未确认前，win 覆盖率不完整。
-5. **远程仓库**：`jwu/dotfiles` 是否现在创建并 `git remote add`，还是先本地 commit。
+5. **平台特定文件如何搬入**：源里目前只有本机（Linux）存在的配置。`configs` 的
+   `mac/.config/ghostty/config`、`win/` 的 15 个文件，`desktop-settings` 的
+   `rime/squirrel.custom.yaml`（mac）、`weasel.custom.yaml`（win）、
+   `aerospace/.aerospace.toml`（mac）、`totalcmd/wincmd.ini`（win）**本机不存在**，
+   无法用 `chezmoi add` 导入，只能从仓库手工搬入源。要在迁脚本阶段一并搬，还是等
+   真正用 mac / win 时再补？
 
 ## 参考
 
