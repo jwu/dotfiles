@@ -65,6 +65,12 @@ ghostty 的 `ctrl+v=paste_from_clipboard` 对应 `Ctrl+V → Paste`。
 Shift 修饰的 CSI-u 序列，只能把 Ctrl+V 的编码（`0x16`）送给应用——而 pi 的
 pasteImage 正是靠这个。
 
+Windows 那份（`AppData/Roaming/alacritty/alacritty.toml`）把新建/退出绑成 Windows
+习惯的 `Ctrl+N` / `Ctrl+W`。代价是这两个键不再送到 shell：Clink 的 readline 里
+`Ctrl+W`（删前一个词）与 `Ctrl+N`（下一条历史）被 Alacritty 拦截。这是有意取舍——
+用 Clink 的删词/翻历史换 Windows 式快捷键；要两全只能用 `Ctrl+Shift+N` /
+`Ctrl+Shift+W`。
+
 ## 与 ghostty 的已知差异（在这个文件里消除不掉）
 
 - **无原生分屏/标签**：`cmd+d` / `cmd+shift+d` / `cmd+shift+方向键`、

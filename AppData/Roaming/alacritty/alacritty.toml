@@ -80,9 +80,11 @@ bold_italic = { family = "FiraMono Nerd Font", style = "Bold Italic" }
 offset = { x = 0, y = 0 }
 
 [keyboard]
+# Windows-style Ctrl bindings. Bare Ctrl+W / Ctrl+N shadow Clink's readline
+# word-erase / next-history; see docs/alacritty.md.
 bindings = [
-  { key = "N", mods = "Alt", action = "CreateNewWindow" },
-  { key = "W", mods = "Alt", action = "Quit" }
+  { key = "N", mods = "Control", action = "CreateNewWindow" },
+  { key = "W", mods = "Control", action = "Quit" }
 ]
 
 [mouse]
