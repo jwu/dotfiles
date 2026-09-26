@@ -7,10 +7,10 @@
 # why the clone target is fixed here.
 #
 # Its static resources (agents/, skills/, prompts/, themes/, keybindings.json,
-# APPEND_SYSTEM.md) are owned by chezmoi now, so pi-config/install.sh is NOT run:
-# as it stands it would copy the same files over the ones chezmoi just deployed
-# and the two would fight. install.sh needs to be trimmed before it can be called
-# here again -- see README.md, stage 5.
+# APPEND_SYSTEM.md) are owned by chezmoi now, so pi-config/install.sh was trimmed
+# down to deploying settings.json alone -- the one file chezmoi does not manage,
+# because it carries the machine's provider, model and auth state. It is called
+# below.
 #
 # Degrades to a warning: pi is optional on a machine that does not use it.
 set -uo pipefail
@@ -50,12 +50,19 @@ ensure_pi_config() {
   git clone "$PI_REPO_HTTPS" "$PI_DIR"
 }
 
+deploy_pi_settings() {
+  # install.sh only deploys settings.json now: the static resources come from
+  # chezmoi, so the two no longer overlap.
+  bash "$PI_DIR/install.sh" || return 1
+}
+
 echo ">>> pi CLI + pi-config"
 
 ensure_pi || echo "    pi CLI install failed; pi-config clone still attempted." >&2
 ensure_pi_config || exit 1
+deploy_pi_settings || exit 1
 
 echo ""
 echo ">>> pi-config is at $PI_DIR."
-echo "    Its npm packages are installed by pi itself on first start, from the"
+echo "    npm packages are installed by pi itself on first start, from the"
 echo "    'packages' list in settings.json. Run /reload in pi to pick up changes."
