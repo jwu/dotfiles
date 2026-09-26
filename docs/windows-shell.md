@@ -102,6 +102,30 @@ CRLF 固化进 blob：
 `-text` 关闭 EOL 转换（而不是 `text eol=crlf`——那仍然存 LF）。CRLF 内容没有 NUL 字节，所以
 git 仍按文本 diff，不影响审阅。
 
+## 踩到的坑：默认配置路径不能靠猜
+
+最初假设 starship 在 Windows 上读 `%APPDATA%\starship.toml`，于是把它做成 Windows 专有目标
+（`AppData/Roaming/starship.toml`），并从 `init.bat` 里删掉了 `STARSHIP_CONFIG`。结果新终端里
+starship 用的是内置默认值（提示符在，但 config 不生效）。
+
+实测（在 `STARSHIP_CONFIG` 与 `HOME` 都清掉的 plain cmd 里）：
+
+- `%APPDATA%\starship.toml` 存在时，`starship print-config` 仍是 `add_newline = true`（**不读**）
+- `~/.config/starship.toml` 存在时，`add_newline = false`（**读**）
+
+也就是说 starship 在 Windows 上走的是 `%USERPROFILE%\.config\starship.toml`，不是 Roaming。
+旧机器之所以没事，是因为旧 `init.bat` 显式 `set STARSHIP_CONFIG=%MY_CONFIGS%\starship.toml`
+指向仓库副本——换掉那套脚本后就暴露了。
+
+修法：Windows 回到与 Unix 同一个目标 `~/.config/starship.toml`，用
+`dot_config/starship.toml.tmpl` 的三分支（`add_newline` 只在 Windows 为 `false`；提示符 `>`
+只在 Linux，`❯` 给 macOS 与 Windows）渲染，`AppData/Roaming/starship.toml` 删除。
+三平台渲染逐字节一致。
+
+**教训**：迁移一个 app 的配置时别假设 Windows 的默认路径，用 `print-config` 或临时文件实测。
+`%APPDATA%` 只对一部分 app 成立（alacritty、neovide、Zed、gitui、yazi、Rime），starship 不在其中；
+`~/.config` 也不是“Unix 专用”。
+
 ## 已知遗留
 
 - `LS_COLORS` 在 `clink.lua`（`os.setenv`）与 `dot_wezterm.lua`（`set_environment_variables`）

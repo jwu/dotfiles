@@ -37,9 +37,10 @@ Library
 # instead of ~/.config, so the Unix copies would either duplicate the real target
 # (nvim, alacritty, neovide) or land where nothing reads them (yazi, gitui, glow,
 # zed; zellij is not installed at all). Their Windows paths live under AppData/.
+# starship is the exception: it reads ~/.config/starship.toml on Windows too, so
+# dot_config/starship.toml.tmpl stays one target for all three platforms.
 {{ if eq .chezmoi.os "windows" }}
 .zshrc
-.config/starship.toml
 .config/alacritty
 .config/ghostty
 .config/gitui

@@ -143,7 +143,8 @@ dot_config/ghostty/config                  ← configs: mac/.config/ghostty/conf
 Library/Rime/squirrel.custom.yaml          ← desktop-settings: rime/squirrel.custom.yaml
 # Windows 专有（本机不存在，从仓库搬入）
 AppData/Roaming/alacritty/alacritty.toml   ← configs: win/alacritty.toml
-AppData/Roaming/starship.toml              ← configs: win/starship.toml
+# starship 后来不再是 Windows 专有：Windows 也读 ~/.config/starship.toml，
+# 于是回到共用的 dot_config/starship.toml.tmpl。见「Windows 接入」
 AppData/Roaming/Rime/weasel.custom.yaml    ← desktop-settings: rime/weasel.custom.yaml
 AppData/Local/clink/clink_settings         ← configs: win/clink_profile/
 AppData/Local/clink/{clink,fzf,zoxide}.lua ← configs: win/clink_scripts/
@@ -202,7 +203,7 @@ Windows 目标由 `.chezmoiignore` 按 OS 排除。
 | 文件 | 差异 | 处理 |
 | --- | --- | --- |
 | `dot_zshrc.tmpl` | 26 行（Linux 独有 ZVM / waybar announce / `PI_NERD_FONTS`；macOS 独有 brew nvm 与 `/Applications/*` alias） | **已完成**：`{{ if eq .chezmoi.os }}` 分支，两侧渲染逐字节一致 |
-| `dot_config/starship.toml.tmpl` | Linux / macOS 差 2 行（`>` vs `❯`） | **已完成**：同上 |
+| `dot_config/starship.toml.tmpl` | Linux / macOS 差 2 行（`>` vs `❯`）；Windows 接入时又多了 `add_newline = false` | **已完成**：三平台一份模板、一个目标（`~/.config/starship.toml`） |
 | `waybar/modules.json` | 当前是 `__WAYBAR_MODULE_DIR__` 占位符经 `sed` 生成的绝对路径 | `{{ .chezmoi.homeDir }}/.config/waybar` |
 | `swaylock/config` | 同理，`__SWAYLOCK_BACKGROUND_DIR__` | `{{ .chezmoi.homeDir }}/.config/swaylock/backgrounds` |
 | `git/config.tmpl` | `gh` 写入的 credential 段含 `/home/jwu` | 模板化 `{{ .chezmoi.homeDir }}`，见下 |
@@ -324,7 +325,7 @@ call "%MY_CONFIGS%\cmds\aliases.cmd"
 | 源（仓库） | chezmoi 目标 |
 | --- | --- |
 | `win/alacritty.toml` | `AppData/Roaming/alacritty/alacritty.toml` |
-| `win/starship.toml` | `AppData/Roaming/starship.toml` |
+| `win/starship.toml` | 不复存在：并入共用的 `dot_config/starship.toml.tmpl` |
 | `win/clink_profile/clink_settings` | `AppData/Local/clink/clink_settings` |
 | `win/clink_scripts/{clink,fzf,zoxide}.lua` | `AppData/Local/clink/` |
 | `desktop-settings/rime/weasel.custom.yaml` | `AppData/Roaming/Rime/weasel.custom.yaml` |
@@ -459,7 +460,7 @@ run_once_after_install-pi-config.sh
 | 模板 | 差异来源 | 验证 |
 | --- | --- | --- |
 | `dot_zshrc.tmpl` | linux + mac `.zshrc`（26 行） | 两侧渲染逐字节一致；`zsh -n` 通过 |
-| `dot_config/starship.toml.tmpl` | linux + mac（2 行，`>` vs `❯`） | 两侧渲染逐字节一致 |
+| `dot_config/starship.toml.tmpl` | linux + mac + windows（`add_newline` 与 `>`/`❯`） | 三侧渲染逐字节一致 |
 | `dot_config/waybar/modules.json.tmpl` | 原 `__WAYBAR_MODULE_DIR__` 占位符 | `chezmoi diff` 为空 |
 | `dot_config/swaylock/config.tmpl` | 原 `__SWAYLOCK_BACKGROUND_DIR__` | `chezmoi diff` 为空 |
 | `dot_config/git/config.tmpl` | `gh` 写入的 credential 段 | `diff` 为空，helper 功能不变 |

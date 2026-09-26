@@ -8,10 +8,13 @@ $character"""
 
 scan_timeout = 100
 command_timeout = 500
+{{ if eq .chezmoi.os "windows" -}}
+add_newline = false
+{{ else -}}
 add_newline = true
-
+{{ end }}
 [character]
-{{ if eq .chezmoi.os "darwin" -}}
+{{ if ne .chezmoi.os "linux" -}}
 success_symbol = "[❯](bold #808080)"
 error_symbol = "[❯](bold red)"
 {{ else -}}
