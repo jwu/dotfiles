@@ -83,6 +83,15 @@ output "eDP-1" {
     transform "normal"
 }
 
+// HDMI-A-3 is a small RTK HDMI panel; 480x320 is its preferred/native mode.
+// A rule for a name this machine does not have is inert, so the Mac mini and
+// the laptop share one file. See docs/niri.md.
+output "HDMI-A-3" {
+    mode "480x320@60.007"
+    scale 1
+    transform "normal"
+}
+
 // prefer-no-csd
 
 layout {
