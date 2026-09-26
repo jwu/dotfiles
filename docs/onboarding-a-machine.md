@@ -264,8 +264,11 @@ GTK 标题栏 CSS / `niri-*` 脚本（约 50 个文件）仍然是 managed 状�
 
 **(c) Windows 的 shell 层已不再有手写脚本。** 入口是 `bootstrap/windows.bat`：装 chezmoi
 （winget→scoop）→ clone → scoop 装工具与 per-user Nerd Font → 写三个用户环境变量 →
-`clink autorun install` → `chezmoi init --apply`。**不需要管理员**。codepage 与别名在
-`AppData/Local/clink/session.lua`，终端只起普通 `cmd.exe`。`win/` 整个目录已删除；推导见
+`chezmoi init --apply`。**不需要管理员**。codepage 与别名在
+`AppData/Local/clink/session.lua`，终端起 `cmd /s /k %LOCALAPPDATA%\clink\session.cmd` 来注入
+Clink；这里**不能**改用 `clink autorun`：Clink 的 `os.setenv` 改不了 cmd 自身的环境块，starship
+拿不到 `STARSHIP_CONFIG` 就退回内置默认值，所以变量必须在 cmd 用 `/k` 执行的脚本里 `set`。
+`win/` 整个目录已删除；推导见
 [`windows-shell.md`](windows-shell.md)。**新增 `bootstrap/*.bat` 记得必须 CRLF**
 （`.gitattributes` 已用 `-text` 固定）。
 

@@ -3,8 +3,9 @@
 -- Replaces the retired win/init.bat. That script set the codepage, the PATH and
 -- the doskey aliases, and every terminal had to launch 'cmd /k init.bat' to get
 -- them. The PATH entry was already a per-user variable, the codepage and the
--- aliases belong to the session, and Clink now loads itself through its own
--- cmd.exe AutoRun entry, so this file is all that is left.
+-- aliases belong to the session, and the terminals now launch session.cmd,
+-- which injects Clink with --scripts pointed here -- so this file is all that is
+-- left.
 --
 -- Clink has no alias API, so the aliases are first-word rewrites through
 -- clink.onfilterinput -- the same mechanism zoxide.lua uses. See docs/design.md.

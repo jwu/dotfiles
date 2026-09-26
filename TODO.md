@@ -26,7 +26,7 @@
 - [x] 接入完成（2026-09-26）：`chezmoi apply -v` 退出码 0、第二次 0 行，`diff --include=files` 与
       `status` 均为 0。本地提交未 push。
 - [x] `bootstrap/windows.bat` 已重写并在本机跑通：scoop 装工具与 per-user 字体、
-      `clink autorun install`、三个用户环境变量；无提权。`win/` 整个目录已删除。
+      三个用户环境变量；无提权。`win/` 整个目录已删除。
 - [x] 新终端里确认通过：starship 提示符（蓝目录 + 灰 `❯`、前面无空行）、`chcp` 65001、别名都正常。
       **注意取舍：Clink 现在由终端执行 `%LOCALAPPDATA%\clink\session.cmd` 加载（`clink autorun`
       已卸载）**，所以只有 Alacritty / WezTerm 里有 Clink；Win+R 或 VS Code 的普通 cmd 没有。

@@ -7,7 +7,7 @@ setlocal enabledelayedexpansion
 :: Replaces the retired jwu/configs flow: clone the config repo, run
 :: win/install.bat for the portable tools, then win/config.bat to generate the
 :: pointer files. All three are gone -- scoop installs the tools, chezmoi
-:: deploys the real content, and Clink registers itself in cmd.exe's AutoRun.
+:: deploys the real content, and the terminals inject Clink via session.cmd.
 ::
 :: Needs no administrator rights: scoop installs per-user and the Nerd Font goes
 :: to %LOCALAPPDATA%\Microsoft\Windows\Fonts, so nothing here -- or in
@@ -45,8 +45,9 @@ call :REQUIRE "chezmoi init --apply" :CHEZMOI_APPLY || goto :ABORT
 
 call :SUMMARY
 echo.
-echo ^>^>^> Restart your terminal: Clink now loads from cmd.exe's AutoRun in every
-echo     cmd, so nothing has to launch a setup script any more.
+echo ^>^>^> Restart your terminal: Alacritty and WezTerm launch session.cmd, which
+echo     injects Clink and sets the environment in cmd's own block. A plain cmd
+echo     started from Win+R has neither; see docs/windows-shell.md.
 echo     From now on 'chezmoi apply' needs neither elevation nor a terminal.
 exit /b %ERROR_COUNT%
 

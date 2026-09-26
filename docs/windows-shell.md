@@ -1,4 +1,4 @@
-# Windows 的 shell 层：scoop + clink autorun + 用户环境变量
+# Windows 的 shell 层：scoop + Clink 的 session.cmd + 用户环境变量
 
 这份文档解释 Windows 上「终端怎么起来、Clink 怎么加载、环境变量放哪、别名在哪」的最终形态，
 以及为什么不再需要原来 `jwu/configs` 那套手写脚本。`bootstrap/windows.bat`、`.chezmoiignore`
@@ -91,9 +91,10 @@ LANG=en_US.utf8        PI_NERD_FONTS=1        FZF_COMPLETE_OPTS=-e
 
 ### 终端
 
-`AppData/Roaming/alacritty/alacritty.toml` 与 `dot_wezterm.lua` 现在是普通的
-`cmd.exe`（`program = "cmd.exe"` / `default_prog = { 'cmd.exe' }`），不再 `cmd /k init.bat`；
-显式写 `cmd` 是因为 Alacritty/WezTerm 在 Windows 的默认 shell 不保证是 cmd。
+`AppData/Roaming/alacritty/alacritty.toml` 与 `dot_wezterm.lua` 现在都起
+`cmd.exe /s /k "%LOCALAPPDATA%\clink\session.cmd"`（`args` 与 `default_prog`）：位置从旧的
+`init.bat` 换成了 chezmoi 部署的 `session.cmd`，而那正是让 `set` 落进 cmd 环境块的一层。显式
+写 `cmd` 是因为 Alacritty/WezTerm 在 Windows 的默认 shell 不保证是 cmd。
 
 ## 踩到的坑：批处理必须 CRLF
 
@@ -158,13 +159,14 @@ starship 用的是内置默认值（提示符在，但 config 不生效）。
 - `LS_COLORS` 在 `clink.lua`（`os.setenv`）与 `dot_wezterm.lua`（`set_environment_variables`）
   里各写了一份。可以收敛成一个用户环境变量，但它很长、`setx` 有长度限制，先用 PowerShell
   的 `SetEnvironmentVariable` 也不省事，暂时没动。
-- `~/bin` 下还留着旧的便携版 exe（alacritty/starship/fzf/… ）与 `~/bin/clink`、`~/bin/NerdFont`。
-  scoop shims 在用户 PATH 里排在 `~\bin` 前面，所以不会遮蔽；清不清由用户决定。
+- `~/bin` 下与 scoop 重复的便携版 exe（alacritty/starship/fzf/…）、`~/bin/clink` 与
+  `~/bin/NerdFont` 已于 2026-09-27 删除；非 scoop 工具（nvim、nvm、mpv、zig、yazi…）保留。
 
 ## 怎么验证
 
 ```bat
-clink autorun show                 :: AutoRun 指向 …\clink.bat inject --autorun
+reg query "HKCU\Software\Microsoft\Command Processor" /v AutoRun  :: 应当不存在：AutoRun 方案已弃用
+type "%LOCALAPPDATA%\clink\session.cmd"                          :: 终端注入 Clink 的入口
 reg query HKCU\Environment         :: LANG / PI_NERD_FONTS / FZF_COMPLETE_OPTS
 scoop list                         :: 工具来自 scoop 而不是 %USERPROFILE%\bin
 ```

@@ -29,7 +29,7 @@
 ### Windows —— 终端与 Shell 增强
 
 - **终端**：Alacritty、WezTerm，都起一个普通的 `cmd.exe`
-- **Shell**：Clink 增强的 CMD（`clink autorun` 注册，所有 cmd 都有），配 starship、fzf、zoxide、eza、uutils coreutils
+- **Shell**：Clink 增强的 CMD（Alacritty / WezTerm 执行 `session.cmd` 注入，Win+R 的 cmd 没有），配 starship、fzf、zoxide、eza、uutils coreutils
 - **输入法**：Weasel（小狼毫）
 - **编辑器**：Neovim + Neovide、Zed
 - **共用**：yazi、gitui、glow
@@ -62,8 +62,8 @@ curl -fsSL https://raw.githubusercontent.com/jwu/dotfiles/main/bootstrap/windows
 ```
 
 三个脚本做同一件事：装 chezmoi → clone 到 `~/bin/dotfiles`（Windows 是 `%USERPROFILE%\bin\dotfiles`）
-→ 写下 chezmoi 的 `sourceDir` → 装工具 → `chezmoi init --apply`。Windows 那份还负责
-`clink autorun install` 与三个用户级环境变量。
+→ 写下 chezmoi 的 `sourceDir` → 装工具 → `chezmoi init --apply`。Windows 那份还负责三个用户级环境变量
+（Clink 由终端执行 `session.cmd` 注入，不写 cmd 的 AutoRun）。
 
 Linux 与 macOS 的 bootstrap 是各自平台上**唯一**需要 root 或终端的地方（`chsh` 走 PAM、
 `/etc/shells` 要改、TTY 字体与 `drivetemp` 要 root）。Windows 那份**不需要任何提权**：scoop
@@ -145,7 +145,7 @@ chezmoi 的源路径与目标路径不一定逐字对应：`dot_` 加前置点�
 - [`docs/chezmoi-migration.md`](docs/chezmoi-migration.md) — chezmoi 方案成型之前的评估记录：边界划分、源目录布局、四处模板化。
 - [`docs/alacritty.md`](docs/alacritty.md) — Alacritty 与 Ghostty 的逐项对齐，以及 Wayland 下的窗口装饰。
 - [`docs/shell.md`](docs/shell.md) — zsh 配置里的两个坑：nvm 的两种装法与 Apple Silicon 的 MPS 变量。
-- [`docs/windows-shell.md`](docs/windows-shell.md) — Windows 的 shell 层：scoop、`clink autorun`、用户环境变量、批处理必须 CRLF。
+- [`docs/windows-shell.md`](docs/windows-shell.md) — Windows 的 shell 层：scoop、Clink 的 `session.cmd` 接线、用户环境变量、批处理必须 CRLF。
 - [`docs/waybar.md`](docs/waybar.md) — 模块基线与行高约定、配色、`cffi/niri-windows`、GPU 与磁盘取值脚本。
 - [`docs/lockscreen.md`](docs/lockscreen.md) — hyprlock / swaylock、熄屏计时、按屏幕尺寸挑样式。
 - [`docs/niri.md`](docs/niri.md) — focus-follows-mouse、`warp-mouse-to-focus`、光标隐藏。
