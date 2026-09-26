@@ -3,7 +3,7 @@
 #
 # pi-config stays a separate repository because its settings.json points at
 # ~/bin/pi-config/extensions by absolute path, so the clone target is fixed.
-# See README.md, "pi-config 的编排".
+# See README.md, the pi-config orchestration section.
 set -uo pipefail
 
 PI_REPO_SSH="${PI_REPO_SSH:-git@github.com:jwu/pi-config.git}"
