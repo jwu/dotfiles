@@ -1,17 +1,21 @@
 #!/bin/bash
 set -euo pipefail
 
-# Lock the screen with hyprlock, falling back to swaylock. While the session stays
+# Lock the screen with hyprlock, falling back to swaylock.
+{{- if ne .chezmoi.hostname "archlinux-macmini" }} While the session stays
 # locked, the monitors are powered off after SCREEN_OFF_TIMEOUT seconds of
 # inactivity; the timer lives here, so it starts when the lock is taken rather
-# than from the last input event. The lock style is a whole file, picked by output
-# width, because hyprlock matches widgets to monitors by port name or EDID only
-# and never by resolution. A dead locker is recovered with niri's Mod+Alt+L (see
-# docs/lockscreen.md).
-
+# than from the last input event.
+{{- else }} This machine keeps the monitors on while locked: the screen-off
+# timer below is deliberately not installed here.
+{{- end }}
+# The lock style is a whole file, picked by output width, because hyprlock
+# matches widgets to monitors by port name or EDID only and never by resolution.
+# A dead locker is recovered with niri's Mod+Alt+L (see docs/lockscreen.md).
+{{ if ne .chezmoi.hostname "archlinux-macmini" }}
 # Seconds the locked session may stay idle before the monitors go off.
 SCREEN_OFF_TIMEOUT=60
-
+{{ end }}
 # Width bands for the three styles, widest match wins. 1600 sits between a
 # 1366x768 panel (medium) and a 1920x1080 or wider display (large); 900 sits
 # between the 480x320 panel and a 1024x768 one.
@@ -40,7 +44,7 @@ if command -v hyprlock >/dev/null 2>&1; then
 else
   locker=(swaylock -f)
 fi
-
+{{ if ne .chezmoi.hostname "archlinux-macmini" }}
 # The screen-off timer lives exactly as long as the session is locked: swayidle
 # re-arms after every activity, so the monitors go off again after each further
 # idle period while the lock is held.
@@ -52,5 +56,5 @@ cleanup() {
   niri msg action power-on-monitors >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
-
+{{ end }}
 "${locker[@]}" || true
