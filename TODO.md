@@ -10,16 +10,20 @@
 - [ ] 决定 `.config/glow/one-dark.json` 与 `.config/zellij/config.kdl` 是否要留在这台机器上。
       它们是跨平台配置，2026-09-26 接入时一并部署了过来；不用这两个工具就把它们加进
       `.chezmoiignore` 的 darwin 分支。
-- [ ] 清理旧备份：`~/.config/ghostty/config.bak.*`、`~/.config/zed/settings.json.bak.*`、
-      `~/.pi/agent/*.bak*`、`~/.config/alacritty/alacritty.toml.bak`。
-- [ ] 清理 `~/bin/configs`、`~/bin/desktop-settings`、`~/bin/dev-settings`。注意 `~/.gitconfig`
-      里还有指向 `~/bin/configs/`、`~/bin/desktop-settings/` 的 `includeIf`，删目录时要一并处理。
+- [x] 清理旧备份（2026-09-27）：8 个 `.bak` —— `~/.config/ghostty/config.bak.*`、
+      `~/.config/zed/settings.json.bak.*`、`~/.pi/agent/*.bak*`、
+      `~/.config/alacritty/alacritty.toml.bak`。
+- [x] 清理 `~/bin/configs`、`~/bin/desktop-settings`、`~/bin/dev-settings`（2026-09-27）：删前
+      确认三者都是与 `origin/main` 齐平的干净 clone，本地无独有提交。`~/.gitconfig` 里指向
+      `~/bin/configs/` 与 `~/bin/desktop-settings/` 的两处 `includeIf` 一并删除（`dev-settings`
+      本就没有对应条目）。
 
 ### 文档
 
-- [ ] `docs/inputsource-pro/inputsource-pro-config.md` 与 `docs/totalcmd/totalcmd-config.md` 引用的
-      `./images/*.png|jpeg` 从未随文档一起迁入，链接是死的（全仓 markdown 链接检查会报 6 处）。
-      要么补图，要么删掉引用。
+- [x] `docs/inputsource-pro/inputsource-pro-config.md` 与 `docs/totalcmd/totalcmd-config.md` 引用的
+      `./images/*.png|jpeg` 从未随文档一起迁入（6 处死链），已删掉引用（2026-09-27）：Total Commander
+      的四张图各自紧跟一段自足的步骤文字，删图不影响正文；Input Source Pro 的 `## 界面设置`
+      整节只有那两张图，删图后会留下空章节，所以连标题一并删除。
 
 ### 这台 Windows
 
@@ -65,12 +69,13 @@
 2. **家目录里从未被管过的配置**：`~/.config/{chrome,chromium}-flags.conf`、`mimeapps.list`。
    已决定不纳入（范围严格等于两个退役仓库已有的东西），可随时 `chezmoi add` 补。
    `nvim/lazy-lock.json` 已随 Windows 收尾一并删除（lazy.nvim 会在下次更新时重新生成）。
+   这三个文件在这台 macOS 上都不存在（2026-09-27 核实），本机无需处理。
 3. ~~Windows 上 `~/bin` 的遗留~~ 已清理（2026-09-27）：删掉与 scoop 重复的便携版
    （alacritty / starship / fzf / zoxide / eza / fd / delta / bat / rg / coreutils 的 exe，
    以及 clink、clink-completions、NerdFont 目录和 zoxide 的 completions/man/文档）。
    非 scoop 工具（zig、nvim、nvm、godot、mpv、Everything、ImTip、yazi、yt-dlp 等）保留。
-4. **旧的 `mac/config.sh` 是否整体退役**：配置迁走后它已经没有内容，`bootstrap/macos.sh` 是
-   按它演化重写的，剩下的只是删掉旧文件。
+4. ~~**旧的 `mac/config.sh` 是否整体退役**~~ 已了结（2026-09-27）：`mac/` 在磁盘和 git 历史里
+   都不存在（`git ls-files mac/` 为空），无需再处理。
 5. **GitHub 上仍有不可达的旧对象**：`git filter-repo` 加 force push 只移动了 `main`，旧 commit
    在被 GC 之前仍可按 SHA 读取（[`docs/design.md`](docs/design.md) 有实测命令）。已决定不再
    处理——要立即失效只有联系 GitHub Support 或删除重建仓库。

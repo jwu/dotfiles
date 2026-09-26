@@ -10,12 +10,6 @@ Input Source Pro 是一个 macOS 输入法自动切换工具。
 brew install --cask input-source-pro
 ```
 
-## 界面设置
-
-![](./images/conf-gen.jpeg)
-
-![](./images/conf-app.png)
-
 ## 隐藏顶部语言栏（可选）
 
 如果想隐藏 macOS 顶部的语言指示栏（显示当前输入法的那个），可以执行以下命令并注销重新登录：
