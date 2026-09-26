@@ -30,10 +30,15 @@ end
 -- use starship for prompt
 ----------------------------------------
 
--- Pin the config path. Starship defaults to ~/.config/starship.toml, but a stale
--- STARSHIP_CONFIG inherited from the retired init.bat would point into the
--- deleted ~/bin/configs and shadow it. The old init.bat always set this
--- explicitly; keep that. See docs/windows-shell.md.
+-- Pin the config path for processes Clink spawns. Starship defaults to
+-- ~/.config/starship.toml, but a stale STARSHIP_CONFIG inherited from the retired
+-- init.bat would point into the deleted ~/bin/configs.
+--
+-- NOTE: clink's os.setenv does NOT change cmd's environment block (verified: the
+-- variable stays invisible to `echo %STARSHIP_CONFIG%`), so this only covers what
+-- Clink itself spawns. The bootstrap also sets STARSHIP_CONFIG as a real per-user
+-- variable with setx -- that is the one cmd and starship both see. See
+-- docs/windows-shell.md.
 os.setenv('STARSHIP_CONFIG', os.getenv('USERPROFILE')..'\\.config\\starship.toml')
 
 load(io.popen('starship init cmd'):read("*a"))()

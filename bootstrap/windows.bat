@@ -194,11 +194,13 @@ exit /b %errorlevel%
 
 :WRITE_ENV
 :: Per-user variables, so every process sees them -- not only the terminal that
-:: happened to launch a setup script. PATH already carries ~\bin and the scoop
-:: shims, so nothing is added there.
+:: happened to launch a setup script. Clink's own os.setenv does not touch cmd's
+:: environment block, so anything starship or cmd must see has to live here.
+:: PATH already carries ~\bin and the scoop shims, so nothing is added there.
 call setx LANG "en_US.utf8" >nul || exit /b 1
 call setx PI_NERD_FONTS "1" >nul || exit /b 1
 call setx FZF_COMPLETE_OPTS "-e" >nul || exit /b 1
+call setx STARSHIP_CONFIG "%USERPROFILE%\.config\starship.toml" >nul || exit /b 1
 exit /b 0
 
 :CLINK_AUTORUN
