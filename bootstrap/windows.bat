@@ -22,6 +22,9 @@ setlocal enabledelayedexpansion
 if not defined REPO_SSH set "REPO_SSH=git@github.com:jwu/dotfiles.git"
 if not defined REPO_HTTPS set "REPO_HTTPS=https://github.com/jwu/dotfiles.git"
 if not defined SRC_DIR set "SRC_DIR=%USERPROFILE%\bin\dotfiles"
+if not defined PI_REPO_SSH set "PI_REPO_SSH=git@github.com:jwu/pi-config.git"
+if not defined PI_REPO_HTTPS set "PI_REPO_HTTPS=https://github.com/jwu/pi-config.git"
+if not defined PI_DIR set "PI_DIR=C:\bin\pi-config"
 set "CONFIG_DIR=%USERPROFILE%\.config\chezmoi"
 set "SCOOP_APPS=clink clink-completions starship fzf zoxide fd bat delta ripgrep eza uutils-coreutils alacritty"
 set "SCOOP_FONT=FiraMono-NF"
@@ -40,6 +43,7 @@ call :DO "scoop buckets (extras, nerd-fonts)" :SCOOP_BUCKETS
 call :DO "scoop packages" :SCOOP_PACKAGES
 call :DO "user environment variables" :WRITE_ENV
 call :DO "clink: lazy completions only" :CLINK_SCRIPTS
+call :DO "pi-config checkout" :ENSURE_PI_CONFIG
 
 call :REQUIRE "chezmoi init --apply" :CHEZMOI_APPLY || goto :ABORT
 
@@ -162,6 +166,27 @@ echo     SSH clone failed, retrying over HTTPS
 git clone "%REPO_HTTPS%" "%SRC_DIR%"
 if errorlevel 1 exit /b 1
 exit /b 0
+
+:ENSURE_PI_CONFIG
+:: pi loads extensions/ live from the checkout, so the settings.json chezmoi
+:: writes points at %PI_DIR%\extensions. pi itself and nodejs are a manual
+:: install on Windows; this step only keeps the checkout in place.
+:: See docs/design.md, the pi-config orchestration section.
+if exist "%PI_DIR%\.git" (
+  echo     updating %PI_DIR%
+  git -C "%PI_DIR%" pull --ff-only || echo     pull skipped: local changes or no network
+  exit /b 0
+)
+if not exist "C:\bin" mkdir "C:\bin"
+echo     cloning into %PI_DIR%
+:: BatchMode keeps a first-time SSH connection from stopping on a host-key or
+:: passphrase prompt; it fails immediately and the HTTPS fallback takes over.
+set "GIT_SSH_COMMAND=ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+git clone "%PI_REPO_SSH%" "%PI_DIR%" 2>nul
+if not errorlevel 1 exit /b 0
+echo     SSH clone failed, retrying over HTTPS
+git clone "%PI_REPO_HTTPS%" "%PI_DIR%"
+exit /b %errorlevel%
 
 :WRITE_CONFIG
 if not exist "%CONFIG_DIR%" mkdir "%CONFIG_DIR%"

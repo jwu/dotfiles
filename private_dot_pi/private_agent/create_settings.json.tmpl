@@ -1,0 +1,37 @@
+{
+  "shellCommandPrefix": "python(){ uv run python \"$@\"; }\npython3(){ uv run python \"$@\"; }\nexport -f python\nexport -f python3",
+  "defaultProvider": "deepseek",
+  "defaultModel": "deepseek-flash",
+  "defaultThinkingLevel": "high",
+  "theme": "one-dark",
+  "tuiMode": "fullscreen",
+  "quietStartup": true,
+  "enableInstallTelemetry": false,
+  "defaultProjectTrust": "always",
+  "extensions": [
+{{- if eq .chezmoi.os "windows" }}
+    "c:/bin/pi-config/extensions"
+{{- else }}
+    "~/bin/pi-config/extensions"
+{{- end }}
+  ],
+  "packages": [
+    "npm:@eko24ive/pi-ask",
+    "npm:@johnnywu/pi-filechanges",
+    "npm:@johnnywu/pi-subagents",
+    "npm:@johnnywu/pi-webfetch",
+    "npm:pi-animations",
+    "npm:pi-powerline",
+    "npm:pi-stats-ext",
+    "npm:pi-mcp-adapter"
+  ],
+  "defaultTools": [
+    "read",
+    "bash",
+    "edit",
+    "write",
+    "grep",
+    "find",
+    "ls"
+  ]
+}

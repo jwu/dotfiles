@@ -93,8 +93,9 @@ winget install twpayne.chezmoi
 
 ### 3.2 克隆到固定路径
 
-路径**不能随意选**：`pi-config` 的 `settings.json` 用绝对路径指向 `~/bin/pi-config/extensions`
-（见 §5.3），而 `run_once_after_50-pi-config.sh` 只会 clone 到 `~/bin/pi-config`。
+路径**不能随意选**：`create_settings.json.tmpl` 渲染出的 `extensions` 指向
+`~/bin/pi-config/extensions`（见 §5.3），而 `run_once_after_50-pi-config.sh` 只会 clone 到
+`~/bin/pi-config`。
 
 ```bash
 # macOS
@@ -200,13 +201,18 @@ git push
 | 类型 | 例子 | 原因 |
 | --- | --- | --- |
 | 凭据 | `~/.pi/agent/auth.json` | 密钥 |
-| 工具自己写的状态 | `~/.pi/agent/mcp.json`、`extensions/*.json`、`settings.json` | pi / 插件会改写，纳入后 `apply` 会抹掉 |
+| 工具自己写的状态 | `~/.pi/agent/extensions/*.json` | pi-ask 会改写，纳入后 `apply` 会抹掉 |
 | 运行时产物 | `~/.local/share/fcitx5/rime/`（156 MB，含词库、`build/`、用户词频） | 不是配置 |
 | 缓存与历史 | `sessions/`、`*-cache.json`、`install/`、`npm/` | 不是配置 |
 | 本机 UI 状态 | `totalcmd/wincmd.ini`（已在旧仓库标记为手动配置） | 含窗口布局与安装路径 |
 | git 个人层 | `~/.gitconfig` 及其 `includeIf` 引用的 `~/.gitconfig-<身份>` | 含邮箱、人名与 `~/dev/<雇主>/` 这样的工作目录结构。仓库只管公共层 `~/.config/git/config`（`[init]`/`[core]`/`[delta]`/`[i18n]`/`[credential]`），个人层手工维护 |
 
 另外：**`~/.config/chezmoi/chezmoi.toml` 不由本仓库管理**（鸡生蛋：chezmoi 不可能管自己的源在哪）。
+
+`settings.json` 与 `mcp.json` 也会被 pi 回写（`lastChangelogVersion`、`/model`、`/mcp`），但它们
+由 chezmoi 的 `create_` 目标落地——只在目标不存在时写一次，所以既留在源里，又不会被 `apply`
+抹掉。代价是源与磁盘会漂移：改 `packages` 或 MCP server 时要手工同步已有机器。见 `design.md`
+的「pi 的可变状态」。
 
 ---
 
@@ -272,16 +278,15 @@ Clink；这里**不能**改用 `clink autorun`：Clink 的 `os.setenv` 改不了
 [`windows-shell.md`](windows-shell.md)。**新增 `bootstrap/*.bat` 记得必须 CRLF**
 （`.gitattributes` 已用 `-text` 固定）。
 
-**(d) `pi-config/settings.json` 用绝对路径**指向 `~/bin/pi-config/extensions`（Pi 不展开 `~`）。
-Windows 上对应的路径是它自己的写法，`pi-config/install.sh` 里有一处检查会警告路径不符。
-注意 `run_once_after_50-pi-config.sh.tmpl` 在 Windows 上渲染为空，所以 `~/bin/pi-config` 不会
-被自动 clone。
+**(d) pi 的接线由 chezmoi 与 `bootstrap/windows.bat` 一起补。** `create_settings.json.tmpl` 渲染
+出的 `extensions` 在 Windows 上是 `c:/bin/pi-config/extensions`（pi 会展开 `~`，所以 Unix 那份
+写 `~/bin/pi-config/extensions` 就够）。clone 由 `bootstrap/windows.bat` 的 `:ENSURE_PI_CONFIG`
+步骤负责，目标是固定的 `C:\bin\pi-config`；**node 与 pi CLI 不在 bootstrap 里**，要在那台机器上
+手工装（`scoop install nodejs-lts`，再 `npm i -g @earendil-works/pi-coding-agent`）。
 
-而这台 Windows 是**手工** clone 到 `C:\dev\pi-config`，再让 `~/.pi/agent/settings.json` 的
-`extensions` 指向 `c:/dev/pi-config/extensions`——也就是说它实际上**依赖** pi-config，只是用的
-不是 `~/bin/pi-config` 那一份。`~/.pi/agent/settings.json` 不在 chezmoi 里（见 §4 的表），这条
-接线只存在于本机磁盘上：**`C:\dev\pi-config` 一丢，那里的 8 个扩展就静默失效**。新机器接手
-时需要手工补这两处。
+`run_once_after_50-pi-config.sh.tmpl` 在 Windows 上渲染为空，所以 Windows 那条路径上的 clone
+完全靠 bootstrap。这台机器以前是手工 clone 到 `C:\dev\pi-config` 再让 `settings.json` 指向它，
+现在统一成 `C:\bin\pi-config`，新机器按 bootstrap 走即可，不必再补手工接线。
 
 ---
 

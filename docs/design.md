@@ -23,12 +23,13 @@
 | **dotfiles**（本仓库） | 新建，唯一真源 | chezmoi 源（配置 + 模板）+ `bootstrap/` 装机入口 + `run_*` 动作脚本 |
 | `configs` | **退役** | 内容全部迁入本仓库后删除，含 `install.sh`、`config.sh`、`win/install.bat`、`docs/` |
 | `desktop-settings` | **退役** | 内容全部迁入本仓库后删除，含 `fcitx5/install-linux.sh`、`update-rime-dict.sh`、文档 |
-| `pi-config` | **保留** | `extensions/*.ts`、`tests/`、`package.json`、`tsconfig.json`、`settings.json` |
+| `pi-config` | **保留** | `extensions/*.ts`、`tests/`、`package.json`、`tsconfig.json` |
 | `install-arch` | **并入** `bootstrap/` | 它本质是「新机器第一步」，与 `configs` 一起退役 |
 
-`pi-config` 保留后，其 `settings.json` 里
-`"extensions": ["~/bin/pi-config/extensions"]` 这个硬编码路径**不需要改**——这正是保留它
-而非并入的理由之一。
+保留它的理由只有一个：`settings.json` 的 `extensions` 字段要**活加载**这份 checkout 里的
+`extensions/*.ts`，所以仓库得待在固定路径上。那份 `settings.json` 本身现在由 chezmoi 的
+`create_settings.json.tmpl` 渲染（见「pi 的可变状态」），`pi-config` 侧从此只剩 `extensions/`
+与它的工程文件。
 
 ## 安装入口：`bootstrap/`
 
@@ -137,6 +138,8 @@ dot_pi/agent/
   themes/one-dark.json                 ← pi-config: themes/
   keybindings.json                     ← pi-config
   APPEND_SYSTEM.md                     ← pi-config
+  create_settings.json.tmpl            ← 新机器的初始 settings.json（`create_`，只落地一次）
+  create_mcp.json                      ← 新机器的初始 mcp.json（同上）
 # macOS 专有（本机不存在，从仓库搬入）
 dot_aerospace.toml                         ← desktop-settings: aerospace/.aerospace.toml
 dot_config/ghostty/config                  ← configs: mac/.config/ghostty/config
@@ -277,15 +280,29 @@ git 先读 XDG 那份、再读 `~/.gitconfig`，后者覆盖前者，所以个�
 
 | 类型 | 文件 | 处置 |
 | --- | --- | --- |
-| 静态资源（pi 只读） | `agents/`、`skills/`、`prompts/`、`themes/` | **已纳入**，安全 |
-| 人工维护的配置 | `keybindings.json`、`APPEND_SYSTEM.md` | **已纳入** |
-| **工具独占写入** | `mcp.json`（用 `/mcp` 装 server 时改写）、`extensions/*.json`（pi-ask 写回）、`settings.json`（本机 provider/模型状态） | **排除**，当纯本机状态 |
+| 静态资源（pi 只读） | `agents/`、`skills/`、`prompts/`、`themes/` | **已纳入**，源是真源 |
+| 人工维护的配置 | `keybindings.json`、`APPEND_SYSTEM.md` | **已纳入**，源是真源 |
+| 会被 pi 回写 | `settings.json`、`mcp.json` | **已纳入**，但用 `create_` 前缀 |
+| 工具独占写入 | `extensions/*.json`（pi-ask 写回） | **排除** |
 | 凭据与运行时 | `auth.json`、`sessions/`、`models-store.json`、`*-cache.json`、`install/`、`bin/`、`npm/` | **绝不纳入** |
 
-`mcp.json` 里现在是 `blender` / `chrome-devtools` / `open-pencil`，这些是用 pi 命令装进的本机
-状态；`extensions/eko24ive-pi-ask.json` 有被 pi-ask 写回的历史（见 `pi-config` 的
-`"pi-ask: sync config back to schemaVersion 5"` 提交）。所以这三类排除在外，与 `auth.json`
-同等对待。
+`settings.json` 会被 pi 写入 `lastChangelogVersion`（看过哪版 changelog）、
+`defaultProvider` / `defaultModel` / `defaultThinkingLevel`（`/model` 切换），`mcp.json` 会被
+`/mcp` 改写。这两份用 `create_` 前缀：**只在目标不存在时**渲染一次，之后不再碰。新机器因此
+拿到一份能开箱用的配置，本机后来被 pi 改成什么样，都不会在下次 apply 时被抹掉。
+
+代价是源与磁盘会漂移：源里的 `packages` / `defaultTools` 改动**不会**传到已经落地过的机器，
+要手工同步。这是刻意的取舍——把它们当纯真源管的话，`/model` 切一次模型就会留下永久非空的
+`chezmoi diff`，而每次 apply 都在和 pi 抢同一份文件。
+
+两份源都是**新机器的初始值**，不是任何一台机器的现状：`create_settings.json.tmpl` 的
+`packages` 用 npm 包名（`npm:@johnnywu/pi-filechanges` …），因为新机器上还没有 `~/dev/jwu/*`
+的 checkout；本机 macOS 是开发机，已经手工把 `packages` 换成那些本地路径，`create_` 不会再
+覆盖它。`extensions` 按 `.chezmoi.os` 渲染：Unix 是 `~/bin/pi-config/extensions`，Windows 是
+`c:/bin/pi-config/extensions`（pi 会展开 `~`，见 `dist/utils/paths.js` 的 `expandTilde`）。
+
+`extensions/eko24ive-pi-ask.json` 有被 pi-ask 写回的历史（见 `pi-config` 的
+`"pi-ask: sync config back to schemaVersion 5"` 提交），它和 `auth.json` 一样不纳入。
 
 ## fcitx5 的运行时边界
 
@@ -420,16 +437,19 @@ neovide 是**重复**（Windows 的真目标在 AppData 里），yazi / gitui / 
 `pi-config` 是唯一被 clone 的外部仓库，由本仓库脚本触发：
 
 ```
-run_once_after_install-pi-config.sh
+run_once_after_50-pi-config.sh
+  ├─ 装 pi CLI（npm -g；缺 npm 时只警告）
   ├─ [ -d ~/bin/pi-config ] || git clone git@github.com:jwu/pi-config.git ~/bin/pi-config
-  ├─ bash ~/bin/pi-config/install.sh     ← 装 npm 插件（settings.json 的 packages）
-  └─ 提示运行 /reload 生效
+  └─ 提示 /reload 生效
 ```
 
-`pi-config/install.sh` 本身需要**缩水**：它现在还会部署 `agents/`、`prompts/`、`skills/`、
-`themes/`、`extensions-settings/` 到 `~/.pi/agent/`，这些已由 chezmoi 接管，会与
-`chezmoi apply` 互相覆盖。缩水后它只负责扩展工程相关的事（npm 插件、`extensions/` 的
-`settings.json` 指向关系）。
+它**不调用** `pi-config/install.sh`（该脚本已删除）：`settings.json` 与 `mcp.json` 都是 chezmoi
+的 `create_` 目标，再复制一遍就是两个所有者争同一份文件（见上节）。clone 目标仍是固定的
+`~/bin/pi-config`，因为 `create_settings.json.tmpl` 渲染出的 `extensions` 指向它。
+
+Windows 上由 `bootstrap/windows.bat` 的 `:ENSURE_PI_CONFIG` 步骤 clone 到 `C:\bin\pi-config`，
+模板按 OS 渲染对应的 `extensions` 路径；node 与 pi CLI 在那台机器上仍是手工装（bootstrap
+不碰 node）。
 
 ## 退役计划
 
@@ -437,7 +457,7 @@ run_once_after_install-pi-config.sh
 | --- | --- |
 | `configs` | 配置文件迁入本仓库；`install.sh` / `config.sh` 的非文件动作转成 `run_*` 脚本；`docs/` 整体迁入；`src/gpu-watch.c`、`waybar-niri-windows.sh` 迁入；`win/` 迁入；`common/`、`linux/`、`mac/` 的配置副本删除。**最后删除仓库** |
 | `desktop-settings` | `profile`、`classicui.conf`、`themes/`、`rime/*.custom.yaml`、`zed/settings.json`、`aerospace/.aerospace.toml`、`totalcmd/wincmd.ini` 迁入；两个 shell 脚本迁入为 `run_*`；`*-config.md` 迁入 `docs/`。**最后删除仓库** |
-| `pi-config` | 删除 `agents/`、`prompts/`、`skills/`、`themes/`、`extensions-settings/`、`APPEND_SYSTEM.md`、`keybindings.json`；`install.sh` 缩水。**保留仓库** |
+| `pi-config` | 删除 `agents/`、`prompts/`、`skills/`、`themes/`、`extensions-settings/`、`settings.json`、`mcp.json`、`APPEND_SYSTEM.md`、`keybindings.json`、`install.sh`；**保留仓库** |
 | `install-arch` | 演化为 `bootstrap/arch.sh`，**删除仓库** |
 | `configs/linux/config.sh:299` | 现在靠 `$ROOT_DIR/../desktop-settings` 定位 fcitx5 脚本，迁入后改为直接引用本仓库的 `run_after_fcitx5.sh` |
 | 家目录 96 个 `*.bak.*` | `backup_file()` 机制随两个仓库退役，一次性清理 |
@@ -530,9 +550,10 @@ run_once_after_install-pi-config.sh
 - 脚本用 `.tmpl` 后缀拿 `{{ .chezmoi.sourceDir }}`，因为辅助文件
   （`scripts/gpu-watch.c`、`scripts/waybar-niri-windows.sh`）放在被 `.chezmoiignore` 排除的
   `scripts/` 里；不这做它们会被部署到家目录。
-- `run_once_after_50-pi-config.sh` **不调用** `pi-config/install.sh`：它现在还会往
-  `~/.pi/agent/` 复制 `agents/` / `skills/` / `prompts/` / `themes/`，而这些已归 chezmoi，
-  两边会互相覆盖。脚本只负责 clone，npm 插件由 pi 自己按 `settings.json` 的 `packages` 装。
+- `run_once_after_50-pi-config.sh` **不调用** `pi-config/install.sh`：它复制的东西
+  （先是 `agents/` / `skills/` / `prompts/` / `themes/`，后来是 `settings.json` / `mcp.json`）
+  全部归 chezmoi，两边会争同一份文件。脚本只负责 clone，npm 插件由 pi 自己按
+  `settings.json` 的 `packages` 装。
 
 迁入的文件：`docs/`（含 desktop-settings 的 6 份说明）、`scripts/`（`gpu-watch.c`、
 `waybar-niri-windows.sh`、`update-rime-dict.sh`）。`win/config.bat` 退役删除，`win/` 的其余
@@ -630,6 +651,9 @@ chezmoi apply -v
 的认证、provider 与模型），并检查仓库是否位于 `~/bin/pi-config`（`settings.json` 用绝对路径指向
 它的 `extensions/`）。`run_once_after_50-pi-config.sh` 恢复了调用。
 
+这一步在 2026-09-27 被推翻：`settings.json` 与 `mcp.json` 改用 chezmoi 的 `create_` 落地，
+install.sh 因此不再被调用，见「pi 的 settings/mcp 纳入 `create_`」。
+
 同时从 `pi-config` 删掉 14 个已迁移的文件（`agents/`、`skills/`、`prompts/`、`themes/`、
 `keybindings.json`、`APPEND_SYSTEM.md`）——删除前逐个逐字节比对确认都在本仓库源里。`mcp.json`
 与 `extensions-settings/` 保留为参考模板但不再部署：它们是 Pi 自己写入的状态。
@@ -726,3 +750,33 @@ Zed 的 Windows settings 与 Unix 侧那份已经对齐（补齐 `project_panel`
 **force push 不等于在 GitHub 上消失**：旧 commit 在 GitHub 自行 GC 之前仍可按 SHA 读取
 （实测 `gh api repos/jwu/dotfiles/contents/...?ref=<旧SHA>` 与 commit 网页都是 200），要立即
 失效只能联系 GitHub Support 或删除重建仓库。已决定不再处理。
+
+### pi 的 settings/mcp 纳入 `create_`（2026-09-27）
+
+`pi-config` 缩水后仍留着 `settings.json` 与 `mcp.json`：它们一边被 pi 回写，一边被
+`install.sh` 复制进 `~/.pi/agent/`。这次两份都收进本仓库，用 `create_` 前缀落地：
+
+| 源 | 目标 | 说明 |
+| --- | --- | --- |
+| `private_dot_pi/private_agent/create_settings.json.tmpl` | `~/.pi/agent/settings.json` | `extensions` 按 `.chezmoi.os` 分支 |
+| `private_dot_pi/private_agent/create_mcp.json` | `~/.pi/agent/mcp.json` | 取本机现状：chrome-devtools 用 `--wsEndpoint ws://127.0.0.1:9222/devtools/browser/pi-agent`，不是 pi-config 里的 `--autoConnect` |
+
+`create_` 只在目标不存在时写一次，于是：
+
+- 本机 macOS 的 `settings.json`（`packages` 已换成 `~/dev/jwu/*` 本地路径）与 `mcp.json` 原样
+  保留，`chezmoi diff --include=files` 仍是 0。
+- 新机器拿到 npm 包名版 `packages`，外加 deepseek 的 provider / model / thinking 默认值；
+  `lastChangelogVersion` 不写进源，那是纯本机状态。
+- 源与磁盘从此会漂移，且没有守卫。要改 `packages` 或 MCP server，得手工同步已有机器。
+
+配套改动：
+
+- `run_once_after_50-pi-config.sh.tmpl` 去掉 `deploy_pi_settings`，不再调用
+  `pi-config/install.sh`（那份脚本后来整份删除）。
+- `bootstrap/windows.bat` 加 `:ENSURE_PI_CONFIG`，checkout 从手工的 `C:\dev\pi-config` 换成
+  `C:\bin\pi-config`；Windows 上 node 与 pi CLI 仍手工装。
+- `pi-config` 仓库侧已同步：`e052e6e` 删掉 `settings.json` 与 `mcp.json`，`d5fa157` 连
+  `install.sh` 一起删掉——缩水后它只剩路径检查，而路径由 `create_settings.json.tmpl` 定死。
+  `create_mcp.json` 里只留 `blender` 与 `chrome-devtools`（`open-pencil` 已去掉）。
+- Windows 那台已有的 `settings.json` 指向 `c:/dev/pi-config/extensions`，`create_` **不会**改它。
+  迁移时要么手工改这一行，要么删掉该文件让模板按 `c:/bin/pi-config/extensions` 重写。

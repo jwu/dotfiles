@@ -2,8 +2,9 @@
 #!/bin/bash
 # pi CLI plus the pi-config checkout.
 #
-# pi-config stays a separate repository because its settings.json points at
-# ~/bin/pi-config/extensions by absolute path, so the clone target is fixed.
+# pi-config stays a separate repository because `extensions/` is loaded live
+# from the checkout, so the clone target is fixed: settings.json (a chezmoi
+# create_ target) points at ~/bin/pi-config/extensions.
 # See docs/design.md, the pi-config orchestration section.
 set -uo pipefail
 
@@ -42,20 +43,15 @@ ensure_pi_config() {
   git clone "$PI_REPO_HTTPS" "$PI_DIR"
 }
 
-deploy_pi_settings() {
-  # install.sh only deploys settings.json now: the static resources come from
-  # chezmoi, so the two no longer overlap.
-  bash "$PI_DIR/install.sh" || return 1
-}
-
 echo ">>> pi CLI + pi-config"
 
 ensure_pi || echo "    pi CLI install failed; pi-config clone still attempted." >&2
 ensure_pi_config || exit 1
-deploy_pi_settings || exit 1
 
 echo ""
 echo ">>> pi-config is at $PI_DIR."
-echo "    npm packages are installed by pi itself on first start, from the"
-echo "    'packages' list in settings.json. Run /reload in pi to pick up changes."
+echo "    Only extensions/ matters here: settings.json and mcp.json are chezmoi"
+echo "    create_ targets in this repo. npm packages are installed by pi itself"
+echo "    on first start, from the 'packages' list in settings.json."
+echo "    Run /reload in pi to pick up changes."
 {{ end -}}
