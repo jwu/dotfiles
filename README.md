@@ -439,6 +439,21 @@ run_once_after_install-pi-config.sh
 需要单独确认（`pacman -Qu` 当时为 0，且 41 个包全部已装、`xwayland-satellite-git` 已装、
 `FONT=ter-v16n` 已设、`drivetemp.conf` 已存在）。
 
+### 现有机器需要先写 sourceDir
+
+源在 `~/bin/dotfiles`（不是 chezmoi 的默认位置），所以每台机器上都要有一份
+`~/.config/chezmoi/chezmoi.toml`：
+
+```toml
+sourceDir = "/home/jwu/bin/dotfiles"
+```
+
+`bootstrap/arch.sh` 会在新机器上写这个文件，但本机是从 `--source` 参数一路走过来的，所以
+一直没写。第一次不带 `--source` 跑 `chezmoi apply` 就报了
+`stat /home/jwu/.local/share/chezmoi: no such file or directory`。已补上。
+
+它是 chezmoi 自己的配置（鸡生蛋：chezmoi 不可能管自己的源在哪里），不由本仓库管理。
+
 ### provision 需要 TTY（重要约束）
 
 `run_once_before_10-provision-arch.sh` 有 5 处 `sudo`（pacman、`sed /etc/vconsole.conf`、
