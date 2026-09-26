@@ -1,6 +1,6 @@
-# 公共层：两台机器完全相同的部分。个人层（身份、代理）在 ~/.gitconfig 里，
-# 由 dot_gitconfig.tmpl 部署。git 先读 ~/.config/git/config 再读 ~/.gitconfig，
-# 后者覆盖前者，所以个人层天然优先于公共层。
+# 公共层：两台机器完全相同的部分。个人层（身份、机器特有的代理）刻意**不**由本仓库管理
+# ——它含邮箱、人名和工作目录，属本机配置，手工维护在 ~/.gitconfig 里。
+# git 先读这份 XDG 文件、再读 ~/.gitconfig，后者覆盖前者，所以个人层天然优先。
 
 [init]
 	defaultBranch = main

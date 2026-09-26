@@ -172,7 +172,6 @@ Windows 目标由 `.chezmoiignore` 按 OS 排除。
 | `swaylock/config` | 同理，`__SWAYLOCK_BACKGROUND_DIR__` | `{{ .chezmoi.homeDir }}/.config/swaylock/backgrounds` |
 | `git/config.tmpl` | `gh` 写入的 credential 段含 `/home/jwu` | 模板化 `{{ .chezmoi.homeDir }}`，见下 |
 | `alacritty.toml.tmpl` | 两侧是**两份独立配置**而不是新旧版本：macOS 那份绑 `cmd+n` / `cmd+w`、字号 16；Linux 那份对着 `config.ghostty` 重写过，注释全在讲 niri / Wayland / `sctk-adwaita` | `{{ if eq .chezmoi.os }}` 两分支各放全文，两侧渲染逐字节一致 |
-| `dot_gitconfig.tmpl` | 个人层：Linux 是单一身份 + mihomo 代理，macOS 是 `useConfigOnly` + 7 条 `includeIf` 切身份 | 同上，见「公共层与个人层」 |
 
 waybar 的 `module_path` 和 swaylock 都不展开 `~`（见 `docs/waybar.md`、`docs/lockscreen.md`，
 两文件随 `configs` 迁入），必须有绝对路径，`.chezmoi.homeDir` 正好提供这个，且不再需要
@@ -214,23 +213,26 @@ waybar 的 `module_path` 和 swaylock 都不展开 `~`（见 `docs/waybar.md`、
 
 ### 公共层与个人层
 
-macOS 接入后发现两个平台其实共用同一批设置，只是各自把「身份」放进了不同的文件：Linux 把
+macOS 接入时发现两个平台其实共用同一批设置，只是各自把「身份」放进了不同的文件：Linux 把
 `[user]` 与 `[http] proxy` 硬编码进 `~/.config/git/config`，macOS 用 `~/.gitconfig` 的
 `includeIf` 按目录切换身份。同一份 `[delta]` / `[core]` / `[i18n]` 于是被维护了两遍。
 
-现在按 git 自己的读取顺序分层：
+现在按 git 自己的读取顺序分层，**并且只纳管公共的那一层**：
 
-| 层 | 文件 | 内容 |
-| --- | --- | --- |
-| 公共 | `~/.config/git/config`（`dot_config/git/config.tmpl`） | `[init]`、`[core]`、`[interactive]`、`[delta]`、`[i18n]`、`[credential]` |
-| 个人 | `~/.gitconfig`（`dot_gitconfig.tmpl`，按 OS 分支） | Linux：`[user]` + `[http] proxy`；macOS：`[user] useConfigOnly` + `includeIf` |
+| 层 | 文件 | 内容 | 归属 |
+| --- | --- | --- | --- |
+| 公共 | `~/.config/git/config`（`dot_config/git/config.tmpl`） | `[init]`、`[core]`、`[interactive]`、`[delta]`、`[i18n]`、`[credential]` | 本仓库 |
+| 个人 | `~/.gitconfig` | Linux：`[user]` + `[http] proxy`；macOS：`[user] useConfigOnly` + `includeIf` 与两个身份文件 | **每台机器手工维护** |
 
 git 先读 XDG 那份、再读 `~/.gitconfig`，后者覆盖前者，所以个人层天然优先——不需要任何
 `[include]` 把两者缝起来，也不存在「谁先加载」的顺序问题。
 
-macOS 的两个身份文件（`dot_gitconfig-jwu`、`dot_gitconfig-work`）也一并纳管，否则
-`includeIf` 指向的目标会在新机器上缺失。`gh` 仍然只往 `~/.config/git/config` 写，所以它回填的
-credential 段落在公共层，与机器无关。
+**个人层不进仓库是刻意的。** 它含邮箱、人名（`~/.gitconfig-jwu`、`~/.gitconfig-work`）
+以及 `~/dev/<雇主>/` 这样的工作目录结构，那是本机配置，不是可以公开的源。曾经把这一层做成
+`dot_gitconfig.tmpl` 纳管过，后来用 `chezmoi forget` 摘掉了：它删除源条目但保留家目录文件，
+所以那三份文件原样留在家里，只是不再由 chezmoi 过问。新机器上要手工配一次身份。
+
+`gh` 仍然只往 `~/.config/git/config` 写，所以它回填的 credential 段落在公共层，与机器无关。
 
 ## pi 的可变状态
 
@@ -596,7 +598,7 @@ macOS 机器（Apple Silicon，macOS 27.0）按 `docs/onboarding-a-machine.md` �
 | `.zshrc` 的 MPS 变量、`ghostty` 的 `auto-update-channel` | 收回源 |
 | `.zshrc` 的 nvm 分支指向未安装的 brew formula | 改成先探 `$NVM_DIR`、再回落 brew |
 | `~/.pi`、`~/.pi/agent`、`~/Library`、zed settings 的 0700/0600 | 加 `private_` 前缀 |
-| git 配置在两个平台上重复维护 | 拆成公共层 + 个人层，见「公共层与个人层」 |
+| git 配置在两个平台上重复维护 | 拆出公共层纳管；个人层（身份、代理）用 `chezmoi forget` 摘出仓库，见「公共层与个人层」 |
 
 另外补了 `bootstrap/macos.sh`，并给 `20` / `30` 两个脚本加了非 Linux 短路（`exit 0`，因为
 chezmoi 的 fail-fast 会让一个注定失败的脚本永久拖住 apply）。
@@ -604,9 +606,10 @@ chezmoi 的 fail-fast 会让一个注定失败的脚本永久拖住 apply）。
 验证：`chezmoi diff --include=files` 为 0、二次 `chezmoi apply -v` 输出 0 行、6 个 `run_*` 全部
 `exit 0`、权限目标逐个核对、`zsh -c 'source ~/.zshrc'` 后 nvm 与 node 均可用。
 
-**这 7 个提交对 Linux 侧同样生效**：`~/.pi`、`~/.pi/agent`、`~/Library`、
-`~/.config/zed/settings.json` 会收敛到 0700/0600，`~/.config/git/config` 变成只剩公共层，
-`[user]` 与 `[http] proxy` 移到新增的 `~/.gitconfig`。
+**这组提交对 Linux 侧同样生效**：`~/.pi`、`~/.pi/agent`、`~/Library`、
+`~/.config/zed/settings.json` 会收敛到 0700/0600；`~/.config/git/config` 只剩公共层。那边要在
+**apply 之前**先手工建好 `~/.gitconfig`（补回 `[user]` 与 `[http] proxy`），否则中间态会丢掉
+身份与代理——个人层不在仓库里，chezmoi 补不回来。
 
 ### 待做
 
@@ -627,8 +630,8 @@ chezmoi 的 fail-fast 会让一个注定失败的脚本永久拖住 apply）。
    剩余的 `aerospace reload-config` 可并入 `run_*`。macOS 接入时已按它演化出新写的
    `bootstrap/macos.sh`，所以这一步只剩下删旧文件。
 5. **git 代理已配置**：直连 GitHub 为 SSL 失败（`unexpected eof while reading`），已给
-   `github.com` 配持久代理 `127.0.0.1:7890`。macOS 接入把它移进了**个人层**
-   （`dot_gitconfig.tmpl` 的 linux 分支），所以它不再跟着公共层污染另一台机器。
+   `github.com` 配持久代理 `127.0.0.1:7890`。它随个人层一起移出了仓库，所以现在只存在于
+   那台 Linux 机器的 `~/.gitconfig` 里，不会再跟着公共层污染另一台机器。
 
 ## 在另一台机器上接入
 
