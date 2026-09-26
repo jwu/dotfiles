@@ -417,6 +417,28 @@ run_once_after_install-pi-config.sh
 **注意 `chezmoi diff` 的语义**：run 脚本会出现在 `diff` 输出里（因为 apply 时会执行它们）。
 判断配置层是否干净要用 `chezmoi diff --include=files`。
 
+### 已完成：首次运行验证（5/6）
+
+六个 run 脚本里已有五个在本机真实执行过（直接 `bash <script>`，不是 `chezmoi apply`）：
+
+| 脚本 | 结果 |
+| --- | --- |
+| `60-zed-cli` | 建出 `~/.local/bin/zed -> /usr/bin/zeditor` |
+| `20-gpu-watch` | 编译成功，产物 16632 字节 |
+| `30-niri-windows` | 正确识别已是最新（`3f30472`），跳过重建 |
+| `40-fcitx5` | 词库已存在 → 只 rebuild + 重启 fcitx5 |
+| `50-pi-config` | `Already up to date.`，pi CLI 已存在故跳过 npm 安装 |
+
+这验证了整条技术链：`.tmpl` 的 `sourceDir` 渲染、`include \| sha256sum`、脚本能 source 到被
+`.chezmoiignore` 排除的 `scripts/` 辅助文件、`wnmw_*` 函数与网络比对。
+
+**注意**：这些是手动 `bash` 执行的，没有记进 chezmoi 的 state，所以将来 `chezmoi apply`
+会再跑一遍（都幂等）。
+
+`run_once_before_10-provision-arch.sh` 尚未执行：它的唯一实质动作是 `sudo pacman -Syu`，
+需要单独确认（`pacman -Qu` 当时为 0，且 41 个包全部已装、`xwayland-satellite-git` 已装、
+`FONT=ter-v16n` 已设、`drivetemp.conf` 已存在）。
+
 ### 待做
 
 1. **阶段 5 — pi-config 缩水**：改 `pi-config/install.sh` 只处理扩展工程相关的事，之后
