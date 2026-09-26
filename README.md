@@ -563,6 +563,25 @@ chezmoi apply -v
    `github.com` 配持久代理 `127.0.0.1:7890`，并同步进 `dot_config/git/config.tmpl`。
    注意这段是**机器相关**的——没有 mihomo 的机器需要调整或删除。
 
+## 在另一台机器上接入
+
+macOS / Windows 机器上的接入说明是单独一份，因为那些机器的家目录尚未对账过：
+
+**[`docs/onboarding-a-machine.md`](docs/onboarding-a-machine.md)** —— 给那台机器上运行的 agent 读的
+自包含说明。核心是一条铁律：
+
+> 源里的 macOS / Windows 配置是在 Linux 上从**旧仓库的副本**复制进来的，不是从那些机器的家目录
+> 导入的，所以**可能比机器上那份旧**。对账之前不要 `apply`。
+
+文档还列出了三处已知的平台缺口（`20` / `30` 脚本在 macOS 上会因 `-ldl` 和 Wayland 依赖而失败、
+`bootstrap/` 只冇 Arch 版、`win/nu` 是孤儿）以及回报格式。
+
+准备好后：
+
+1. 在那台机器上让 agent 读该文档并执行，它会把对账结果与仓库改动 push 回来。
+2. 回到本机：`git pull`，核对源仍然自洽（`chezmoi diff --include=files` 必须回到 0），
+   并确认新加的平台短路没有破坏 Linux 分支——`20` / `30` 在本机仍应正常构建。
+
 ## 参考
 
 - 快速上手 <https://www.chezmoi.io/quick-start/>
