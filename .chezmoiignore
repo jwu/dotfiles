@@ -1,0 +1,19 @@
+# 仓库自身的文件，不是 chezmoi 源。
+#
+# 这里的 pattern 匹配的是「目标路径」，不是源路径。所以 `README.md` 指的是
+# 家目录下的 `~/README.md`——不加这一行的后果是 chezmoi apply 会真的在 ~ 下
+# 创建 README.md。
+README.md
+AGENTS.md
+LICENSE
+.gitignore
+.gitattributes
+
+# 文档与脚本目录
+docs
+bootstrap
+scripts
+
+# chezmoi 自身的特殊文件不需要列，但显式写出来避免误伤
+# .chezmoiignore
+# .chezmoitemplates

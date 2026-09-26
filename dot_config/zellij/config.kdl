@@ -1,0 +1,2 @@
+default_shell "/usr/bin/zsh"
+copy_command: "wl-copy"

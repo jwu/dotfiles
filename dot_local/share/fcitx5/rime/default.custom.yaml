@@ -1,0 +1,22 @@
+patch:
+  # 雾凇的默认配置来自 fcitx5/install-linux.sh 首次运行时下载解压到用户目录的
+  # default.yaml（schema_list 第一项是 rime_ice），这里只放按键补丁。
+  #
+  # 追加列表项写成「路径 + /+」。不要用 __patch 包住：__patch 修改的是它所在的
+  # 节点而不是目标配置，包住之后 key_binder/bindings 会变成这 4 条，把雾凇与
+  # rime-prelude 的默认绑定（Tab 切光标、Control+Shift+3/4 切标点与简繁、
+  # 小键盘映射等）整段替换掉。
+  key_binder/bindings/+:
+    - { when: has_menu, accept: equal, send: Page_Down }
+    - { when: paging, accept: equal, send: Page_Down }
+    - { when: has_menu, accept: minus, send: minus }
+    - { when: paging, accept: minus, send: Page_Up }
+
+  # Caps Lock：在中文态按下时点亮系统大写锁定，并同时切到 Rime 的 ascii_mode，
+  # 于是接下来的大写字母直接上屏到应用（不再进候选框）。
+  # commit_code = 若正在打拼音，先上屏原始编码再切英文。
+  ascii_composer/switch_key/Caps_Lock: commit_code
+
+  # 方案选单只保留一个热键（雾凇默认是 F4 / Control+grave / Control+Shift+grave）。
+  switcher/hotkeys:
+    - Control+Shift+grave

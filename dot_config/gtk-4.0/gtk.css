@@ -1,0 +1,12 @@
+/* GTK4 / libadwaita: square CSD window corners. Loaded automatically at
+ * PRIORITY_USER, so it wins over libadwaita. See docs/gtk4.md. */
+
+window.csd,
+window.csd.background {
+    border-radius: 0;
+}
+
+/* Clear the variable too, in case something still draws corners from it. */
+:root {
+    --window-radius: 0px;
+}

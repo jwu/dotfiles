@@ -1,0 +1,257 @@
+@import "./colors.css";
+
+/* Module baseline/line-height convention: see docs/waybar.md. Keep every
+ * module format prefixed with the two zero-width struts. */
+* {
+  font-family: "FiraMono Nerd Font";
+  font-size: 16px;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+window#waybar {
+  background: @ghostty_bg;
+}
+
+window#waybar > box {
+  padding: 0 10px;
+}
+
+#cpu:hover,
+#memory:hover,
+#bluetooth:hover,
+#network:hover,
+#pulseaudio:hover,
+#pulseaudio.microphone:hover,
+#pulseaudio.sink-muted:hover {
+  opacity: 0.5;
+}
+
+#cpu,
+#memory,
+#custom-gpu,
+#temperature,
+#custom-gpu-temp,
+#custom-ssd,
+#clock,
+#mpris,
+#tray,
+#privacy,
+#bluetooth,
+#network,
+#pulseaudio,
+#pulseaudio.microphone {
+  color: @ghostty_fg;
+  padding: 0 6px;
+}
+
+#workspaces button {
+  color: @ghostty_fg;
+  padding: 0;
+  /* Clear Adwaita's leaked button style: transparent background is not enough,
+   * the 1px border must go too. See docs/waybar.md. */
+  background-color: transparent;
+  background-image: none;
+  border: none;
+  box-shadow: none;
+  text-shadow: none;
+  outline: none;
+}
+
+/* No background on hover / pressed / active. */
+#workspaces button:hover,
+#workspaces button:active,
+#workspaces button:checked {
+  background-color: transparent;
+  background-image: none;
+  border: none;
+  box-shadow: none;
+  outline: none;
+}
+
+#workspaces button.active {
+  color: @ghostty_green;
+}
+
+#privacy {
+  margin: 4px;
+  color: @ghostty_yellow;
+}
+
+#clock {
+  color: @ghostty_blue;
+  margin-bottom: 1px; /* CJK clock baseline, see docs/waybar.md */
+}
+
+/* Usage: low green -> warning yellow -> critical red.
+ * Thresholds in modules.json / scripts (see docs/waybar.md). */
+#cpu,
+#memory,
+#custom-gpu {
+  color: @ghostty_green;
+}
+#cpu.warning,
+#memory.warning,
+#custom-gpu.warning {
+  color: @ghostty_yellow;
+}
+#cpu.critical,
+#memory.critical,
+#custom-gpu.critical {
+  color: @ghostty_red;
+}
+
+/* Temperature: neutral until hot. Thresholds in modules.json / scripts. */
+#temperature,
+#custom-gpu-temp,
+#custom-ssd {
+  color: @ghostty_fg;
+}
+#temperature.warning,
+#custom-gpu-temp.warning,
+#custom-ssd.warning {
+  color: @ghostty_yellow;
+}
+#temperature.critical,
+#custom-gpu-temp.critical,
+#custom-ssd.critical {
+  color: @ghostty_red;
+}
+
+/* Keep each reading attached to its component: CPU 4% 31°C / GPU 11% 40°C. */
+#temperature.cpu,
+#custom-gpu-temp {
+  padding: 0 6px 0 0;
+}
+
+#mpris {
+  color: @ghostty_yellow;
+}
+
+/* Wired blue, wireless green, rfkill-disabled red. There is deliberately no
+ * `disconnected` rule: it falls back to the @ghostty_fg of the colour list
+ * above. See docs/waybar.md. */
+#network.disabled {
+  color: @ghostty_red;
+}
+#network.wifi {
+  color: @ghostty_green;
+}
+#network.ethernet {
+  color: @ghostty_blue;
+}
+
+/* Bluetooth: off / rfkill-blocked red, connected blue; "on" keeps the default.
+ * The GTK foreground fallback is nearly invisible on @ghostty_bg, so the module
+ * must stay in the colour list above. See docs/waybar.md. */
+#bluetooth.off,
+#bluetooth.disabled {
+  color: @ghostty_red;
+}
+#bluetooth.connected {
+  color: @ghostty_blue;
+}
+
+#pulseaudio.sink-muted:not(.microphone) {
+  color: @ghostty_yellow;
+}
+#pulseaudio.microphone.source-muted {
+  color: @ghostty_red;
+}
+
+tooltip {
+  background: @ghostty_bg;
+  border: 1px solid @ghostty_fg;
+}
+tooltip * {
+  color: @ghostty_fg;
+  margin: 2px;
+  background: @ghostty_bg;
+}
+
+#pulseaudio-slider {
+  min-width: 90px;
+  margin: 0 8px;
+}
+
+#pulseaudio-slider trough {
+  min-height: 5px;
+  border-radius: 99px;
+  background: @ghostty_grey;
+  border: none;
+  box-shadow: none;
+}
+
+#pulseaudio-slider highlight {
+  min-height: 5px;
+  border-radius: 99px;
+  background: @ghostty_blue;
+  border: none;
+  box-shadow: none;
+}
+
+#pulseaudio-slider slider {
+  min-width: 11px;
+  min-height: 11px;
+  border-radius: 99px;
+  background: @ghostty_fg;
+  border: none;
+  box-shadow: none;
+  margin: -3px 0;
+}
+
+/* cffi/niri-windows: current-workspace window minimap. It inserts its own
+ * widgets, so the strut convention above does not apply and margin/padding are
+ * ignored. See docs/waybar.md before changing anything here. */
+.cffi-niri-windows .column {
+  background-color: alpha(@ghostty_fg, 0.10);
+  background-clip: padding-box;
+  border-top: 1px solid transparent;
+  border-bottom: 1px solid transparent;
+}
+
+/* Floating windows: translucent purple, distinct from the grey tiles. */
+.cffi-niri-windows .floating {
+  background-color: alpha(@ghostty_purple, 0.15);
+  background-clip: padding-box;
+  border-top: 1px solid transparent;
+  border-bottom: 1px solid transparent;
+}
+
+.cffi-niri-windows .tile {
+  background-color: alpha(@ghostty_fg, 0.38);
+}
+
+.cffi-niri-windows .tile:hover {
+  background-color: alpha(@ghostty_fg, 0.65);
+}
+
+/* Window activity, sampled from /proc once a second by the module: green for a
+ * little work, yellow for a lot, red for more than a whole core (or a
+ * comparable amount of disk). Idle is the plain grey above.
+ *
+ * This block has to stay before `.tile:active`. GTK3 picks the later rule when
+ * specificity ties, so focus (blue) still wins over activity, and activity
+ * still wins over the hover shade above. `.tile.urgent` comes after it and
+ * wins over red-on-red. See docs/waybar.md. */
+.cffi-niri-windows .tile.light {
+  background-color: @ghostty_green;
+}
+
+.cffi-niri-windows .tile.medium {
+  background-color: @ghostty_yellow;
+}
+
+.cffi-niri-windows .tile.heavy {
+  background-color: @ghostty_red;
+}
+
+/* :active = focused window. */
+.cffi-niri-windows .tile:active {
+  background-color: @ghostty_blue;
+}
+
+/* niri urgent windows (2.2.0+). */
+.cffi-niri-windows .tile.urgent {
+  background-color: @ghostty_red;
+}

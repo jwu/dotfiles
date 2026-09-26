@@ -1,0 +1,31 @@
+/* Preset: One Dark -- titlebar matches the terminal background (#282c34).
+ * Enable via config.ghostty (gtk-custom-css); reload with Ctrl+Shift+,.
+ * See docs/ghostty-titlebar.md. */
+
+window headerbar {
+    background-color: #282c34;
+    color: #abb2bf;
+}
+
+window headerbar:backdrop {
+    background-color: #24282f;      /* dimmed for backdrop */
+}
+
+/* Tab bar (>=2 tabs, or window-show-tab-bar=always) follows. */
+tabbar .box {
+    background-color: #282c34;
+    color: #abb2bf;
+}
+
+tabbar .box:backdrop {
+    background-color: #24282f;
+}
+
+/* Match the window backdrop to hide the ~2px strip above the titlebar. */
+window.csd,
+window.csd.background {
+    background-color: #282c34;
+}
+
+/* Uncomment to drop the 1px top outline: */
+/* window.csd { outline: none; } */

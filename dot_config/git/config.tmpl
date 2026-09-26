@@ -1,0 +1,25 @@
+[user]
+	email = karasaya@gmail.com
+	name = Johnny Wu
+[init]
+	defaultBranch = main
+[core]
+  pager = delta
+	quotepath = false
+[interactive]
+  diffFilter = delta --color-only
+[delta]
+  navigate = true
+  light = false
+  line-numbers = true
+  side-by-side = true
+  syntax-theme = OneHalfDark
+[credential "https://github.com"]
+	helper = 
+	helper = !{{ .chezmoi.homeDir }}/.local/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !{{ .chezmoi.homeDir }}/.local/bin/gh auth git-credential
+[i18n]
+	logOutputEncoding = utf-8
+	commitEncoding = utf-8

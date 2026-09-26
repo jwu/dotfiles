@@ -1,0 +1,13 @@
+/* Waybar palette, mirroring Ghostty's active theme (config.ghostty, "One Half
+ * Dark"). Keep in sync with the `palette = N=...` lines there; the 1:1 mapping
+ * is intentional so a waybar accent and the terminal accent are the same hex. */
+
+@define-color ghostty_bg     #282c34;  /* config.ghostty background */
+@define-color ghostty_fg     #abb2bf;  /* palette 7   white  */
+@define-color ghostty_red    #e86671;  /* palette 1   red    */
+@define-color ghostty_green  #98c379;  /* palette 2   green  */
+@define-color ghostty_yellow #e5c07b;  /* palette 3   yellow */
+@define-color ghostty_blue   #61afef;  /* palette 4   blue   */
+@define-color ghostty_purple #c678dd;  /* palette 5   purple */
+@define-color ghostty_cyan   #56b6c2;  /* palette 6   cyan   */
+@define-color ghostty_grey   #5c6370;  /* palette 8   bright black */

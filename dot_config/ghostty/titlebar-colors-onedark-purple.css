@@ -1,0 +1,33 @@
+/* Preset: One Dark purple titlebar + dark text (current).
+ * titlebar #c678dd / text #282c34 (contrast ~4.75:1); backdrop #b26cc7.
+ * Other presets: titlebar-colors-onedark.css, titlebar-colors-default.css.
+ * Enable via config.ghostty (gtk-custom-css); see docs/ghostty-titlebar.md. */
+
+/* Titlebar. */
+window headerbar {
+    background-color: #c678dd;
+    color: #282c34;
+}
+
+window headerbar:backdrop {
+    background-color: #b26cc7;      /* dimmed purple (~3.9:1 on dark text) */
+}
+
+/* Tab bar (>=2 tabs, or window-show-tab-bar=always) follows. */
+tabbar .box {
+    background-color: #c678dd;
+    color: #282c34;
+}
+
+tabbar .box:backdrop {
+    background-color: #b26cc7;
+}
+
+/* Match the window backdrop to hide the ~2px strip above the titlebar. */
+window.csd,
+window.csd.background {
+    background-color: #c678dd;
+}
+
+/* Uncomment to drop the 1px top outline: */
+/* window.csd { outline: none; } */

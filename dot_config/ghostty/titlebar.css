@@ -1,0 +1,57 @@
+/* Ghostty GTK titlebar: slimmer bar (geometry only) + square window corners.
+ * Colors live in titlebar-colors-*.css. See docs/ghostty-titlebar.md. */
+
+/* Container. */
+window headerbar,
+window headerbar.default-decoration {
+    min-height: 22px;          /* Adwaita: 46/47px */
+}
+
+window headerbar > windowhandle > box {
+    padding: 0 6px 1px 6px;    /* Adwaita: 6px 7px 7px 7px */
+}
+
+/* Window controls (minimize / maximize / close). */
+window headerbar windowcontrols > button {
+    min-width: 26px;           /* Adwaita: 34px */
+    padding: 0;
+}
+
+window headerbar windowcontrols > button > image {
+    min-height: 18px;          /* Adwaita: 30px -- this is the floor that blocked shrinking */
+    min-width: 18px;
+    padding: 0;
+}
+
+/* Header icon buttons (new tab, split, menu). */
+window headerbar button {
+    min-height: 18px;          /* Adwaita: 24px */
+    padding: 1px 4px;          /* Adwaita: 4px 9px */
+}
+
+/* Square corners. */
+window.csd,
+window.csd.background {
+    border-radius: 0;
+}
+
+/* Remove the scrolled-content top indicator line (libadwaita undershoot with
+ * gtk-toolbar-style=flat). See docs/ghostty-titlebar.md. */
+toolbarview.undershoot-top scrolledwindow > undershoot.top,
+toolbarview.undershoot-bottom scrolledwindow > undershoot.bottom,
+scrolledwindow.undershoot-top > undershoot.top,
+scrolledwindow.undershoot-bottom > undershoot.bottom {
+    box-shadow: none;
+    background: none;
+}
+
+/* Optional: even slimmer bar (saves ~10px more). See docs/ghostty-titlebar.md.
+ *
+ * window headerbar,
+ * window headerbar.default-decoration { min-height: 8px; }
+ * window headerbar > windowhandle > box { padding: 0; }
+ * window headerbar windowcontrols > button { min-width: 4px; padding: 0; }
+ * window headerbar windowcontrols > button > image { min-height: 10px; min-width: 10px; }
+ * window headerbar button { min-height: 10px; padding: 0; }
+ * headerbar windowtitle .title { font-size: 8pt; }
+ */

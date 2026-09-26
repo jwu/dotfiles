@@ -1,0 +1,197 @@
+// Niri configuration migrated from the active Hyprland Lua config.
+
+input {
+    // Focus-follows-mouse only when the view would scroll at most 25% of the
+    // working-area width. Small pans (neighbour already half revealed) are
+    // allowed; big pans that would shove the old column mostly off screen are
+    // refused. Lower it for a stricter feel, raise it for a jumpier one.
+    focus-follows-mouse max-scroll-amount="25%"
+
+    // niri only re-focuses focus-follows-mouse when pointer motion crosses into
+    // a new window, so a pointer parked on another window never gets focus. Warp
+    // the pointer to the focused window to keep the two in sync. See docs/niri.md.
+    warp-mouse-to-focus
+
+    keyboard {
+        xkb {
+            layout "us"
+        }
+        repeat-rate 30
+        repeat-delay 300
+    }
+
+    mouse {
+      accel-speed -0.6
+      accel-profile "flat"
+    }
+
+    touchpad {
+        // Tap-to-click.
+        tap
+
+        // Palm rejection: ignore the touchpad briefly after each keypress.
+        dwt
+
+        // Tap-and-drag, plus drag-lock so a brief finger lift keeps the drag alive.
+        drag true
+        drag-lock
+
+        // Two-finger scroll direction. This node takes no argument: present =
+        // natural scrolling (content follows the fingers), absent = traditional
+        // scrolling (matches the mouse wheel). Flip direction by adding or
+        // removing this single line.
+        natural-scroll
+
+        // Scale the scroll speed (1.0 = niri default). Note this is only a speed
+        // multiplier -- libinput deliberately does not implement kinetic
+        // (momentum) scrolling for touchpads.
+        scroll-factor horizontal=1.0 vertical=0.85
+
+        // One finger = left, two = right, three = middle.
+        click-method "clickfinger"
+        tap-button-map "left-right-middle"
+
+        // macOS-like acceleration: precise when slow, higher gain as finger speed
+        // rises. See docs/niri.md for why this beats "flat", and for accel-speed.
+        accel-profile "adaptive"
+        accel-speed -0.05
+
+        // Left+right click emulates a middle click.
+        middle-emulation
+    }
+}
+
+// Hide the pointer while typing and once it has been idle. See docs/niri.md.
+cursor {
+    hide-when-typing
+    hide-after-inactive-ms 2000
+}
+
+// DP-3 is the Dell U2722DX.
+output "DP-3" {
+    mode "2560x1440@59.951"
+    scale 1
+    transform "normal"
+}
+
+// eDP-1 is the built-in Apple Retina panel (2560x1600, ~227 PPI).
+// scale 1.6 gives a 1600x1000 logical size (~142 PPI), matching a
+// typical 15.6" 1080p laptop for comfortable UI sizing.
+output "eDP-1" {
+    mode "2560x1600@60.001"
+    scale 1.6
+    transform "normal"
+}
+
+// prefer-no-csd
+
+layout {
+    // Niri uses one gap value for both column spacing and the outer gap.
+    gaps 4
+    center-focused-column "on-overflow"
+
+    preset-column-widths {
+        proportion 0.33333
+        proportion 0.5
+        proportion 0.66667
+        proportion 1.0
+    }
+
+    default-column-width { proportion 0.33333; }
+
+    focus-ring {
+        width 2
+        active-color "#7fc8ff"
+        inactive-color "#505050"
+    }
+
+    border {
+        off
+    }
+}
+
+spawn-at-startup "waybar"
+spawn-at-startup "fcitx5"
+spawn-at-startup "wl-paste" "--watch" "cliphist" "store"
+
+// No idle-based swayidle here: locking is on demand (Mod+L) and the screen-off
+// timer runs inside niri-lock while the session is locked. See docs/lockscreen.md.
+
+screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
+
+binds {
+    Mod+Return { spawn "ghostty"; }
+    Mod+Shift+Return { spawn "~/.local/bin/niri-open-terminal-below"; }
+    Mod+E { spawn "nautilus"; }
+    Mod+Space { spawn "fuzzel"; }
+    Ctrl+Space { spawn "fcitx5-remote" "-t"; }
+
+    // These match the active Hyprland Lua bindings.
+    Mod+W { close-window; }
+    Mod+V { toggle-window-floating; }
+    Mod+Shift+V { spawn "~/.local/bin/niri-clipboard-history"; }
+    Mod+Shift+Q { quit; }
+
+    Mod+O repeat=false { toggle-overview; }
+
+    Mod+Left  { focus-column-left; }
+    Mod+Down  { focus-window-down; }
+    Mod+Up    { focus-window-up; }
+    Mod+Right { focus-column-right; }
+    Mod+WheelScrollDown { focus-column-right; }
+    Mod+WheelScrollUp   { focus-column-left; }
+    Mod+H     { focus-column-left; }
+    Mod+J     { focus-window-down; }
+    Mod+K     { focus-window-up; }
+    Mod+L { spawn "~/.local/bin/niri-lock"; }
+
+    // Recovery from a wedged/dead screen locker: niri keeps a red locked session
+    // when the locker dies (see niri FAQ). Kill whatever holds the lock and
+    // bring up the known-good locker; the flag makes it work while locked.
+    Mod+Alt+L allow-when-locked=true { spawn-sh "pkill -x hyprlock; pkill -x swaylock; sleep 0.3; swaylock -f"; }
+
+    Mod+Ctrl+Left  { move-column-left; }
+    Mod+Ctrl+Down  { move-window-down; }
+    Mod+Ctrl+Up    { move-window-up; }
+    Mod+Ctrl+Right { move-column-right; }
+    Mod+Ctrl+H     { move-column-left; }
+    Mod+Ctrl+J     { move-window-down; }
+    Mod+Ctrl+K     { move-window-up; }
+    Mod+Ctrl+L     { move-column-right; }
+
+    Mod+Ctrl+BracketLeft  { consume-or-expel-window-left; }
+    Mod+Ctrl+BracketRight { consume-or-expel-window-right; }
+
+    Mod+1 { focus-workspace 1; }
+    Mod+2 { focus-workspace 2; }
+    Mod+3 { focus-workspace 3; }
+    Mod+4 { focus-workspace 4; }
+    Mod+5 { focus-workspace 5; }
+    Mod+6 { focus-workspace 6; }
+    Mod+7 { focus-workspace 7; }
+    Mod+8 { focus-workspace 8; }
+    Mod+9 { focus-workspace 9; }
+
+    Mod+Page_Down { focus-workspace-down; }
+    Mod+Page_Up   { focus-workspace-up; }
+    Mod+U         { focus-workspace-down; }
+    Mod+I         { focus-workspace-up; }
+
+    // Move the focused column to the workspace below/above.
+    Mod+Ctrl+Page_Down { move-column-to-workspace-down; }
+    Mod+Ctrl+Page_Up   { move-column-to-workspace-up; }
+
+    Mod+R { switch-preset-column-width; }
+    Mod+Shift+R { switch-preset-column-width-back; }
+    Mod+Equal { set-column-width "+10%"; }
+    Mod+Minus { set-column-width "-10%"; }
+    Mod+F { maximize-column; }
+    Mod+Shift+F { fullscreen-window; }
+    Mod+M { maximize-window-to-edges; }
+
+    Print { screenshot; }
+    Ctrl+Print { screenshot-screen; }
+    Alt+Print { screenshot-window; }
+
+    Mod+Shift+Slash { show-hotkey-overlay; }
+}

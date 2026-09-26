@@ -1,0 +1,22 @@
+/* Preset: original Ghostty auto chrome (measured 2026-09-22).
+ * titlebar #222226 / text #ffffff, 1px top outline #323235; backdrop #1e1e22.
+ * Kept explicit so it survives libadwaita/Ghostty upgrades and can be restored.
+ * Enable via config.ghostty (gtk-custom-css); see docs/ghostty-titlebar.md. */
+
+window headerbar {
+    background-color: #222226;
+    color: #ffffff;
+}
+
+window headerbar:backdrop {
+    background-color: #1e1e22;
+}
+
+tabbar .box {
+    background-color: #222226;
+    color: #ffffff;
+}
+
+tabbar .box:backdrop {
+    background-color: #1e1e22;
+}

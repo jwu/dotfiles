@@ -1,0 +1,21 @@
+{
+  "reload_style_on_change": true,
+  "layer": "top",
+  "position": "top",
+  "margin-top": 0,
+  "margin-bottom": 0,
+  "margin-left": 0,
+  "margin-right": 0,
+  "spacing": 0,
+  "include": ["~/.config/waybar/modules.json"],
+  "modules-left": ["clock", "cpu", "temperature#cpu", "custom/gpu", "custom/gpu-temp", "memory", "custom/ssd"],
+  "modules-center": ["mpris", "niri/workspaces", "privacy"],
+  "modules-right": [
+    "cffi/niri-windows",
+    "tray",
+    "network",
+    "bluetooth",
+    "pulseaudio#microphone",
+    "group/audio"
+  ]
+}
