@@ -18,6 +18,11 @@ export STARSHIP_CONFIG=~/.config/starship.toml
 {{ if eq .chezmoi.os "linux" -}}
 export PI_NERD_FONTS=1
 export COLORTERM=truecolor
+{{ else -}}
+# Apple Silicon 的 MPS 后端没有覆盖全部算子，缺算子时默认直接报错。
+export PYTORCH_ENABLE_MPS_FALLBACK=1
+# 高水位设为 0，避免它在显存紧张时把张量提前换出。
+export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
 {{ end }}
 # ------------------------------
 # zsh & oh-my-zsh
@@ -123,8 +128,16 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 {{ else -}}
-[ -s "$(brew --prefix nvm)/nvm.sh" ] && source "$(brew --prefix nvm)/nvm.sh"  # This loads nvm
-[ -s "$(brew --prefix nvm)/etc/bash_completion.d/nvm" ] && source "$(brew --prefix nvm)/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
+# nvm 有两种装法：brew 的 formula 在 $(brew --prefix nvm)，git clone 的在
+# $NVM_DIR。本机是后者；而 `brew --prefix nvm` 对没装的 formula 也会返回一个
+# 不存在的路径且退出码为 0，所以只能靠 -s 探文件。
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  source "$NVM_DIR/nvm.sh"  # This loads nvm
+  [ -s "$NVM_DIR/bash_completion" ] && source "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+elif [ -s "$(brew --prefix nvm 2>/dev/null)/nvm.sh" ]; then
+  source "$(brew --prefix nvm)/nvm.sh"  # This loads nvm
+  [ -s "$(brew --prefix nvm)/etc/bash_completion.d/nvm" ] && source "$(brew --prefix nvm)/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
+fi
 {{ end }}
 # cargo
 export PATH=~/.cargo/bin:$PATH
