@@ -77,6 +77,17 @@ Ghostty 侧的 `mouse-hide-while-typing = true` 只覆盖它自己的窗口，ni
 会话生效的。另外 Ghostty ≥ 1.0.0 实现了 OSC 22 指针形状（用 CSS 光标名），程序可以
 `\e]22;none\a` 隐藏、`\e]22;default\a` 恢复，适合在编辑器里临时藏起来，不属于常驻规则。
 
+## 一份 config 管两台机器：output 段按端口名并存
+
+`config.kdl` 里同时留着三块 `output`：`DP-3`（Dell U2722DX）、`eDP-1`（笔记本内置 Retina）
+和 `HDMI-A-3`（那台 Mac mini 上 480x320 的小 HDMI 屏）。niri 对当前不存在的输出名只是不
+匹配，不报错也没有副作用，所以两台机器共用一个文件：Mac mini 上前两条规则空转，笔记本上
+第三条空转。
+
+`HDMI-A-3` 那块屏用的本来就是它的 preferred mode，`mode` 与 `scale 1` 都等于 niri 默认值，
+仍显式写出来，是为了让「这块屏走原生分辨率、不缩放」成为配置里看得见的事实，而不是依赖
+默认行为。当初是在接入对账时补回来的：源里的 `eDP-1` 会把家目录那份本机声明替掉。
+
 ## 触控板手感
 
 `linux/.config/niri/config.kdl` 的 `touchpad` 段按 macOS 的手感调过一轮，取舍记录如下。

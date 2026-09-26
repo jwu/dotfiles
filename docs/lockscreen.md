@@ -18,6 +18,13 @@ Linux 侧锁屏统一走 `linux/.local/bin/niri-lock`：默认用 **hyprlock**�
 
 `Mod+Alt+L` 那条恢复绑定直接跑 `swaylock -f`，绕过 `niri-lock`，那条路径没有熄屏计时。
 
+### Mac mini 例外：不装这个计时器
+
+`niri-lock` 是 `.tmpl`，按 `.chezmoi.hostname` 分岔：`archlinux-macmini` 渲染出的脚本
+**不含** swayidle 段，锁屏期间显示器一直亮着。那台机器 2026-09-25 手工移除过计时器，接入
+对账时把这个差异固化进模板 —— 否则每次 `apply` 都会照源把计时器带回来。其余主机渲染出的
+仍是上面的 60 秒版本。
+
 ## hyprlock 配置
 
 样式拆成四份文件，都在 `linux/.config/hypr/`：
