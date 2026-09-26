@@ -786,3 +786,29 @@ Zed 的 Windows settings 与 Unix 侧那份已经对齐（补齐 `project_panel`
   `create_mcp.json` 里只留 `blender` 与 `chrome-devtools`（`open-pencil` 已去掉）。
 - Windows 那台已有的 `settings.json` 指向 `c:/dev/pi-config/extensions`，`create_` **不会**改它。
   迁移时要么手工改这一行，要么删掉该文件让模板按 `c:/bin/pi-config/extensions` 重写。
+
+### 2026-09-27 macOS 增量同步：zellij 与 gh helper
+
+macOS 那台在 `505a4fa` 之后一直没再 apply，累积了一批源改动：`ghostty` 的
+`auto-update-channel = tip`、zed 的字体 fallback、Rime 的 `squirrel.custom.yaml`、pi 的
+`prompts/commit.md`、`.zshrc` 的 Apple Silicon MPS 变量与 nvm 分支，以及 `~/.config/zed`、
+`~/.pi`、`~/Library/Rime` 的权限收敛。同步时修掉两处仓库侧的问题：
+
+- **zellij 整体移除。** 唯一的源文件 `dot_config/zellij/config.kdl` 是 Linux 专用
+  （`default_shell "/usr/bin/zsh"`、`copy_command "wl-copy"`），却因为 `.chezmoiignore`
+  只在 Windows 侧排除而会落到 macOS 家目录，而 macOS 从来没装过 zellij。它也不再被
+  使用，所以直接删源，并同步 README 的工具列表与 `.chezmoiignore` 的排除项。
+  **Linux 那台的 `~/.config/zellij/config.kdl` 是 chezmoi 早先放下的，删源条目不会回收
+  它**，要手工删。
+- **gh credential helper 不再假定非 Windows 平台都有 `~/.local/bin/gh`。** macOS 的 gh
+  来自 Homebrew，旧模板渲染出的 `~/.local/bin/gh` 并不存在，helper 会直接失败。改为只有
+  Linux 用 `{{ .chezmoi.homeDir }}/.local/bin/gh`，其余平台用 PATH 上的 `gh`。
+
+另外两处收尾：`run_once_after_60-zed-cli.sh.tmpl` 补了非 Linux 短路（它写的是 Arch 的
+`/usr/bin/zeditor`，在 macOS 上只能靠 `command -v` 落空后打印一行再跳过）；这台机器缺
+`~/.config/chezmoi/chezmoi.toml`，按「现有机器需要先写 sourceDir」补回了
+`sourceDir = "/Users/jwu/bin/dotfiles"`。
+
+留意：`~/.local/share/chezmoi` 不存在意味着脚本记账（`scriptState`）也一并丢了，这次
+apply 把 6 个 `run_*` 全部重跑了一遍。它们都幂等，重跑的代价是 Oh My Zsh 插件与
+`~/bin/pi-config` 各拉一次 `git pull`。
