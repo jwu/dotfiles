@@ -356,15 +356,29 @@ run_once_after_install-pi-config.sh
 - 对账用脚本把 `configs` 里所有 `$HOME/*` 写入目标与 `chezmoi managed` 逐条比对，而非
   人工读脚本——`niri/config.kdl` 的遗漏就是这样发现并补上的。
 
+### 已完成：阶段 2 对账
+
+对 `configs`、`desktop-settings`、`pi-config` 的每个配置源文件与家目录对应文件逐对 `diff`，
+结论：**没有「仓库有而家目录没有」的反向漂移**，两个退役仓库的配置可以安全删除。
+
+全部 4 处差异都是预期内的，且方向都是「家目录 ⊇ 仓库」或语义等价：
+
+| 文件 | 差异性质 |
+| --- | --- |
+| `configs/common/.gitconfig` | 家目录是超集：多出 `gh` 写入的 2 个 credential 段与 `[http]` 代理段；另有缩进风格差异（git 自己重写为 tab）。**无内容丢失** |
+| `configs/linux/.config/waybar/modules.json` | 仓库是 `__WAYBAR_MODULE_DIR__` 占位符，家目录是渲染后的绝对路径——语义等价，且该语义已由 `modules.json.tmpl` 继承 |
+| `configs/linux/.config/swaylock/config` | 同上（`__SWAYLOCK_BACKGROUND_DIR__`） |
+| `pi-config/settings.json` | 家目录多出 `lastChangelogVersion` / `defaultProvider` / `defaultModel` 三个**本机状态**字段；`packages` 插件列表两边都有。已决定整体排除 |
+
+`desktop-settings` 的全部 6 个配置与 `pi-config` 的静态资源（`agents` / `prompts` / `skills` /
+`themes`）逐字节一致。
+
 ### 待做
 
-1. **阶段 2 — 与两个退役仓库对账**。逐个比对源文件与 `configs` / `desktop-settings` 中的
-   副本，找出「仓库里有但家目录没有」的内容（反向漂移）。已知 1 处：
-   `~/.pi/agent/settings.json`（本机 provider 状态，已决定排除）。
-2. **阶段 4 — 迁入脚本层**。`bootstrap/arch.sh`、`run_*` 脚本、`win/` 的 bat 与 `cmds/`、
+1. **阶段 4 — 迁入脚本层**。`bootstrap/arch.sh`、`run_*` 脚本、`win/` 的 bat 与 `cmds/`、
    `docs/`、`src/gpu-watch.c`、`waybar-niri-windows.sh`；并按「Windows 侧」重写 `init.bat`。
-3. **阶段 5 — pi-config 缩水**，并加 `run_once_after_install-pi-config.sh`。
-4. **阶段 6 — 退役两个仓库**并清理 96 个 `.bak`。
+2. **阶段 5 — pi-config 缩水**，并加 `run_once_after_install-pi-config.sh`。
+3. **阶段 6 — 退役两个仓库**并清理 96 个 `.bak`。
 
 ## 待确认
 
@@ -379,9 +393,9 @@ run_once_after_install-pi-config.sh
    确定 nushell 版本与目标位置。
 4. **`mac/config.sh` 是否整体退役**：它只有 95 行且全是 `cp`，配置迁走后没有内容，
    剩余的 `aerospace reload-config` 可并入 `run_*`。
-5. **git push 的网络**：直连 GitHub 现为 SSL 失败（`unexpected eof while reading`），
-   经 mihomo `127.0.0.1:7890` 可用。要不要给 git 配持久代理，还是需要时用
-   `git -c http.proxy=... push`？
+5. **git 代理已配置**：直连 GitHub 为 SSL 失败（`unexpected eof while reading`），已给
+   `github.com` 配持久代理 `127.0.0.1:7890`，并同步进 `dot_config/git/config.tmpl`。
+   注意这段是**机器相关**的——没有 mihomo 的机器需要调整或删除。
 
 ## 参考
 
