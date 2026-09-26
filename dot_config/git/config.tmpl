@@ -1,6 +1,7 @@
-[user]
-	email = karasaya@gmail.com
-	name = Johnny Wu
+# 公共层：两台机器完全相同的部分。个人层（身份、代理）在 ~/.gitconfig 里，
+# 由 dot_gitconfig.tmpl 部署。git 先读 ~/.config/git/config 再读 ~/.gitconfig，
+# 后者覆盖前者，所以个人层天然优先于公共层。
+
 [init]
 	defaultBranch = main
 [core]
@@ -23,5 +24,3 @@
 [i18n]
 	logOutputEncoding = utf-8
 	commitEncoding = utf-8
-[http "https://github.com/"]
-	proxy = http://127.0.0.1:7890
