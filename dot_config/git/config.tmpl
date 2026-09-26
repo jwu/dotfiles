@@ -1,6 +1,7 @@
-# 公共层：两台机器完全相同的部分。个人层（身份、机器特有的代理）刻意**不**由本仓库管理
-# ——它含邮箱、人名和工作目录，属本机配置，手工维护在 ~/.gitconfig 里。
-# git 先读这份 XDG 文件、再读 ~/.gitconfig，后者覆盖前者，所以个人层天然优先。
+# Shared layer: identical on every machine. The per-machine half (identity,
+# proxy) is deliberately unmanaged -- it holds an email address, a name and a
+# work directory layout. It lives in ~/.gitconfig, which git reads second and
+# therefore overrides this file. See README.md, the shared / per-machine split.
 
 [init]
 	defaultBranch = main

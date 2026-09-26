@@ -10,16 +10,16 @@ patch:
     label_format: "%s"
     layout:
       align_type: bottom
-      shadow_radius: 4                       # 阴影区域半径，为 0 不显示阴影；需要同时在配色方案中指定非透明的阴影颜色
-      shadow_offset_x: 1                     # 阴影左右偏移距离
-      shadow_offset_y: 1                     # 阴影上下偏移距离
+      shadow_radius: 4                       # 0 = no shadow; needs an opaque colour in the scheme
+      shadow_offset_x: 1                     # shadow X offset
+      shadow_offset_y: 1                     # shadow Y offset
       corner_radius: 4
-      round_corner: 4                        # 候选背景色块圆角半径，又名 hilited_corner_radius
+      round_corner: 4                        # candidate block radius (hilited_corner_radius)
       border_width: 1
-      margin_x: 0                            # 主体元素和候选框的左右边距；为负值时，不显示候选框
-      margin_y: 0                            # 主体元素的上下边距；为负值时，不显示候选框
-      hilite_spacing: 4                      # 候选项和相应标签的间距
-      hilite_padding: 4                      # 高亮区域和内部文字的间距，影响高亮区域大小
+      margin_x: 0                            # negative hides the panel
+      margin_y: 0                            # negative hides the panel
+      hilite_spacing: 4                      # gap between candidate and index
+      hilite_padding: 4                      # padding inside the highlight
 
   preset_color_schemes/jwu:
     name: jwu
