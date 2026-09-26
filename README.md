@@ -652,6 +652,11 @@ chezmoi 的 fail-fast 会让一个注定失败的脚本永久拖住 apply）。
 雇主名一起从历史里抹掉。所以上面那个区间的 hash 已经不是重写前的值。Linux 机器若已经拉过这
 批提交，需要 `git fetch && git reset --hard origin/main`（或重新 clone）。
 
+**但重写并不等于在 GitHub 上消失。** force push 只移动了分支；旧 commit 在 GitHub 自行 GC
+之前仍可按 SHA 读取（实测 `gh api repos/jwu/dotfiles/contents/...?ref=<旧SHA>` 与 commit 网页
+都是 200），要立即失效只能联系 GitHub Support 或删除重建仓库。本例中已决定不再处理：需要知道
+40 位 SHA 才能读到，爬虫不会遍历随机 SHA。
+
 Windows 侧尚未开始，那部分的三处已知问题（`win/nu` 孤儿、`win/*.bat` 从未在真实 Windows 上跑过、
 `settings.json` 用绝对路径）原样保留。
 
