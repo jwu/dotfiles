@@ -92,8 +92,16 @@ dot_pi/agent/
   themes/one-dark.json                 ← pi-config: themes/
   keybindings.json                     ← pi-config
   APPEND_SYSTEM.md                     ← pi-config
+# macOS 专有（本机不存在，从仓库搬入）
+dot_aerospace.toml                         ← desktop-settings: aerospace/.aerospace.toml
+dot_config/ghostty/config                  ← configs: mac/.config/ghostty/config
+Library/Rime/squirrel.custom.yaml          ← desktop-settings: rime/squirrel.custom.yaml
+# Windows 专有（本机不存在，从仓库搬入）
 AppData/Roaming/alacritty/alacritty.toml   ← configs: win/alacritty.toml
 AppData/Roaming/starship.toml              ← configs: win/starship.toml
+AppData/Roaming/Rime/weasel.custom.yaml    ← desktop-settings: rime/weasel.custom.yaml
+AppData/Local/clink/clink_settings         ← configs: win/clink_profile/
+AppData/Local/clink/{clink,fzf,zoxide}.lua ← configs: win/clink_scripts/
 .chezmoiignore
 bootstrap/arch.sh
 run_*.sh
@@ -106,17 +114,18 @@ run_*.sh
 
 `configs` 的 `common/` 概念在本仓库消失：`common` + `linux` + `mac` 三份塌缩成一份文件加模板分支。
 
-### 已导入的 67 个文件
+### 已导入的文件
 
-阶段 1 已完成（见「实施状态」）。当前源里是 67 个文件 + 47 个目录条目，`chezmoi diff`
-为空。
+阶段 1 与平台搬入已完成（见「实施状态」）。源里共 **77 个文件** = 67 个 Linux 目标 +
+3 个 macOS 专有 + 7 个 Windows 专有；5 个模板。`chezmoi diff` 在 Linux 上为空，macOS /
+Windows 目标由 `.chezmoiignore` 按 OS 排除。
 
 ## 模板化的文件
 
 | 文件 | 差异 | 处理 |
 | --- | --- | --- |
-| `dot_zshrc.tmpl` | 26 行（Linux 独有 ZVM / waybar announce / `PI_NERD_FONTS`；macOS 独有 brew nvm 与 `/Applications/*` alias） | `{{ if eq .chezmoi.os "linux" }}` 分支 |
-| `starship.toml.tmpl` | 4 行 | 同上 |
+| `dot_zshrc.tmpl` | 26 行（Linux 独有 ZVM / waybar announce / `PI_NERD_FONTS`；macOS 独有 brew nvm 与 `/Applications/*` alias） | **已完成**：`{{ if eq .chezmoi.os }}` 分支，两侧渲染逐字节一致 |
+| `dot_config/starship.toml.tmpl` | Linux / macOS 差 2 行（`>` vs `❯`） | **已完成**：同上 |
 | `waybar/modules.json` | 当前是 `__WAYBAR_MODULE_DIR__` 占位符经 `sed` 生成的绝对路径 | `{{ .chezmoi.homeDir }}/.config/waybar` |
 | `swaylock/config` | 同理，`__SWAYLOCK_BACKGROUND_DIR__` | `{{ .chezmoi.homeDir }}/.config/swaylock/backgrounds` |
 | `git/config.tmpl` | `gh` 写入的 credential 段含 `/home/jwu` | 模板化 `{{ .chezmoi.homeDir }}`，见下 |
@@ -197,16 +206,48 @@ waybar 的 `module_path` 和 swaylock 都不展开 `~`（见 `docs/waybar.md`、
 `import = ["%MY_CONFIGS%\alacritty.toml"]`，nvim / neovide / wezterm 同理。已在「仓库即源」的
 方向上，本仓库可以直接接管内容文件，少一层指针。
 
-两处缺口需在迁入前确认：
+### 已确定的目标路径
 
-1. `win/install.bat` 的落地根是 `%USERPROFILE%\bin`（clink 装到 `%USERPROFILE%\bin\clink`），
-   便携工具堆在那里，与配置目录分离。
-2. **`win/starship.toml`、`win/nu/*.nu`、`win/clink_scripts/*.lua`、`win/cmds/*.cmd` 的落地
-   路径在 `install.bat` / `config.bat` 里都没有体现**——目前靠手动复制或 `STARSHIP_CONFIG`
-   环境变量指向仓库，需确认后才能定 chezmoi 目标路径。
+`init.bat` 揭示了 win 侧的真实模式：它**不复制**配置，而是靠环境变量与参数**原地引用
+仓库**：
+
+```bat
+clink inject --quiet --profile "%MY_CONFIGS%\clink_profile" --scripts "%MY_CONFIGS%\clink_scripts"
+set "STARSHIP_CONFIG=%MY_CONFIGS%\starship.toml"
+call "%MY_CONFIGS%\cmds\aliases.cmd"
+```
+
+按「改成 chezmoi 复制到位」的决定，已搬入的 7 个文件及目标：
+
+| 源（仓库） | chezmoi 目标 |
+| --- | --- |
+| `win/alacritty.toml` | `AppData/Roaming/alacritty/alacritty.toml` |
+| `win/starship.toml` | `AppData/Roaming/starship.toml` |
+| `win/clink_profile/clink_settings` | `AppData/Local/clink/clink_settings` |
+| `win/clink_scripts/{clink,fzf,zoxide}.lua` | `AppData/Local/clink/` |
+| `desktop-settings/rime/weasel.custom.yaml` | `AppData/Roaming/Rime/weasel.custom.yaml` |
+
+clink 侧用**显式**的 `--profile` / `--scripts` 指向 `%LOCALAPPDATA%\clink`，不依赖 clink
+的默认 profile 位置。相应地 `init.bat` 需要重写：去掉 `STARSHIP_CONFIG`（starship 在
+Windows 的默认位置正是 `%APPDATA%\starship.toml`）与生成的 `import` / `dofile` 指针。
+
+### 未纳入，及原因
+
+- **`win/nu/*.nu` 是过时孤儿，跳过**。它没有任何脚本部署，含旧机器的真实路径
+  （`e:\Alacritty\settings\`、`E:\Alacritty\vendor\starship.exe`），且用的是 nushell 旧
+  语法 `let-env`。重写需要先确定 nushell 版本与目标位置（`%APPDATA%\nushell\`）。
+- **`desktop-settings/totalcmd/wincmd.ini` 不纳入**。它含
+  `InstallDir=C:\Program Files\totalcmd` 等本机安装状态与窗口布局，且
+  `desktop-settings/AGENTS.md` 明确说 Total Commander 属「按文档手动配置」。
+- **脚本层留在仓库**：`win/init.bat`、`config.bat`、`install.bat`、`cmds/*.cmd`。
+  `install.bat` 是便携工具下载器（clink / starship / fzf / eza / coreutils … 装到
+  `%USERPROFILE%\bin`），属装机层，等「迁脚本层」阶段处理。
+
+盘符绝对路径的其余出现都是**注释**（`clink.lua` 首行、`fzf.lua` 的用法示例、
+`addfonts.cmd` 的用法示例），不影响可移植性；`clink.lua` 实际用
+`clink.get_env('USERPROFILE')` 拼路径。
 
 chezmoi 在 Windows 上以 `%USERPROFILE%` 为家目录，`%APPDATA%` 即 `AppData/Roaming`。
-`win/install.bat` 与 `win/config.bat` 本身属装机层，迁入本仓库但保留为手动执行的脚本。
 
 ## 脚本层：`run_` 前缀
 
@@ -275,56 +316,72 @@ run_once_after_install-pi-config.sh
 
 ## 实施状态
 
-### 已完成：阶段 0-1 + 基线
+### 已完成
+
+**阶段 0-1 + 基线**
 
 - chezmoi `v2.72.2`（pacman，`extra` 仓库）已装
 - 源目录 `~/bin/dotfiles` 已 `init`；`.chezmoiignore` 拦住了 `README.md` / `docs` /
   `bootstrap` / `scripts`
-- **67 个配置文件已从家目录导入**（66 个首批 + 对账补入的 `niri/config.kdl`），
-  `chezmoi diff` 为空
-- 3 个含 `/home/jwu` 的文件已模板化（阶段 3 的一部分），全部是等价变换：
-  `waybar/modules.json.tmpl`、`swaylock/config.tmpl`、`git/config.tmpl`
-- 基线已 commit（`1aabe1e`）并 push 到 <https://github.com/jwu/dotfiles>（public）
+- **67 个 Linux 配置从家目录导入**（66 个首批 + 对账补入的 `niri/config.kdl`）
+- 基线 commit `1aabe1e` → <https://github.com/jwu/dotfiles>（public）
 
-两处关键做法：
+**阶段 3 模板化（5/5 完成，全部是等价变换）**
+
+| 模板 | 差异来源 | 验证 |
+| --- | --- | --- |
+| `dot_zshrc.tmpl` | linux + mac `.zshrc`（26 行） | 两侧渲染逐字节一致；`zsh -n` 通过 |
+| `dot_config/starship.toml.tmpl` | linux + mac（2 行，`>` vs `❯`） | 两侧渲染逐字节一致 |
+| `dot_config/waybar/modules.json.tmpl` | 原 `__WAYBAR_MODULE_DIR__` 占位符 | `chezmoi diff` 为空 |
+| `dot_config/swaylock/config.tmpl` | 原 `__SWAYLOCK_BACKGROUND_DIR__` | `chezmoi diff` 为空 |
+| `dot_config/git/config.tmpl` | `gh` 写入的 credential 段 | `diff` 为空，helper 功能不变 |
+
+**平台文件搬入（本机不存在的，从仓库复制而非 `chezmoi add`）**
+
+- macOS：`dot_aerospace.toml`、`dot_config/ghostty/config`（目标名与 Linux 的
+  `config.ghostty` 不同）、`Library/Rime/squirrel.custom.yaml`
+- Windows：7 个文件，见「Windows 侧」
+- `.chezmoiignore` 改为模板，按 OS 排除；Linux 上 mac / win 目标全部不可见
+  （`managed` 仍 67 文件、`diff` 为 0）
+
+四处关键做法：
 
 - 导入用「从家目录读取」而非「从仓库读取」，所以首次 `apply` 是空操作，**不存在覆盖
-  风险**。3 个模板化同样是等价变换，`diff` 始终为空，Git credential helper 功能不变。
+  风险**。
+- 模板化用渲染比对验证：Linux 侧看 `chezmoi diff` 为空，macOS 侧用 Go 的 `text/template`
+  渲染后与 `configs/mac/` 原件 `diff`（因为 `chezmoi execute-template` 无法覆盖
+  `.chezmoi.os`）。
+- `dot_zshrc.tmpl` 的空白是精确调过的：`{{ if }}` / `{{ end }}` 独占一行时自身贡献一个
+  换行（充当空行），而 `-}}` 会吃掉**所有**连续空白而非一个换行，用错就会丢空行。
 - 对账用脚本把 `configs` 里所有 `$HOME/*` 写入目标与 `chezmoi managed` 逐条比对，而非
   人工读脚本——`niri/config.kdl` 的遗漏就是这样发现并补上的。
 
-### 待做：阶段 2-6
+### 待做
 
 1. **阶段 2 — 与两个退役仓库对账**。逐个比对源文件与 `configs` / `desktop-settings` 中的
-   副本，找出「手改过家目录但没回写仓库」的文件。已知至少 2 处漂移：
-   `~/.config/git/config`（多 gh helper）、`~/.pi/agent/settings.json`（本机 provider 状态，
-   已决定排除）。**这些文件里可能有仓库版本没有的内容，直接以仓库为准会丢。**
-2. **阶段 3 — 模板化（3/5 已完成）**。已模板化 `waybar/modules.json`、`swaylock/config`、
-   `git/config`。剩余：合并 `linux/.zshrc` 与 `mac/.zshrc` 成 `dot_zshrc.tmpl`、合并两侧
-   `starship.toml`（本机没有 mac 版本，需先从 `configs` 仓库搬入）。每步用
-   `chezmoi execute-template < x.tmpl | diff - 目标文件` 验证渲染等价。
-3. **阶段 4 — 迁入脚本层**。`bootstrap/arch.sh`、`run_*` 脚本、`win/`、
-   `docs/`、`src/gpu-watch.c`、`waybar-niri-windows.sh`。
-4. **阶段 5 — pi-config 缩水**，并加 `run_once_after_install-pi-config.sh`。
-5. **阶段 6 — 退役两个仓库**并清理 96 个 `.bak`。
+   副本，找出「仓库里有但家目录没有」的内容（反向漂移）。已知 1 处：
+   `~/.pi/agent/settings.json`（本机 provider 状态，已决定排除）。
+2. **阶段 4 — 迁入脚本层**。`bootstrap/arch.sh`、`run_*` 脚本、`win/` 的 bat 与 `cmds/`、
+   `docs/`、`src/gpu-watch.c`、`waybar-niri-windows.sh`；并按「Windows 侧」重写 `init.bat`。
+3. **阶段 5 — pi-config 缩水**，并加 `run_once_after_install-pi-config.sh`。
+4. **阶段 6 — 退役两个仓库**并清理 96 个 `.bak`。
 
 ## 待确认
 
 1. **`settings.json` 的排除边界**：`pi-config/settings.json` 含 pi 的 npm 插件列表
    （`@eko24ive/pi-ask` 等），这对跨机器一致有值，但它同时含本机 provider/模型状态。
    要不要把「插件列表」单独抽成模板纳入？
-2. **家目录里从未被管过的配置**是否一并纳入：`~/.config/chrome-flags.conf`、
-   `chromium-flags.conf`、`mimeapps.list`、`nvim/lazy-lock.json`（lazy.nvim 插件锁，纳入后
-   可复现插件版本）。`user-dirs.dirs` 由 `xdg-user-dirs` 生成，属工具自管。
-3. **`mac/config.sh` 是否整体退役**：它只有 95 行且全是 `cp`，配置迁走后没有内容，
+2. **家目录里从未被管过的配置**：`~/.config/chrome-flags.conf`、`chromium-flags.conf`、
+   `mimeapps.list`、`nvim/lazy-lock.json`。**本轮已决定不纳入**（保持范围严格等于两个
+   退役仓库已有的东西），可随时 `chezmoi add` 补。其中 `lazy-lock.json` 是 35 个插件的
+   版本锁，纳入后新机器可复现相同插件版本，单独考虑的价值最高。
+3. **`win/nu/*.nu` 是否重写**：现在是过时孤儿（旧路径 + nushell 旧语法），要纳入必须先
+   确定 nushell 版本与目标位置。
+4. **`mac/config.sh` 是否整体退役**：它只有 95 行且全是 `cp`，配置迁走后没有内容，
    剩余的 `aerospace reload-config` 可并入 `run_*`。
-4. **win 侧本轮是否纳入**：上文两处缺口未确认前，win 覆盖率不完整。
-5. **平台特定文件如何搬入**：源里目前只有本机（Linux）存在的配置。`configs` 的
-   `mac/.config/ghostty/config`、`win/` 的 15 个文件，`desktop-settings` 的
-   `rime/squirrel.custom.yaml`（mac）、`weasel.custom.yaml`（win）、
-   `aerospace/.aerospace.toml`（mac）、`totalcmd/wincmd.ini`（win）**本机不存在**，
-   无法用 `chezmoi add` 导入，只能从仓库手工搬入源。要在迁脚本阶段一并搬，还是等
-   真正用 mac / win 时再补？
+5. **git push 的网络**：直连 GitHub 现为 SSL 失败（`unexpected eof while reading`），
+   经 mihomo `127.0.0.1:7890` 可用。要不要给 git 配持久代理，还是需要时用
+   `git -c http.proxy=... push`？
 
 ## 参考
 
