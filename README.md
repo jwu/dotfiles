@@ -439,6 +439,31 @@ run_once_after_install-pi-config.sh
 需要单独确认（`pacman -Qu` 当时为 0，且 41 个包全部已装、`xwayland-satellite-git` 已装、
 `FONT=ter-v16n` 已设、`drivetemp.conf` 已存在）。
 
+### provision 需要 TTY（重要约束）
+
+`run_once_before_10-provision-arch.sh` 有 5 处 `sudo`（pacman、`sed /etc/vconsole.conf`、
+`tee /etc/modules-load.d`、`modprobe`、`chsh`），所以它**必须在交互式 shell 里由
+`chezmoi apply` 触发**。
+
+在无 TTY 的环境（CI、脚本包装、agent 工具）里跑会失败：
+
+```
+sudo: a terminal is required to read the password; either use the -S option to read
+from standard input or configure an askpass helper
+```
+
+`sudo -v` 预先缓存密码**解决不了**：sudo 默认启用 `tty_tickets`，缓存按 TTY 隔离，另一个
+TTY 的缓存不生效。
+
+更麻烦的是 chezmoi 的 fail-fast：run 脚本失败会**中止整个 apply**，所以 provision 失败时后
+面五个脚本根本不会执行。首次 apply 实测就是这个结果（文件层仍是 0 变更）。
+
+两个可选的处理方向：
+
+- 保持现状，把「先在有终端的 shell 里跑 `chezmoi apply`」写进 bootstrap 的后续说明。
+- 把 5 处 sudo 拆成独立脚本，或在脚本开头检测 TTY；但要让 `run_once_` 仍能重试，就不能
+  简单地 `return 0`（那会被记成已执行，失败的步骤永远不再重跑）。
+
 ### 待做
 
 1. **阶段 5 — pi-config 缩水**：改 `pi-config/install.sh` 只处理扩展工程相关的事，之后
