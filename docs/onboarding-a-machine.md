@@ -12,11 +12,11 @@
 > 那次接入的结论已经回写进本文：§5 原来列的三处缺口全部修掉，并新记录了两处当时才发现的
 > 系统性问题。
 >
-> **Windows 侧的源改造已完成**（Windows 11 10.0.26200）：`.chezmoiignore` 加了反向排除、补了
+> **Windows 侧已接入完成**（Windows 11 10.0.26200）：`.chezmoiignore` 加了反向排除、补了
 > yazi / gitui / glow / zed 的 AppData 目标、把 clink 接线写回内容、修了 git credential helper，
-> 并给 6 个 `run_*.sh` 加了「Windows 渲染为空」的外层短路。结论记在 §5.3 与 `docs/design.md`
-> 的「Windows 接入」一节。**在这台机器上的 `chezmoi apply` 还没执行**，所以 §3 的对账与验证
-> 仍需跑一遍。
+> 并给 6 个 `run_*.sh` 加了「Windows 渲染为空」的外层短路。`chezmoi apply` 跑通并验证：退出码 0、
+> 第二次 0 行、`diff --include=files` 为 0、脚本条目为 0。真正的结论记在 §5.3 与 `docs/design.md`
+> 的「Windows 接入」一节。
 >
 > 该区间的 hash 在 2026-09-26 的历史重写后已更新（git 个人层被摘出仓库并从历史里抹掉）；
 > 若你手上的 clone 是重写之前拉的，需要重新 clone 或 `git fetch && git reset --hard origin/main`。

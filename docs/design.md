@@ -653,7 +653,7 @@ chezmoi 的 fail-fast 会让一个注定失败的脚本永久拖住 apply）。
 **apply 之前**先手工建好 `~/.gitconfig`（补回 `[user]` 与 `[http] proxy`），否则中间态会丢掉
 身份与代理——个人层不在仓库里，chezmoi 补不回来。
 
-### Windows 接入（源侧完成，apply 待执行）
+### Windows 接入（2026-09-26）
 
 Windows 这台（Windows 11 10.0.26200）此前**从未接过 chezmoi**：scoop 装了 binary，但没有
 `%USERPROFILE%\.config\chezmoi\chezmoi.toml`、没有 state，家目录一直跑在旧 `~/bin/configs` 上
@@ -676,9 +676,19 @@ reveal、render-markdown、gdscript LSP）和 `.pi/agent/themes/one-dark.json`�
 
 **未纳入**（本次决定不做）：`~/.config/lsd/config.yaml`（旧 `configs/common` 与 home 都有、
 dotfiles 漏了；但 aliases 已改用 eza）、`~/.config/git/ignore`、`~/.config/opencode/`、
-`AppData/Local/nvim/lazy-lock.json`、`~/bin/imtip-config/`、`~/bin/dev-settings/`。
-Zed 的 Windows settings 目前是直接从本机收进来的独立文件，还没和 Unix 侧那份（`dot_config/zed/`）
-统一（只差字体与几处默认值）。
+`AppData/Local/nvim/lazy-lock.json`、`~/bin/imtip-config/`、`~/bin/dev-settings/`、
+`%APPDATA%\Zed\AGENTS.md`。
+
+Zed 的 Windows settings 与 Unix 侧那份已经对齐（补齐 `project_panel` / `outline_panel` /
+`collaboration_panel` / `git_panel` 的 dock、`agent` 块、`soft_wrap`、`cli_default_open_behavior`），
+只保留一处有意的差异：`ui_font_family` 在 Windows 上是 `Inter`，Unix 上是 `FiraMono Nerd Font`。
+共享的 `buffer_font_fallbacks` 里加了 `Microsoft YaHei`，让 Windows 也有显式的中文回退
+（在 Unix 上不存在，无副作用）。
+
+验证：`chezmoi apply -v` 退出码 0，**第二次 0 行**；`chezmoi diff --include=files` 为 0；
+`chezmoi status` 为 0（6 个 `run_*` 在 Windows 上渲染为空，脚本条目为 0）。另外在真实 Windows
+上跑了一次 `cmd /c ...\win\init.bat`（退出码 0），之后 `clink info` 的 `settings` 指向
+`%LOCALAPPDATA%\clink\clink_settings`——重写后的 `init.bat` 得到的首次真机验证。
 
 ### git 个人层与历史重写
 

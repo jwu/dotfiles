@@ -31,18 +31,21 @@
 
 ### 这台 Windows
 
-- [ ] **源侧改造已完成，但 `chezmoi apply` 还没执行**（`sourceDir` 已写好，`chezmoi diff` 已对过）。
-      执行前先看一眼 `chezmoi diff --include=files`，然后 `apply -v` 跑两次，第二次必须 0 行。
-      当前 status：`chezmoi status` 中文件改动 30 余条、脚本 0 条（6 个 `run_*.sh` 在 Windows 上
-      渲染为空）。风险低：对账下来 10 个 Windows 目标全部是源更新，没有 home 更新的情况。
-- [ ] apply 之后确认 alacritty / wezterm 真的用 `cmd /k %USERPROFILE%\bin\dotfiles\win\init.bat`
-      启动（clink、aliases、starship 都能用），并把 `~/bin/configs`、`~/bin/dev-settings` 删掉。
-- [ ] `~/.gitconfig` 收成纯个人层（`[user]` + `[core] sshCommand`），delta 等公共设置已由
-      `~/.config/git/config` 提供。
-- [ ] Zed 的 Windows settings 目前是直接收进来的独立文件，还没和 Unix 侧 `dot_config/zed/`
-      统一（只差字体与几处默认值）。要么合并成模板，要么接受两份。
+- [x] 接入完成（2026-09-26）：`chezmoi apply -v` 退出码 0、第二次 0 行，`diff --include=files` 与
+      `status` 均为 0。本地提交未 push。
+- [ ] **在新终端里确认** clink / starship / aliases 真的起来了（当前那个终端还是 apply 之前的旧
+      会话）。配置里 alacritty / wezterm 已改为 `cmd /k %USERPROFILE%\bin\dotfiles\win\init.bat`。
+- [ ] `~/bin/configs` 还剩两个被旧 clink 会话占用的文件
+      （`win/clink_profile/clink_history`、`clink_history_21792~`）。关掉那个终端后
+      `rm -rf ~/bin/configs` 即可。`~/bin/dev-settings` 已删。
+- [x] `~/.gitconfig` 已收成纯个人层（`[user]` + `[core] sshCommand`）；delta 等由
+      `~/.config/git/config` 提供。已验证 `git config` 取值正常。
+- [x] Zed 的 Windows settings 已与 Unix 侧对齐，只保留 `ui_font_family: Inter`（Unix 是
+      FiraMono Nerd Font）；共享 fallback 列表加了 `Microsoft YaHei`。
 - [ ] 本次没纳入：`~/.config/lsd/config.yaml`、`~/.config/git/ignore`、`~/.config/opencode/`、
-      `nvim/lazy-lock.json`、`~/bin/imtip-config/`、`~/bin/dev-settings/`（dev-settings 两个平台都没迁）。
+      `nvim/lazy-lock.json`、`~/bin/imtip-config/`、`%APPDATA%\Zed\AGENTS.md`、
+      `~/bin/dev-settings` 装机脚本（两个平台都没迁）。
+- [ ] `~/.config/{gitui,lsd,eza}` 是上一版遗留、已不受管理，仍留在本机。
 
 ### 下一台机器
 
