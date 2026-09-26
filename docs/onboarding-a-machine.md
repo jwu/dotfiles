@@ -190,7 +190,7 @@ git push
 | 运行时产物 | `~/.local/share/fcitx5/rime/`（156 MB，含词库、`build/`、用户词频） | 不是配置 |
 | 缓存与历史 | `sessions/`、`*-cache.json`、`install/`、`npm/` | 不是配置 |
 | 本机 UI 状态 | `totalcmd/wincmd.ini`（已在旧仓库标记为手动配置） | 含窗口布局与安装路径 |
-| git 个人层 | `~/.gitconfig`、`~/.gitconfig-jwu`、`~/.gitconfig-work` | 含邮箱、人名与 `~/dev/<雇主>/` 这样的工作目录结构。仓库只管公共层 `~/.config/git/config`（`[init]`/`[core]`/`[delta]`/`[i18n]`/`[credential]`），个人层手工维护 |
+| git 个人层 | `~/.gitconfig` 及其 `includeIf` 引用的 `~/.gitconfig-<身份>` | 含邮箱、人名与 `~/dev/<雇主>/` 这样的工作目录结构。仓库只管公共层 `~/.config/git/config`（`[init]`/`[core]`/`[delta]`/`[i18n]`/`[credential]`），个人层手工维护 |
 
 另外：**`~/.config/chezmoi/chezmoi.toml` 不由本仓库管理**（鸡生蛋：chezmoi 不可能管自己的源在哪）。
 
