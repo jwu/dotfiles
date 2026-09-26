@@ -121,7 +121,6 @@ dot_config/
   waybar/*                             ← configs: linux/.config/waybar/
   yazi/{yazi.toml,theme.toml}          ← configs: common/.config/yazi/
   zed/settings.json                    ← desktop-settings: zed/settings.json
-  zellij/config.kdl                    ← configs: linux/.config/zellij/
 dot_local/
   bin/executable_niri-clipboard-history  ← configs: linux/.local/bin/
   bin/executable_niri-lock
@@ -378,7 +377,7 @@ chezmoi 在 Windows 上以 `%USERPROFILE%` 为家目录，`%APPDATA%` 即 `AppDa
 （见「已完成：macOS 接入」）同一个形状：Windows 目标在 Linux 上被排除，反过来 Linux/macOS 的
 `~/.config` 目标却没在 Windows 上排除。`managed` 从 35 降到 31。其中 nvim / alacritty /
 neovide 是**重复**（Windows 的真目标在 AppData 里），yazi / gitui / glow / zed 是**错位置**
-（这些应用在 Windows 上读 `%APPDATA%` / `%LOCALAPPDATA%`，不读 `~/.config`），zellij 根本没装。
+（这些应用在 Windows 上读 `%APPDATA%` / `%LOCALAPPDATA%`，不读 `~/.config`）。
 `.config/ghostty` 是空父目录的特例：它的每个文件都被平台块排除了，只剩目录，chezmoi 仍会创建
 `~/.config/ghostty`——所以整目录也要排。
 

@@ -80,7 +80,6 @@ dot_config/
   gitui/theme.ron                               ← common
   glow/one-dark.json                            ← common
   starship.toml.tmpl                            ← linux/ + mac/ 合并
-  zellij/config.kdl                             ← linux
   ghostty/config.ghostty                        ← linux
   ghostty/titlebar*.css                         ← linux
   alacritty/alacritty.toml                      ← linux

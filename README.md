@@ -13,7 +13,7 @@
 - **锁屏**：hyprlock，按当前屏幕尺寸从三套样式里挑一套，闲置一分钟后熄屏
 - **输入法**：Fcitx5 + Rime（雾凇拼音），含按键补丁、候选窗配色与托盘图标
 - **命令行**：zsh + Oh My Zsh、starship、zoxide、fzf，以及 `eza` / `bat` / `fd` / `ripgrep` / `delta` 的配置
-- **工具**：yazi、gitui、glow、zellij
+- **工具**：yazi、gitui、glow
 - **编辑器**：Neovim + Neovide
 - **杂项**：GTK4 全局直角微调、xwayland-satellite（跑 X11 应用）
 
@@ -24,7 +24,7 @@
 - **输入法**：Squirrel（鼠须管）
 - **Shell**：zsh，含 Apple Silicon 的 PyTorch MPS 变量与 Homebrew 的 nvm
 - **编辑器**：Neovim + Neovide、Zed
-- **共用**：yazi、gitui、glow、zellij、git 配置
+- **共用**：yazi、gitui、glow、git 配置
 
 ### Windows —— 终端与 Shell 增强
 
@@ -180,7 +180,6 @@ chezmoi 的源路径与目标路径不一定逐字对应：`dot_` 加前置点�
   - [Dracula Theme](https://draculatheme.com/)
   - [starship](https://starship.rs/)
   - [tmux](https://github.com/tmux/tmux)
-    - [zellij](https://zellij.dev/)
   - [vivid](https://github.com/sharkdp/vivid)
 - Package Management
   - Windows
