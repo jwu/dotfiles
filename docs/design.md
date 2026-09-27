@@ -920,6 +920,13 @@ public，所以它和 `~/.gitconfig` 一样留在本机。
 | `ExecStartPre` 补丁脚本 | `mixed-port`（mihomo 没有对应 flag，只能改文件） | 是（每次启动重打） |
 | 直接改 `config.yaml` | 其余全部：`allow-lan`、`bind-address`、`mode`、`dns`… | 否 |
 
+**别拿 `config.yaml` 判断实际行为**：它里面 `external-controller` 至今写着 `"0.0.0.0:9090"`，而
+实际绑定的是 `127.0.0.1:9090`——flag 把它顶掉了，文件那行是失效的残留。日志里能看到真相：
+`RESTful API listening at: 127.0.0.1:9090`。
+
+不去同步那一行是刻意的：overlay 只负责 flag 覆盖不到的项（目前只有 `mixed-port`），地址类
+一律由 drop-in 定义，免得同一个值有两个来源。`external-ui` 同理（它无安全含义，flag 已钉）。
+
 `/etc/systemd/system/mihomo.service.d/override.conf`（由 `bootstrap/arch.sh` 的
 `install_mihomo_overlay` 写入）：
 
@@ -937,10 +944,16 @@ ExecStartPre=+/usr/local/bin/mihomo-overlay
 `mixed-port: 7890`——理由是与纳管的 `chrome-flags.conf` / `chromium-flags.conf` 强耦合，订阅
 若把端口换掉，浏览器代理会**整体断掉**且很难查。脚本幂等，键缺失时不凭空添加。
 
-面板（MetaCubeXD）不提交构建产物：`deploy_mihomo_ui` 从上游 release 拉
-`compressed-dist.tgz`（2.5 MB，解压后直接是 `index.html` / `_nuxt/`，没有顶层目录）解到
-`/etc/mihomo/ui/xd`，与 config 里的 `external-ui: ui/xd` 对齐。bootstrap 跑在任何代理存在之前，
-所以这一步失败只记录、不阻塞。
+面板（MetaCubeXD）**不由仓库部署**：mihomo 内置了这个能力——`external-ui` 指向的目录不存在时，
+它自己去 `MetaCubeX/metacubexd` 的 gh-pages 分支下载解压。临时实例 + 临时目录实测三点：
+
+- **不是启动阻塞路径**：先 `RESTful API listening`，之后才 `External UI downloading ...`；
+- **幂等**：目录已存在就 `UI already exists, skip downloading`；
+- **走它自己的规则引擎**：`[TCP] mihomo --> github.com:443 doesn't match any rule using DIRECT`，
+  所以下载能吃配置里的代理——这比 bootstrap 里裸 `curl` 直连更稳，何况 bootstrap 阶段还没有代理。
+
+产物与 releases 的 `compressed-dist.tgz` **逐字节相同**（`diff -rq` 无输出，160 个文件 / 8.1M，
+`_nuxt` 构建 hash 一致），所以内置能力完全够用，仓库不再重复实现一遍。
 
 `Country.mmdb` 由 bootstrap 重新指到 `clash-geoip` 的副本（`/etc/clash/Country.mmdb`，上游
 地理库更新更勤）。

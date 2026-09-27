@@ -305,31 +305,14 @@ Defaults timestamp_timeout=10'
   sudo visudo -c > /dev/null
 }
 
-# mihomo ships as a package, but three things around it are local policy: the
-# loopback-only controller, the overlay that re-pins what the subscription may
-# not change, and the web panel. See docs/design.md, the mihomo section.
+# mihomo ships as a package, but two things around it are local policy: the
+# loopback-only controller and the overlay that re-pins what the subscription may
+# not change. The web panel is not ours to deploy -- mihomo downloads it itself
+# into the external-ui directory. See docs/design.md, the mihomo section.
 install_mihomo() {
   sudo pacman -S --needed --noconfirm mihomo clash-geoip || return 1
   # clash-geoip tracks upstream geodata; the mihomo package's own copy lags.
   sudo ln -sf /etc/clash/Country.mmdb /etc/mihomo/Country.mmdb
-}
-
-deploy_mihomo_ui() {
-  local tmp url
-  url="https://github.com/MetaCubeX/metacubexd/releases/latest/download/compressed-dist.tgz"
-  tmp="$(mktemp -d)" || return 1
-  # Bootstrap runs before any proxy exists, so GitHub can be unreachable here.
-  # The panel is optional: the controller and the proxy work without it.
-  if ! curl -fsSL -o "$tmp/dist.tgz" "$url"; then
-    rm -rf "$tmp"
-    echo "    could not fetch MetaCubeXD; re-run later if you want the panel" >&2
-    return 1
-  fi
-  sudo mkdir -p /etc/mihomo/ui/xd
-  # The tarball has no top-level directory; its entries land directly in xd/.
-  sudo tar -xzf "$tmp/dist.tgz" -C /etc/mihomo/ui/xd
-  sudo chown -R mihomo:mihomo /etc/mihomo/ui
-  rm -rf "$tmp"
 }
 
 install_mihomo_overlay() {
@@ -377,7 +360,6 @@ step "TTY font (vconsole)" set_tty_font
 step "drivetemp module" load_drivetemp
 step "passwordless sudo window for unattended tooling" install_sudo_window
 step "mihomo (kernel + geodata)" install_mihomo
-step "mihomo web panel (MetaCubeXD)" deploy_mihomo_ui
 step "mihomo service overrides" install_mihomo_overlay
 step "enable mihomo" enable_mihomo
 
