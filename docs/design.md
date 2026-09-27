@@ -920,12 +920,20 @@ public，所以它和 `~/.gitconfig` 一样留在本机。
 | `ExecStartPre` 补丁脚本 | `mixed-port`（mihomo 没有对应 flag，只能改文件） | 是（每次启动重打） |
 | 直接改 `config.yaml` | 其余全部：`allow-lan`、`bind-address`、`mode`、`dns`… | 否 |
 
-**别拿 `config.yaml` 判断实际行为**：它里面 `external-controller` 至今写着 `"0.0.0.0:9090"`，而
-实际绑定的是 `127.0.0.1:9090`——flag 把它顶掉了，文件那行是失效的残留。日志里能看到真相：
-`RESTful API listening at: 127.0.0.1:9090`。
+**`config.yaml` 里的 `external-controller` / `external-ui` 已删除**，controller 地址与面板目录
+完全由 drop-in 的 flag 提供。删而不是留着当兜底，是因为**订阅本身不含这两行**——它们是早先
+手工加进 config 的本地值，而订阅刷新是整文件替换，任何手工值都活不过下一次刷新：
 
-不去同步那一行是刻意的：overlay 只负责 flag 覆盖不到的项（目前只有 `mixed-port`），地址类
-一律由 drop-in 定义，免得同一个值有两个来源。`external-ui` 同理（它无安全含义，flag 已钉）。
+| 现在写成什么 | 下次刷新订阅后 |
+| --- | --- |
+| 删掉 | 仍然没有 → 自洽，持久 |
+| `127.0.0.1:9090` | 被抹掉 → 只活到下次刷新 |
+| `"0.0.0.0:9090"`（原本） | 同样被抹掉 |
+
+所以「留在 config 里当兜底」是伪兜底；真要长期有值，只能让 overlay 每次重写，而那是给一个
+flag 已经提供的东西再加一处来源。删掉后日志仍是 `RESTful API listening at: 127.0.0.1:9090`
+（实测 config 缺该键时 flag 照常补位），而 flag 一旦丢失，后果是 controller **不启用**
+（fail-safe 且可察觉），不是暴露到局域网。
 
 `/etc/systemd/system/mihomo.service.d/override.conf`（由 `bootstrap/arch.sh` 的
 `install_mihomo_overlay` 写入）：
