@@ -111,6 +111,125 @@ function pstat() {
   echo "HTTPS: ${https_proxy:-Direct}"
   echo "ALL:   ${all_proxy:-Direct}"
 }
+{{ if eq .chezmoi.os "linux" }}
+# ------------------------------
+# niri session attach
+# ------------------------------
+
+# ssh and bare tty shells inherit no WAYLAND_DISPLAY, so wayland clients started
+# from them cannot reach the session running on the seat. These mirror
+# pon/poff/pstat above. See docs/wayland-attach.md.
+
+wattach() {
+  if (( $# )); then
+    # Command form: export in a subshell and drop the banner, so this shell
+    # stays untouched and the command's own output stays clean.
+    (_wattach_apply >/dev/null && exec "$@")
+  else
+    _wattach_apply
+  fi
+}
+
+wdetach() {
+  if [[ -z $WATTACH_ACTIVE ]]; then
+    print -u2 'wdetach: this shell is not attached to a niri session'
+    return 1
+  fi
+  local display=$WATTACH_ACTIVE undo=$WATTACH_UNDO
+  unset WATTACH_ACTIVE WATTACH_UNDO
+  [[ -n $undo ]] && eval $undo
+  print "[niri] Detached from $display"
+}
+
+wstat() {
+  local -a reply
+  if _wattach_probe; then
+    print "session: $reply[2]  (socket $reply[1])"
+    print "X11:     ${_wattach_env[DISPLAY]:-none}"
+  else
+    print 'session: none'
+  fi
+  if [[ -n $WATTACH_ACTIVE ]]; then
+    print "shell:   attached to $WATTACH_ACTIVE"
+  else
+    print "shell:   not attached (XDG_SESSION_TYPE=${XDG_SESSION_TYPE:-unset})"
+  fi
+}
+
+# niri-session imports the compositor's environment into the systemd user
+# manager, which makes show-environment the authoritative copy.
+typeset -A _wattach_env
+_wattach_env_load() {
+  _wattach_env=()
+  local line
+  for line in ${(f)"$(systemctl --user show-environment 2>/dev/null)"}; do
+    _wattach_env[${line%%=*}]=${line#*=}
+  done
+}
+
+# Live means the niri instance named in the socket still runs: a recycled pid
+# is ruled out by comm.
+_wattach_live() {
+  [[ -S $1 ]] || return 1
+  local -a parts=(${(s:.:)${1:t}})
+  local pid=$parts[-2]
+  [[ -n $pid ]] || return 1
+  kill -0 $pid 2>/dev/null || return 1
+  [[ $(</proc/$pid/comm) == niri ]]
+}
+
+# Fill $reply with the live session's socket and wayland display name. The
+# manager's copy is only trusted after the liveness check, and the runtime dir
+# is scanned as a fallback.
+_wattach_probe() {
+  _wattach_env_load
+  local -a candidates
+  [[ -n $_wattach_env[NIRI_SOCKET] ]] && candidates+=$_wattach_env[NIRI_SOCKET]
+  candidates+=(${_wattach_env[XDG_RUNTIME_DIR]:-$XDG_RUNTIME_DIR}/niri.*.sock(Nom))
+  local sock
+  for sock in $candidates; do
+    _wattach_live $sock && break
+  done
+  _wattach_live $sock || return 1
+  local -a parts=(${(s:.:)${sock:t}})
+  reply=($sock $parts[2])
+}
+
+_wattach_apply() {
+  local -a reply
+  _wattach_probe || { print -u2 'wattach: no live niri session found'; return 1 }
+
+  local -A wanted
+  wanted[WAYLAND_DISPLAY]=$reply[2]
+  wanted[NIRI_SOCKET]=$reply[1]
+  wanted[XDG_SESSION_TYPE]=wayland
+  wanted[XDG_SESSION_CLASS]=user
+  local k
+  for k in DISPLAY XDG_SESSION_ID XDG_CURRENT_DESKTOP DBUS_SESSION_BUS_ADDRESS; do
+    [[ -n $_wattach_env[$k] ]] && wanted[$k]=$_wattach_env[$k]
+  done
+
+  # Record the caller's values once: a second wattach on an attached shell must
+  # keep the first undo, or wdetach would restore the attach itself.
+  if [[ -z $WATTACH_ACTIVE ]]; then
+    local undo=''
+    for k in ${(k)wanted}; do
+      if [[ -v $k ]]; then
+        undo+="export $k=${(q)${(P)k}}; "
+      else
+        undo+="unset $k; "
+      fi
+    done
+    export WATTACH_UNDO=$undo
+  fi
+
+  for k in ${(k)wanted}; do
+    export $k=$wanted[$k]
+  done
+  export WATTACH_ACTIVE=$reply[2]
+  print "[niri] Attached to $reply[2] (X11 ${wanted[DISPLAY]:-none})"
+}
+{{ end }}
 {{ if eq .chezmoi.os "darwin" }}
 # ------------------------------
 # MacOS Applications
