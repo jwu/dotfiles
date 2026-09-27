@@ -318,11 +318,14 @@ git 先读 XDG 那份、再读 `~/.gitconfig`，后者覆盖前者，所以个�
 仓库根的 `.pi/` 是 pi 的**项目级**配置，只在把本仓库当工作目录时加载，不进家目录，
 与上面那份 `~/.pi/agent/` 是两套互不相干的东西。它放两个方向相反的命令：
 
-- `prompts/apply.md` —— `/apply`，源 → 家目录：把会话改动落源，`diff` → 等确认 → `apply`，
-  跑两次验证 no-op
+- `prompts/apply.md` —— `/apply`，源 → 家目录：先把本地源同步到 `origin`，再把会话改动
+  落源，`diff` → 等确认 → `apply`，跑两次验证 no-op
 - `prompts/collect.md` —— `/collect`，家目录 → 源：把家目录侧的改动回收进仓库
 
-两个命令都刻意不含提交动作，提交仍由人显式跑 `/commit`。
+`/apply` 落源前先 `git fetch --prune origin` 并同步：这仓库同时驱动多台机器，落在过期基线
+上的提交会变成分叉。能快进走 `--ff-only`，分叉走 `--rebase`，任何冲突都**中止整个命令**，
+要求先把 git 解决干净——不带着冲突去 `apply`。`/collect` 不参与这一步。两个命令都刻意不含
+提交动作，提交仍由人显式跑 `/commit`。
 
 `/collect` 的判据是 `chezmoi status` 的**第一列**——它表示家目录相对 chezmoi 上次写入的
 差异，所以第一列非空即家目录侧漂移（`/apply` 的活），第一列为空、第二列为 `M` 才是源侧
