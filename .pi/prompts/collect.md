@@ -73,10 +73,10 @@ fd -t f --max-depth 2 --changed-within 14d . \
 comm -23 /tmp/candidates.txt /tmp/managed.txt
 ```
 
-噪音是预期的（chromium / google-chrome 的 profile、`dconf`、`chezmoi` 自己的状态库、
-`waybar-niri-windows.so` 这类构建产物、`lazy-lock.json` 这类锁文件）。它们由你判断：
-运行时状态、缓存、构建产物一律不进仓库。把剩下真正像配置的候选列给我，**逐条问我**
-要不要纳入——包括参数里直接传进来的路径。
+噪音是预期的，而且不该每次重新判断：先读 [`docs/chezmoi-notes.md`](../../docs/chezmoi-notes.md)
+的「家目录里不纳入源的清单」，命中的一律跳过（运行时状态、缓存、构建产物、工具自动
+重写、凭据、机器身份）。把剩下真正像配置的候选列给我，**逐条问我**要不要纳入——
+包括参数里直接传进来的路径。遇到清单里没有的新路径，按同样的判据判断并向清单补一条。
 
 我确认某个路径后：
 

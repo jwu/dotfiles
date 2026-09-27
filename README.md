@@ -141,7 +141,7 @@ chezmoi 的源路径与目标路径不一定逐字对应：`dot_` 加前置点�
 
 - [`docs/design.md`](docs/design.md) — 仓库的设计推导与实施记录。遇到结构性问题先读它。
 - [`docs/onboarding-a-machine.md`](docs/onboarding-a-machine.md) — 在一台新机器上接入的完整流程，给那台机器上的 agent 读。
-- [`docs/chezmoi-notes.md`](docs/chezmoi-notes.md) — chezmoi 的坑：目标路径匹配、双向排除、空父目录、目录权限、脚本记账。
+- [`docs/chezmoi-notes.md`](docs/chezmoi-notes.md) — chezmoi 的坑：目标路径匹配、双向排除、空父目录、目录权限、脚本记账，以及**家目录里不纳入源的清单**。
 - [`docs/chezmoi-migration.md`](docs/chezmoi-migration.md) — chezmoi 方案成型之前的评估记录：边界划分、源目录布局、四处模板化。
 - [`docs/alacritty.md`](docs/alacritty.md) — Alacritty 与 Ghostty 的逐项对齐，以及 Wayland 下的窗口装饰。
 - [`docs/shell.md`](docs/shell.md) — zsh 配置里的两个坑：nvm 的两种装法与 Apple Silicon 的 MPS 变量。

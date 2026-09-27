@@ -80,3 +80,51 @@ sourceDir = "/Users/<user>/bin/dotfiles"
 ```
 
 它是 chezmoi 自己的配置（鸡生蛋：chezmoi 不可能管自己的源在哪），不由本仓库管理。
+
+## 家目录里不纳入源的清单
+
+`/collect` 会扫出「家目录有、源没管」的文件。递归全扫撞上的几千个运行时数据不必逐个
+判断：命中下表的一律跳过。判据只有两类——**它不是配置**，或者**它是这台机器的身份**。
+
+### 工具自己生成 / 重写
+
+纳进来会与工具持续抢同一份文件，每次 apply 都在制造漂移。
+
+| 路径 | 原因 |
+| --- | --- |
+| `~/.config/gh/config.yml` | `gh` 自行重写 |
+| `~/.config/gh/hosts.yml` | 同上，且含 OAuth token |
+| `~/.config/user-dirs.dirs`、`user-dirs.locale` | `xdg-user-dirs-update` 生成 |
+| `~/.config/nvim/lazy-lock.json` | lazy.nvim 生成 |
+| `~/.local/share/applications/mimeapps.list` | 桌面环境运行时生成 |
+
+`~/.config/chezmoi/chezmoi.toml` 也在这里：由 `bootstrap/<platform>` 写，见上一节。
+
+### 运行时状态 / 缓存
+
+| 路径 | 原因 |
+| --- | --- |
+| `~/.config/{chromium,google-chrome}/**` | 浏览器 profile，含 Cookies 与 Login Data |
+| `~/.config/dconf/user` | 二进制状态库 |
+| `~/.config/chezmoi/chezmoistate.boltdb` | chezmoi 记账库 |
+| `~/.config/{fcitx,ibus}/**` | dbus / socket 句柄 |
+| `~/.config/{btop,go,nautilus,systemd,yay}/` | 空目录，工具首次运行才填 |
+
+### 构建产物 / 下载物
+
+| 路径 | 原因 |
+| --- | --- |
+| `~/.config/waybar/waybar-niri-windows.so{,.version}` | `scripts/` 里源码的编译产物 |
+| `~/.local/bin/gpu-watch` | `scripts/gpu-watch.c` 的编译产物 |
+| `~/.local/bin/gh` | 下载的独立二进制 |
+
+### 凭据 / 机器身份
+
+| 路径 | 原因 |
+| --- | --- |
+| `~/.pi/agent/auth.json` | 凭据 |
+| `~/.gitconfig` | 个人层（邮箱、姓名），每台机器手工维护 |
+| `~/.config/Moonlight Game Streaming Project/Moonlight.conf` | 含客户端私钥、内网与公网地址、MAC、对端主机名；且 Moonlight 会写回 |
+
+清单是**判据的实例**，不是穷举。新装一个软件、位置对不上的，按同样两条判据判断：会被
+工具重写的不进，带机器身份的不进。
