@@ -3,9 +3,11 @@
 桌面应用与工具的外链清单，不是配置的一部分。
 
 - Fonts
-  - [Inter](https://rsms.me/inter/)
-  - Microsoft YaHei
-  - PingFang SC
+  - UI：[Inter](https://rsms.me/inter/)
+  - 中文
+    - Linux：[Sarasa Mono SC](https://github.com/be5invis/Sarasa-Gothic)（`ttf-sarasa-gothic`）、[Noto Sans CJK SC](https://github.com/notofonts/noto-cjk)（`noto-fonts-cjk`）
+    - Windows：Microsoft YaHei
+    - macOS：PingFang SC
 - Coding
   - [Zed](https://zed.dev/)
   - [Neovide](https://neovide.dev/)
