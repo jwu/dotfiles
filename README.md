@@ -155,6 +155,7 @@ chezmoi 的源路径与目标路径不一定逐字对应：`dot_` 加前置点�
 - [`docs/ghostty-gl-version.md`](docs/ghostty-gl-version.md) — Intel HD 4000 上保住硬件渲染的 MESA override。
 - [`docs/gtk4.md`](docs/gtk4.md) — GTK4 全局 CSD 直角微调。
 - [`docs/bluetooth.md`](docs/bluetooth.md) — BlueZ OBEX agent 单槽位与冲突诊断。
+- [`docs/audio.md`](docs/audio.md) — MacBook CS8409 内置音频：主线只支持 Dell，靠 AUR 的 DKMS 补丁出声。
 - [`docs/xwayland-satellite.md`](docs/xwayland-satellite.md) — X11 弹窗焦点、Steam 顶栏菜单闪退、AUR `-git` 包的取舍。
 - [`docs/ime-icons.md`](docs/ime-icons.md) — Fcitx5 托盘图标的覆盖规则与状态对应。
 - [`docs/rime/rime-config.md`](docs/rime/rime-config.md) — Rime 词库、补丁写法、`__patch` 的坑。
