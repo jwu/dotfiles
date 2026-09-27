@@ -121,12 +121,20 @@ function pstat() {
 # pon/poff/pstat above. See docs/wayland-attach.md.
 
 wattach() {
-  if (( $# )); then
-    # Command form: export in a subshell and drop the banner, so this shell
-    # stays untouched and the command's own output stays clean.
-    (_wattach_apply >/dev/null && exec "$@")
-  else
+  local detach=0
+  [[ $1 == -d || $1 == --detach ]] && { detach=1; shift }
+  if (( $# == 0 )); then
+    (( detach )) && { print -u2 'wattach: -d needs a command'; return 2 }
     _wattach_apply
+  elif (( detach )); then
+    # setsid -f gives the command its own session, so an ssh hangup cannot kill
+    # it. A lockscreen killed that way leaves niri stuck on a red locked screen;
+    # see docs/lockscreen.md.
+    (_wattach_apply >/dev/null && exec setsid -f "$@")
+  else
+    # Export in a subshell and drop the banner: this shell stays untouched and
+    # the command's own output stays clean.
+    (_wattach_apply >/dev/null && exec "$@")
   fi
 }
 

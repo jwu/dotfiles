@@ -102,6 +102,7 @@ undo 是一段存在环境变量里的 shell 代码，只在同一个 shell 里�
 ```sh
 wattach foot             # 在图形会话的环境里开一个终端
 wattach grim /tmp/a.png  # 单条命令，不留痕
+wattach -d niri-lock     # -d：脱离 ssh 会话，断线也不收 SIGHUP
 ```
 
 这一支在**子 shell** 里 export，再 `exec` 目标命令：调用方 shell 的环境不受影响，
@@ -125,8 +126,8 @@ shell 里 export，并打印那行横幅。
   没做。
 - 同用户有多个图形会话时只取一个（systemd 那份只有一个 `NIRI_SOCKET`，扫描取最新），
   多座位场景没考虑。
-- 不处理「跟着 ssh 断开而退出」的问题：`wattach foot` 起的窗口会随 ssh 会话结束收到
-  SIGHUP。需要常在就自己 `nohup` / `setsid`。
+- 不带 `-d` 的命令形式会随 ssh 会话结束收到 SIGHUP；`wattach -d` 用 `setsid -f` 脱离。
+  锁屏是这条路上后果最重的一个，见 [`lockscreen.md`](lockscreen.md)。
 
 ## 验证
 

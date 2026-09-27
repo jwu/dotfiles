@@ -247,6 +247,31 @@ Mod+Alt+L allow-when-locked=true { spawn-sh "pkill -x hyprlock; pkill -x swayloc
 `allow-when-locked` 让它在锁定时也能触发；杀掉卡死的 locker 后用最简单的 swaylock 接管。
 锁屏客户端死掉时 niri 会留一个红屏（见 niri FAQ），这条绑定就是为那条路径准备的。
 
+## 从 ssh 锁屏：不脱会话就会掉进上面那个红屏
+
+`wattach niri-lock` 会让 hyprlock 变成 ssh 会话的后代。退出 ssh 时 sshd 给会话的前台
+进程组发 SIGHUP，hyprlock 跟着死；而 niri 不会因为锁屏客户端消失就解锁（故意的，客户端
+崩了不能暴露桌面），于是会话卡在「锁着但没人管」的红屏上 —— 也就是上一条绑定专门要救的
+那条路径。实测的症状是 `loginctl show-session` 报 `LockedHint=yes`，而 `hyprlock` /
+`swaylock` / `swayidle` 一个都不在。
+
+所以从 ssh 锁屏要让它脱离会话：
+
+```sh
+wattach -d niri-lock              # 等价于 wattach setsid -f niri-lock
+```
+
+`setsid -f` 让 niri-lock 以 `systemd(1)` 为父进程独立成会话，ssh 断开时收不到 SIGHUP。
+验证方式是看进程树里没有 sshd：
+
+```sh
+pstree -sp $(pgrep -x hyprlock)
+```
+
+红屏状态下从 ssh 解不开锁，最终仍要有人在键鼠前输密码；ssh 那边能做的只是再起一个锁屏
+客户端，niri 会用它替换掉死掉的那个。这不是锁屏特有的问题，任何「要活过我退出 ssh」的
+GUI 程序都一样，见 [`wayland-attach.md`](wayland-attach.md)。
+
 ## 已知取舍
 
 - hyprlock 锁定期间持续 ~60fps 重绘（GPU 加速），耗电比 swaylock 高。
