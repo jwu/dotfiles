@@ -1,0 +1,201 @@
+{
+  "app" : {
+    "buildVersion" : 707,
+    "bundleIdentifier" : "com.runjuu.Input-Source-Pro",
+    "shortVersion" : "2.12.0"
+  },
+  "appRules" : [
+    {
+      "bundleId" : "com.electron.lark",
+      "bundleName" : "飞书",
+      "createdAt" : "2026-02-05T08:01:26Z",
+      "doNotRestoreKeyboard" : false,
+      "doRestoreKeyboard" : false,
+      "forceEnglishPunctuation" : false,
+      "hideIndicator" : false,
+      "inputSourceId" : "com.apple.inputmethod.SCIM.ITABC::com.apple.inputmethod.SCIM.ITABC",
+      "removed" : false,
+      "url" : "file:///Applications/Lark.app/"
+    },
+    {
+      "bundleId" : "com.tencent.xinWeChat",
+      "bundleName" : "微信",
+      "createdAt" : "2026-02-05T08:01:26Z",
+      "doNotRestoreKeyboard" : false,
+      "doRestoreKeyboard" : false,
+      "forceEnglishPunctuation" : false,
+      "hideIndicator" : false,
+      "inputSourceId" : "com.apple.inputmethod.SCIM.ITABC::com.apple.inputmethod.SCIM.ITABC",
+      "removed" : false,
+      "url" : "file:///Applications/WeChat.app/"
+    },
+    {
+      "bundleId" : "com.google.Chrome",
+      "bundleName" : "Google Chrome",
+      "createdAt" : "2026-02-05T08:01:26Z",
+      "doNotRestoreKeyboard" : false,
+      "doRestoreKeyboard" : true,
+      "forceEnglishPunctuation" : false,
+      "hideIndicator" : false,
+      "inputSourceId" : "com.apple.keylayout.ABC",
+      "removed" : false,
+      "url" : "file:///Applications/Google%20Chrome.app/"
+    },
+    {
+      "bundleId" : "dev.zed.Zed",
+      "bundleName" : "Zed",
+      "createdAt" : "2026-02-05T08:01:26Z",
+      "doNotRestoreKeyboard" : false,
+      "doRestoreKeyboard" : false,
+      "forceEnglishPunctuation" : false,
+      "hideIndicator" : false,
+      "inputSourceId" : "com.apple.keylayout.ABC",
+      "removed" : false,
+      "url" : "file:///Applications/Zed.app/"
+    },
+    {
+      "bundleId" : "md.obsidian",
+      "bundleName" : "Obsidian",
+      "createdAt" : "2026-02-05T08:01:26Z",
+      "doNotRestoreKeyboard" : false,
+      "doRestoreKeyboard" : true,
+      "forceEnglishPunctuation" : false,
+      "hideIndicator" : false,
+      "inputSourceId" : "com.apple.inputmethod.SCIM.ITABC::com.apple.inputmethod.SCIM.ITABC",
+      "removed" : false,
+      "url" : "file:///Applications/Obsidian.app/"
+    },
+    {
+      "bundleId" : "com.neovide.neovide",
+      "bundleName" : "Neovide",
+      "createdAt" : "2026-02-06T12:48:30Z",
+      "doNotRestoreKeyboard" : false,
+      "doRestoreKeyboard" : false,
+      "forceEnglishPunctuation" : false,
+      "hideIndicator" : false,
+      "inputSourceId" : "com.apple.keylayout.ABC",
+      "removed" : false,
+      "url" : "file:///Applications/Neovide.app/"
+    }
+  ],
+  "browserRules" : [
+
+  ],
+  "exportedAt" : "2026-09-27T07:07:19Z",
+  "hotKeyGroups" : [
+
+  ],
+  "keyboardConfigs" : [
+    {
+      "bgColorHex" : "000000ff",
+      "id" : "com.apple.inputmethod.SCIM.ITABC",
+      "textColorHex" : "ffffffff"
+    },
+    {
+      "bgColorHex" : "000000ff",
+      "id" : "com.apple.keylayout.ABC",
+      "textColorHex" : "ffffffff"
+    },
+    {
+      "bgColorHex" : "000000ff",
+      "id" : "im.rime.inputmethod.Squirrel.Hans",
+      "textColorHex" : "ffffffff"
+    },
+    {
+      "bgColorHex" : "000000ff",
+      "id" : "im.rime.inputmethod.Squirrel.Hans::im.rime.inputmethod.Squirrel.Hans",
+      "textColorHex" : "ffffffff"
+    }
+  ],
+  "keyboardShortcuts" : {
+
+  },
+  "preferences" : {
+    "appearanceMode" : "Light",
+    "browserAddressDefaultKeyboardId" : "",
+    "cJKVFixStrategy" : "previousInputSourceShortcut",
+    "functionKeysToggleModifierCombo" : [
+
+    ],
+    "functionKeysToggleShortcutMode" : "keyboardShortcut",
+    "functionKeysToggleSingleModifierTrigger" : "singlePress",
+    "indicatorBackground" : {
+      "dark" : "000000ff",
+      "light" : "000000ff"
+    },
+    "indicatorForgeground" : {
+      "dark" : "ffffffff",
+      "light" : "ffffffff"
+    },
+    "indicatorInfo" : {
+      "base" : "iconOnly"
+    },
+    "indicatorPosition" : {
+      "base" : "nearMouse"
+    },
+    "indicatorPositionAlignment" : {
+      "base" : 4
+    },
+    "indicatorPositionSpacing" : {
+      "base" : 2
+    },
+    "indicatorSize" : {
+      "base" : 2
+    },
+    "isActiveWhenFocusedElementChanges" : true,
+    "isActiveWhenLongpressLeftMouse" : true,
+    "isActiveWhenSwitchApp" : false,
+    "isActiveWhenSwitchInputSource" : false,
+    "isAlwaysDisplayIndicatorNearMouse" : false,
+    "isAutoAppearanceMode" : true,
+    "isCJKVFixEnabled" : false,
+    "isEnableAlwaysOnIndicator" : false,
+    "isEnableURLSwitchForArc" : false,
+    "isEnableURLSwitchForBrave" : false,
+    "isEnableURLSwitchForBraveBeta" : false,
+    "isEnableURLSwitchForBraveNightly" : false,
+    "isEnableURLSwitchForChrome" : false,
+    "isEnableURLSwitchForChromium" : false,
+    "isEnableURLSwitchForDia" : false,
+    "isEnableURLSwitchForEdge" : false,
+    "isEnableURLSwitchForFirefox" : false,
+    "isEnableURLSwitchForFirefoxDeveloperEdition" : false,
+    "isEnableURLSwitchForFirefoxNightly" : false,
+    "isEnableURLSwitchForHelium" : false,
+    "isEnableURLSwitchForOpera" : false,
+    "isEnableURLSwitchForSafari" : false,
+    "isEnableURLSwitchForSafariTechnologyPreview" : false,
+    "isEnableURLSwitchForThorium" : false,
+    "isEnableURLSwitchForVivaldi" : false,
+    "isEnableURLSwitchForZen" : false,
+    "isEnhancedModeEnabled" : false,
+    "isFunctionKeysEnabled" : true,
+    "isHideWhenSwitchAppWithForceKeyboard" : false,
+    "isLaunchAtLogin" : true,
+    "isRestorePreviouslyUsedInputSource" : false,
+    "isShowIconInMenuBar" : true,
+    "shortcutModeGroupMapping" : {
+
+    },
+    "shortcutModeInputSourceMapping" : {
+
+    },
+    "shortcutTriggerMode" : "keyboardShortcut",
+    "singleModifierGroupMapping" : {
+
+    },
+    "singleModifierInputSourceMapping" : {
+
+    },
+    "singleModifierTrigger" : "singlePress",
+    "singleModifierTriggerGroupMapping" : {
+
+    },
+    "singleModifierTriggerInputSourceMapping" : {
+
+    },
+    "systemWideDefaultKeyboardId" : "com.apple.keylayout.ABC",
+    "tryToDisplayIndicatorNearCursor" : true
+  },
+  "schemaVersion" : 1
+}

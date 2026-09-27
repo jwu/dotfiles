@@ -33,7 +33,7 @@ brew install --cask input-source-pro
 | --- | --- |
 | 默认输入法 | 适用于所有应用和网站 → `ABC` |
 | 输入法恢复策略 | 切换回应用或网站时 → **总是切换至默认输入法**（不是「恢复上次使用的输入法」） |
-| 默认功能键 | 将 F1、F2 等用作标准功能键，而不是媒体键 → 关闭 |
+| 默认功能键 | 「将 F1、F2 等用作标准功能键，而不是媒体键」：导出里 `isFunctionKeysEnabled` 是 `true`（截图上看是关闭，以导出为准） |
 | 提示触发规则 | 长按鼠标左键时显示 ✅、切换输入焦点时显示 ✅（需要增强模式）；切换输入法时显示 ☐、切换应用时显示 ☐ |
 
 选「总是切换至默认输入法」是这套规则的前提：焦点一换就回到 `ABC`，中文只在需要时手动切。
@@ -61,9 +61,10 @@ Google Chrome   Logseq   Neovide   Numbers 表格   Obsidian   WezTerm   Zed
 也就是这个页面的价值在于**例外**：列出来的是要单独定的应用，其余走全局规则。清单本身会
 随时间变，所以真正需要留档的是这条判据，不是某一版列表。
 
-右侧详情里是每个应用的默认输入法、功能键（「使用全局设置」）、输入法恢复策略（与全局
-一致），「隐藏输入法提示」与「强制使用英文标点符号」默认不勾。底部「添加运行中的应用」
-保持勾选。
+右侧详情里是每个应用的默认输入法、功能键（「使用全局设置」）、输入法恢复策略。恢复策略
+多数是默认（总是切换至默认输入法），但 **Chrome 与 Obsidian 的 `doRestoreKeyboard` 是
+`true`**，即这两个应用用「恢复上次使用的输入法」。「隐藏输入法提示」与「强制使用英文标
+点符号」都不勾。底部「添加运行中的应用」保持勾选。
 
 另外「颜色方案」页不在截图里，但 2.12.0 的 `ZKEYBOARDCONFIG` 把
 `com.apple.keylayout.ABC`、简体拼音、`im.rime.inputmethod.Squirrel.Hans` 都设成了黑底
@@ -74,8 +75,8 @@ Google Chrome   Logseq   Neovide   Numbers 表格   Obsidian   WezTerm   Zed
 应用自己提供了搬运途径，不需要碰数据库：
 
 1. **老机器**：用应用界面里的「导出设置」导出一份 JSON。
-2. 把该文件放进仓库：`dot_config/inputsourcepro/settings.json`，它会部署到
-   `~/.config/inputsourcepro/settings.json`。
+2. 把该文件放进仓库：`dot_config/inputsourcepro/settings.json`（**已放入**，它是本文界面
+   描述的权威版本），它会部署到 `~/.config/inputsourcepro/settings.json`。
 3. **新机器**：`chezmoi apply` 时由 `run_once_after_80-inputsourcepro.sh.tmpl` 调官方
    URL scheme 导入：
 
@@ -84,8 +85,12 @@ Google Chrome   Logseq   Neovide   Numbers 表格   Obsidian   WezTerm   Zed
    ```
 
 用 `run_once_` 而不是 `run_onchange_`：这是**恢复**，不是真源。规则平时在应用界面里改，
-每次源变动都重新导入会把「上次导出之后」的改动冲掉。导入前应用自己还会把当前设置备份成
-`settings-backup-<时间戳>`，所以误导入可以退回。
+每次源变动都重新导入会把「上次导出之后」的改动冲掉。
+
+导入前应用会先把当前设置备份到
+`~/Library/Application Support/Input Source Pro/Backups/settings-backup-<YYYY-MM-DD-HHMMSS>.json`，
+误导入可以退回。这条链路已在本机实测通过：导入把库里的记录整批换掉（`ZAPPRULE` 的主键从
+1/6/8/9/13/14 变成 16–21），备份文件随之出现——这也是不该直接改那个 SQLite 的又一个理由。
 
 代价是 `run_once_` **会被提前消耗**：它在应用就绪之前跑过一次，就再没有第二次机会。所以
 `input-source-pro` 必须留在 `bootstrap/macos.sh` 的 `CASKS` 里——否则新机器上先 `apply`
