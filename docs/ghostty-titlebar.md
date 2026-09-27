@@ -80,36 +80,33 @@ path 组件总以 `/` 开头（实测发 `kitty-shell-cwd://host/~/foo` 出来�
 
 ## ssh 时的标题
 
-需求是「处于 ssh 会话时，标题栏显示 ssh 信息」。Ghostty 做不到按 ssh 状态改标题栏
-**颜色**：颜色全部来自应用级静态 `gtk-custom-css`（即上面那几份 `titlebar-colors-*.css`）；
-GTK CSS 没有按标题内容匹配的选择器，Ghostty 也没把「是否在 ssh」暴露给 UI——v1.3.1 的
-`src/apprt/gtk`（`window.zig` / `surface.zig` / `App.zig` / `window.blp`）里搜不到任何 ssh
-状态。
+需求是「**只在远程**显示 ssh 标记」。Ghostty 做不到按 ssh 状态改标题栏**颜色**：颜色全来自
+应用级静态 `gtk-custom-css`（即上面那几份 `titlebar-colors-*.css`），GTK CSS 没有按标题内容
+匹配的选择器，Ghostty 也没把「是否在 ssh」暴露给 UI——v1.3.1 的 `src/apprt/gtk` 里搜不到任何
+ssh 状态。所以只能在标题**内容**上做，而且判定要放在**远程**：`SSH_CONNECTION` 只在远端才有。
 
-于是只在**内容**上做文章：`dot_zshrc.tmpl` 里定义 `_ghostty_ssh_title`，本地敲 `ssh` 时把
-标题写成 `🖥 <目标>`。
+分两条路，因为两端的标题归属不同：
 
-**难点是顺序。** `preexec_functions` 里同时有 oh-my-zsh、starship 和 Ghostty 自己的
-钩子，最后执行的赢。Ghostty 的钩子不是 `.zshrc` 时注册的：`.zshenv` 注入的
-`_ghostty_deferred_init` 在**第一次 precmd** 才定义 `_ghostty_preexec`、追加到数组末尾，
-而它的 `functions[_ghostty_preexec]+="..."` 会把标题设成整条命令。所以 `.zshrc` 里写死的
-一次性注册会被它盖掉（实测出来标题正好是完整命令行）。
+**远程 zsh**：ssh 过去后 `GHOSTTY_RESOURCES_DIR` 不会被 `ssh-env` 传到远端，Ghostty 的 shell
+集成在远程没加载，标题只由 oh-my-zsh 设。omz 的 `omz_termsupport_precmd` 每次 precmd 都读
+`ZSH_THEME_TERM_TITLE_IDLE`（默认 `%n@%m:%~`），所以在 `dot_zshrc.tmpl` 里 source omz 之后
+按需覆盖它：
 
-办法是注册一个 precmd 钩子，每次把 `_ghostty_ssh_title` 移到 `preexec_functions` 末尾：
-集成只在 deferred init 里追加一次，之后不再动这个数组，所以稳定。其余几点：
+```zsh
+[[ -n ${SSH_CONNECTION:-} ]] && ZSH_THEME_TERM_TITLE_IDLE='🖥 %n@%m:%~'
+```
 
-- ssh 是前台阻塞进程，钩子设一次标题就够；ssh 退出后由 Ghostty 自己的 `precmd` 把标题
-  设回 cwd，不需要我们收尾。
-- 目标是从命令行里跳过 `ssh` 选项取到的那个词，所以 `ssh -p 22 host` 显示 `host`，
-  `ssh user@host` 原样显示（保留 `~/.ssh/config` 里的别名，不解析成真实主机名）。
-- 图标 `🖥`（U+1F5A5）走 fontconfig 回退到 `Noto Emoji`，所以是**单色**、与文字同色（加
-  `VS16` 无效）；想要彩色就换成 `💻`（走 `Noto Color Emoji`）。改 `_ghostty_ssh_title`
-  里的 `printf` 即可。
+本地 shell 没有 `SSH_CONNECTION`，格式保持原样，于是标记天然只出现在远程。
 
-标题栏文字本身仍是 `titlebar-colors-*.css` 里定的主题色——上游一天不提供 ssh 状态，就
-一天没法只让这段信息变色。
+**远程 pi**：pi 是 TUI，自己控制标题。pi-config 的 `terminal-signals` 扩展在 `SSH_CONNECTION`
+/ `SSH_TTY` 存在时给标题加 `🖥 <远程主机名> ` 前缀。这里有个坑：**pi 核心也有一个
+`updateTerminalTitle()`**，把标题设成 `π - <session> - <cwd>`，触发点是 `session_info_changed`
+事件；而该事件的扩展 handler 先于核心的 UI handler 跑，所以扩展得**延后一拍**
+（`setTimeout(…, 0)`）再重设自己的标题，否则空闲时会被核心盖掉——现象就是「只有对话时才有
+标记」，因为工作时 spinner 每 80ms 刷一次。
 
-本地钩子只能管「敲下 ssh」到「远程启动 pi」这段：pi 是 TUI，会用自己的 OSC 2 把标题设成
-`π - <目录>`。这一段由 pi-config 的 `terminal-signals` 扩展接手——它在 `SSH_CONNECTION`
-存在时把 `🖥 <远程主机名>` 前缀进 pi 的标题，所以远程跑 pi 时标记仍在。别的远程程序（如
-nvim）还是会覆盖标题，目前不管。
+图标 `🖥`（U+1F5A5）走 fontconfig 回退到 `Noto Emoji`，是**单色**、与文字同色（加 `VS16`
+无效）；想要彩色就换 `💻`（`Noto Color Emoji`）。
+
+标题栏文字颜色仍是 `titlebar-colors-*.css` 里的主题色——上游一天不提供 ssh 状态，就一天没
+法只给这段信息上色。别的远程程序（如 nvim）照样会覆盖标题，目前不管。

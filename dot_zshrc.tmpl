@@ -40,6 +40,12 @@ plugins=(
 )
 
 source $ZSH/oh-my-zsh.sh
+
+# Mark the window title when this shell is the remote end of an ssh session.
+# omz reads this on every precmd; a local shell has no SSH_CONNECTION and stays
+# unmarked. See docs/ghostty-titlebar.md.
+[[ -n ${SSH_CONNECTION:-} ]] && ZSH_THEME_TERM_TITLE_IDLE='🖥 %n@%m:%~'
+
 source $ZSH/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 eval "$(starship init zsh)"
 eval "$(zoxide init zsh)"
@@ -152,45 +158,6 @@ export PATH=~/.opencode/bin:$PATH
 
 # Android SDK
 export PATH=~/Library/Android/sdk/platform-tools:$PATH
-
-# ------------------------------
-# ghostty ssh window title
-# ------------------------------
-
-# Mark the window title while a local `ssh` runs. It must run after Ghostty's
-# own preexec hook, which the shell integration appends during a deferred init
-# on the first precmd and which writes the full command to the title. See
-# docs/ghostty-titlebar.md.
-function _ghostty_ssh_title() {
-  local -a cmd=(${(z)1})
-  [[ $cmd[1] == ssh ]] || return 0
-
-  # Skip options to find the destination, so `ssh -p 22 host` reports `host`.
-  local -a opts_with_arg=(-b -c -D -E -e -F -I -i -J -L -l -m -O -o -p -Q -R -S -W -w)
-  local i=2 target=
-  while (( i <= $#cmd )); do
-    [[ $cmd[i] == -- ]] && { target=$cmd[i+1]; break; }
-    if [[ $cmd[i] == -* ]]; then
-      if (( ${opts_with_arg[(I)$cmd[i]]} )) && [[ $cmd[i] != -*=* ]]; then
-        (( i += 2 ))
-      else
-        (( i += 1 ))
-      fi
-    else
-      target=$cmd[i]
-      break
-    fi
-  done
-
-  [[ -n $target ]] && printf '\033]2;🖥 %s\a' "$target"
-}
-
-# Ghostty's hook is registered late, and reordering is cheap, so re-assert ours
-# on every precmd instead of once, which would race the deferred init.
-function _ghostty_ssh_title_register() {
-  preexec_functions=(${preexec_functions:#_ghostty_ssh_title} _ghostty_ssh_title)
-}
-precmd_functions=(${precmd_functions:#_ghostty_ssh_title_register} _ghostty_ssh_title_register)
 {{ if eq .chezmoi.os "linux" }}
 # ------------------------------
 # waybar niri-windows module
