@@ -77,7 +77,7 @@ PowerShell 是为了和原来的 Windows 脚本层一致；批处理没有 `curl
 
 **Linux 与 macOS 的 bootstrap 是各自平台上唯一需要 root 或终端的脚本。** Linux 侧的 sudo
 动作：装 41 个包、yay 与 AUR 的 xwayland-satellite-git、`chsh`（走 PAM，同样需要终端）、TTY
-字体、drivetemp、mihomo 的包与 drop-in 与面板、sudoers 的免密窗口（见下）。macOS 侧只有两处：`chsh`，以及首次把 Homebrew 的 zsh 加进 `/etc/shells`。
+字体、drivetemp、mihomo 的 AUR 包与 drop-in 与面板、sudoers 的免密窗口（见下）。macOS 侧只有两处：`chsh`，以及首次把 Homebrew 的 zsh 加进 `/etc/shells`。
 **Windows 侧不需要任何提权**：scoop 是 per-user 安装，字体 manifest 也写
 `%LOCALAPPDATA%\Microsoft\Windows\Fonts`，所以 `bootstrap/windows.bat` 与 `chezmoi apply`
 都既不需要管理员、也不需要终端。`run_*` 脚本只剩不需要 root 的部分——这正是 Oh My Zsh 与
@@ -868,7 +868,7 @@ macOS 与 Windows 的 Chrome 不认这些文件名，`mimeapps.list` 是 XDG 的
 
 ### 2026-09-27 metacubexd 老方案残留清理
 
-这台机器的代理现在是**系统级 mihomo**：`mihomo.service`（pacman 包）读
+这台机器的代理现在是**系统级 mihomo**：`mihomo.service`（AUR 的 `mihomo-bin` 包，见「mihomo：哪些能管，哪些不能」）读
 `/etc/mihomo/config.yaml`，其中 `external-controller: "0.0.0.0:9090"` 加 `external-ui: ui/xd`，
 于是 `http://127.0.0.1:9090/ui/` 直接提供 MetaCubeXD 面板——`/etc/mihomo/ui/xd` 就是那个面板的
 构建产物（Nuxt 静态站，8.1M，`<title>MetaCubeXD</title>`）。订阅来自 `config.yaml` 顶部的
@@ -907,7 +907,18 @@ ExecStart=/usr/bin/mihomo -d /etc/mihomo -ext-ctl 127.0.0.1:9090
 
 ### mihomo：哪些能管，哪些不能
 
-服务栈是 pacman 的 `mihomo` + `clash-geoip`，外面套三处本地策略。**配置本体不能进仓库**：
+服务栈是 AUR 的 `mihomo-bin` + `clash-geoip`，外面套三处本地策略。**两者都不在官方仓库**：
+`pacman -Sl extra` 查不到，包名直接进 `pacman -S` 只会得到 `target not found`（2026-09-27
+用 `--print` 干跑实测）。`mihomo-bin` 声明 `Provides: mihomo`，与源码包 `mihomo`（AUR，
+21★）互相 `Conflicts`，只能装一个；本机装的是 `mihomo-bin 1.19.31-1`。**`bootstrap/arch.sh`
+的 `install_mihomo` 因此从 `pacman -S` 改成了 `yay -S`**——这条线原来会失败，不只是本机偏差。
+
+geodata 也一并交代：`mihomo-bin` 的包内容只有 `config.yaml`、二进制与两个 unit，**不带任何
+geodata**；本机生效的 `/etc/mihomo/geoip.metadb` 是手工放的。`clash-geoip`（AUR，PKGBUILD
+实测）装的正是 `/etc/clash/Country.mmdb`，即 `install_mihomo` 那条软链的目标，所以那条链只在
+装了 `clash-geoip` 之后才有对象。
+
+**配置本体不能进仓库**：
 `/etc/mihomo/config.yaml` 是机场给的完整订阅，445 KB，顶行的 `#!MANAGED-CONFIG` 里就带着
 订阅链接（含用户 ID），正文另有 32 处 `password` / `uuid` / `secret` / `psk` 节点凭据。仓库是
 public，所以它和 `~/.gitconfig` 一样留在本机。
@@ -945,8 +956,10 @@ ExecStart=/usr/bin/mihomo -d /etc/mihomo -ext-ctl 127.0.0.1:9090 -ext-ui ui/xd
 ExecStartPre=+/usr/local/bin/mihomo-overlay
 ```
 
-`+` 前缀不能省：unit 是 `User=mihomo`，而 `config.yaml` 是 `root:root`，服务写不了自己的
-配置；`+` 让这一条以 root 跑（systemd 262 实测可用）。
+`+` 前缀按 AUR 的 `mihomo` 源码包写：它的 unit 是 `User=mihomo`，而 `config.yaml` 是
+`root:root`，服务写不了自己的配置；`+` 让这一条以 root 跑（systemd 262 实测可用）。本机装的
+是 `mihomo-bin`，它的 unit **没有** `User=`（本就以 root 跑），所以 `+` 在这里无害但不起作用；
+保留它是为了让两种包都成立。
 
 补丁脚本是仓库里的 `scripts/mihomo-overlay.sh`，装到 `/usr/local/bin/mihomo-overlay`。它只钉
 `mixed-port: 7890`——理由是与纳管的 `chrome-flags.conf` / `chromium-flags.conf` 强耦合，订阅
