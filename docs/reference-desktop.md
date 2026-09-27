@@ -1,0 +1,46 @@
+# Desktop 参考
+
+桌面应用与工具的外链清单，不是配置的一部分。
+
+- Fonts
+  - [Inter](https://rsms.me/inter/)
+  - Microsoft YaHei
+  - PingFang SC
+- Coding
+  - [Zed](https://zed.dev/)
+  - [Neovide](https://neovide.dev/)
+- Documentation
+  - [Obsidian](https://obsidian.md/)
+  - [Logseq](https://logseq.com/)
+- File Management
+  - [Total Commander](https://www.ghisler.com/)
+- Window Management
+  - MacOS
+    - [AeroSpace](https://github.com/nikitabobko/AeroSpace)
+- System Tools
+  - [7-Zip](https://www.7-zip.org/)
+  - Windows
+    - [Everything](https://www.voidtools.com/)
+      - [Everything CLI](https://www.voidtools.com/support/everything/command_line_interface/)
+  - MacOS
+    - [Input Source Pro](https://inputsource.pro/)
+    - [AutoRise](https://autorie.app/)
+- Screen Capture
+  - [Snipaste](https://www.snipaste.com/)
+    - [ShareX](https://getsharex.com/)
+- Image Viewer
+  - [PureRef](https://www.pureref.com/)
+  - [IrfanView](https://www.irfanview.com/)
+    - [qView](https://interversehq.com/qview/)
+- Media Players
+  - [iina](https://github.com/iina/iina)
+  - [PortPlayer](https://portplayer.net/)
+  - [VLC](https://www.videolan.org/vlc/)
+- Media Recorder
+  - [OBS Studio](https://obsproject.com/)
+  - [OpenScreen](https://openscreen.vercel.app/)
+- VPN
+  - [Clash Verge](https://github.com/clash-verge-rev/clash-verge-rev)
+    - [WgetCloud](https://wgetcloud.org/)
+- Remote Desktop
+  - [RustDesk](https://rustdesk.com/)
