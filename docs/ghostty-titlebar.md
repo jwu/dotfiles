@@ -62,3 +62,54 @@ Adwaita 只圆上面两个角（`window.csd`），并只在窗口平铺/最大�
 
 `titlebar.css` 里注释掉的极端档把标题栏压到 8px，但只能再省约 10px：再往下是 16px 图标、
 窗口标题文字、SplitButton 箭头三块地板。图标尺寸不影响高度，所以没动它。
+
+## 副标题（第二行）：评估过，不启用
+
+标题栏是 `Adw.WindowTitle`，天生有 `title` 和 `subtitle` 两行，但 `subtitle` 只能由
+`window-subtitle` 控制（`false` / `working-directory`），内容是当前目录；VT/OSC 层没有设置
+它的序列，GTK 层也只有 `closureSubtitle` 一个写入点。所以它既放不了 ssh 信息，也不是个能
+自定义的槽位。
+
+试过 `working-directory`：能显示，22px 扁平高度也放得下两行（一开始看不到是旧窗口没重载
+配置，不是高度问题）。但路径**永远是绝对路径**——Ghostty 取 OSC 7 的 `uri.path`，URI 的
+path 组件总以 `/` 开头（实测发 `kitty-shell-cwd://host/~/foo` 出来是 `/~/foo`；发
+`kitty-shell-cwd://host~/foo` 则 host 变成 `host~`、通不过本地主机校验被丢弃），缩不成
+`~/`。加上 `headerbar` 那条 `color` 会把它顶上标题色、还得单独写 CSS 调暗，收益不值，所以
+不启用。想要 `~/` 只能改上游 `closureSubtitle`，或把目录放进标题（title feature 用 zsh 的
+`%(4~|…/%3~|%~)`，本来就缩写）。
+
+## ssh 时的标题
+
+需求是「处于 ssh 会话时，标题栏显示 ssh 信息」。Ghostty 做不到按 ssh 状态改标题栏
+**颜色**：颜色全部来自应用级静态 `gtk-custom-css`（即上面那几份 `titlebar-colors-*.css`）；
+GTK CSS 没有按标题内容匹配的选择器，Ghostty 也没把「是否在 ssh」暴露给 UI——v1.3.1 的
+`src/apprt/gtk`（`window.zig` / `surface.zig` / `App.zig` / `window.blp`）里搜不到任何 ssh
+状态。
+
+于是只在**内容**上做文章：`dot_zshrc.tmpl` 里定义 `_ghostty_ssh_title`，本地敲 `ssh` 时把
+标题写成 `🖥 <目标>`。
+
+**难点是顺序。** `preexec_functions` 里同时有 oh-my-zsh、starship 和 Ghostty 自己的
+钩子，最后执行的赢。Ghostty 的钩子不是 `.zshrc` 时注册的：`.zshenv` 注入的
+`_ghostty_deferred_init` 在**第一次 precmd** 才定义 `_ghostty_preexec`、追加到数组末尾，
+而它的 `functions[_ghostty_preexec]+="..."` 会把标题设成整条命令。所以 `.zshrc` 里写死的
+一次性注册会被它盖掉（实测出来标题正好是完整命令行）。
+
+办法是注册一个 precmd 钩子，每次把 `_ghostty_ssh_title` 移到 `preexec_functions` 末尾：
+集成只在 deferred init 里追加一次，之后不再动这个数组，所以稳定。其余几点：
+
+- ssh 是前台阻塞进程，钩子设一次标题就够；ssh 退出后由 Ghostty 自己的 `precmd` 把标题
+  设回 cwd，不需要我们收尾。
+- 目标是从命令行里跳过 `ssh` 选项取到的那个词，所以 `ssh -p 22 host` 显示 `host`，
+  `ssh user@host` 原样显示（保留 `~/.ssh/config` 里的别名，不解析成真实主机名）。
+- 图标 `🖥`（U+1F5A5）走 fontconfig 回退到 `Noto Emoji`，所以是**单色**、与文字同色（加
+  `VS16` 无效）；想要彩色就换成 `💻`（走 `Noto Color Emoji`）。改 `_ghostty_ssh_title`
+  里的 `printf` 即可。
+
+标题栏文字本身仍是 `titlebar-colors-*.css` 里定的主题色——上游一天不提供 ssh 状态，就
+一天没法只让这段信息变色。
+
+本地钩子只能管「敲下 ssh」到「远程启动 pi」这段：pi 是 TUI，会用自己的 OSC 2 把标题设成
+`π - <目录>`。这一段由 pi-config 的 `terminal-signals` 扩展接手——它在 `SSH_CONNECTION`
+存在时把 `🖥 <远程主机名>` 前缀进 pi 的标题，所以远程跑 pi 时标记仍在。别的远程程序（如
+nvim）还是会覆盖标题，目前不管。
