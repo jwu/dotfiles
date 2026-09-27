@@ -95,7 +95,7 @@ winget install twpayne.chezmoi
 ### 3.2 克隆到固定路径
 
 路径**不能随意选**：`create_settings.json.tmpl` 渲染出的 `extensions` 指向
-`~/bin/pi-config/extensions`（见 §5.3），而 `run_once_after_50-pi-config.sh` 只会 clone 到
+`~/bin/pi-config/extensions`（见 §5.3），而 `run_once_after_50-pi-config.sh.tmpl` 只会 clone 到
 `~/bin/pi-config`。
 
 ```bash

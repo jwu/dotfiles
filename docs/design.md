@@ -467,20 +467,20 @@ Linux / macOS 的渲染逐字节不变（已逐个比对）。
 
 | 原位置 | 迁入后 | 说明 |
 | --- | --- | --- |
-| `configs/linux/install.sh` 的 pacman 装包 | `run_once_before_packages-arch.sh` | 需要 sudo；`before` 保证装机先于配置 |
-| `configs/linux/install.sh` 的 `gcc -o gpu-watch` | `run_onchange_after_build-gpu-watch.sh` | `gpu-watch.c` 变更即重编译 |
-| `configs/linux/config.sh` 的 CFFI 重编译 | `run_onchange_after_build-niri-windows.sh` | 现有 `wnmw_is_installed` 版本戳比对逻辑，正是 `run_onchange_` 的语义 |
-| `configs/linux/config.sh` 的 `sudo sed /etc/vconsole.conf` | `run_once_after_vconsole-font.sh` | 需要 sudo |
-| `configs/linux/config.sh` 的 `modprobe drivetemp` + `/etc/modules-load.d` | `run_once_after_drivetemp.sh` | 需要 sudo |
-| `configs/linux/config.sh` 的 `rm nvme-temp.sh` | `run_once_after_cleanup-stale.sh` | 一次性清理 |
-| `desktop-settings/fcitx5/install-linux.sh` | `run_after_fcitx5.sh` | **必须缩水**，见下 |
+| `configs/linux/install.sh` 的 pacman 装包 | `bootstrap/arch.sh` 的 `install_packages()` | 需要 sudo，留在 bootstrap（见下） |
+| `configs/linux/install.sh` 的 `gcc -o gpu-watch` | `run_onchange_after_20-build-gpu-watch.sh.tmpl` | `gpu-watch.c` 变更即重编译 |
+| `configs/linux/config.sh` 的 CFFI 重编译 | `run_onchange_after_30-build-niri-windows.sh.tmpl` | 现有 `wnmw_is_installed` 版本戳比对逻辑，正是 `run_onchange_` 的语义 |
+| `configs/linux/config.sh` 的 `sudo sed /etc/vconsole.conf` | `bootstrap/arch.sh` 的 `set_tty_font()` | 需要 sudo |
+| `configs/linux/config.sh` 的 `modprobe drivetemp` + `/etc/modules-load.d` | `bootstrap/arch.sh` 的 `load_drivetemp()` | 需要 sudo |
+| `configs/linux/config.sh` 的 `rm nvme-temp.sh` | `run_once_before_10-shell-tools.sh.tmpl` 的 `cleanup_stale()` | 一次性清理，无需 root |
+| `desktop-settings/fcitx5/install-linux.sh` | `run_onchange_after_40-fcitx5.sh.tmpl` | **必须缩水**，见下 |
 | `desktop-settings/fcitx5/update-rime-dict.sh` | 一并迁入，保持手动 | 词库维护工具，不自动化 |
 | `desktop-settings/mac/install.sh` 的 `aerospace reload-config` | `run_onchange_after_70-aerospace.sh.tmpl` | 复制那半由 chezmoi 接管，只剩重载；不启用 AeroSpace 原生的 `auto-reload-config`，见下 |
 | `desktop-settings/inputsource-pro/` 的说明与截图 | 文档（含截图的文字）迁入 `docs/inputsource-pro/` | 配置本身不迁，改用应用自己的导出/导入，见下 |
 | `install-arch/install.sh` | `bootstrap/arch.sh` | 见「安装入口」 |
 | `configs/win/install.bat`、`config.bat` | 转成 `bootstrap/windows.bat` 与 scoop 清单 | Windows 装机层 |
 
-`run_after_fcitx5.sh` 的缩水要点：原脚本做三件事——复制配置、下载 Rime Ice 词库、
+`run_onchange_after_40-fcitx5.sh.tmpl` 的缩水要点：原脚本做三件事——复制配置、下载 Rime Ice 词库、
 `rime_deployer --build` 并重启 fcitx5。复制那半由 chezmoi 接管后，只剩下后两件。**必须用
 `after` 前缀**，因为词库重建必须在 `profile` / `classicui.conf` / `*.custom.yaml` 落盘之后
 跑。`desktop-settings/AGENTS.md` 要求的「绝不覆盖 `build/`、用户词频和键盘缓存」这条约束
@@ -513,7 +513,7 @@ plist 那份又被 `cfprefsd` 缓存，而且混着 `NSWindow Frame SUUpdateAler
 `pi-config` 是唯一被 clone 的外部仓库，由本仓库脚本触发：
 
 ```
-run_once_after_50-pi-config.sh
+run_once_after_50-pi-config.sh.tmpl
   ├─ 装 pi CLI（npm -g；缺 npm 时只警告）
   ├─ [ -d ~/bin/pi-config ] || git clone git@github.com:jwu/pi-config.git ~/bin/pi-config
   └─ 提示 /reload 生效
@@ -535,7 +535,7 @@ Windows 上由 `bootstrap/windows.bat` 的 `:ENSURE_PI_CONFIG` 步骤 clone 到 
 | `desktop-settings` | `profile`、`classicui.conf`、`themes/`、`rime/*.custom.yaml`、`zed/settings.json`、`aerospace/.aerospace.toml`、`totalcmd/wincmd.ini` 取脱敏基线；两个 shell 脚本迁入为 `run_*`；`*-config.md` 迁入 `docs/`。**最后删除仓库** |
 | `pi-config` | 删除 `agents/`、`prompts/`、`skills/`、`themes/`、`extensions-settings/`、`settings.json`、`mcp.json`、`APPEND_SYSTEM.md`、`keybindings.json`、`install.sh`；**保留仓库** |
 | `install-arch` | 演化为 `bootstrap/arch.sh`，**删除仓库** |
-| `configs/linux/config.sh:299` | 现在靠 `$ROOT_DIR/../desktop-settings` 定位 fcitx5 脚本，迁入后改为直接引用本仓库的 `run_after_fcitx5.sh` |
+| `configs/linux/config.sh:299` | 现在靠 `$ROOT_DIR/../desktop-settings` 定位 fcitx5 脚本，迁入后改为直接引用本仓库的 `run_onchange_after_40-fcitx5.sh.tmpl` |
 | 家目录 96 个 `*.bak.*` | `backup_file()` 机制随两个仓库退役，一次性清理 |
 
 顺带修一处 bug：`desktop-settings/AGENTS.md` 提到 `obsidian/template-vault/`，该目录不存在。
@@ -605,20 +605,22 @@ Windows 上由 `bootstrap/windows.bat` 的 `:ENSURE_PI_CONFIG` 步骤 clone 到 
 写 `~/.config/chezmoi/chezmoi.toml`（`sourceDir`）→ `chezmoi init --apply`。它只做这些，
 因为装 chezmoi 不可能由 chezmoi 自己完成。
 
-六个 `run_*` 脚本接管了原来两个仓库的脚本逻辑：
+八个 `run_*` 脚本接管了原来两个仓库的脚本逻辑：
 
 | 脚本 | 触发时机 | 内容 |
 | --- | --- | --- |
-| `run_once_before_10-shell-tools.sh` | 只跑一次（文件部署前） | Oh My Zsh、zsh-autosuggestions、陈旧脚本清理（全部无需 root） |
+| `run_once_before_10-shell-tools.sh.tmpl` | 只跑一次（文件部署前） | Oh My Zsh、zsh-autosuggestions、陈旧脚本清理（全部无需 root） |
 | `run_onchange_after_20-build-gpu-watch.sh.tmpl` | **gpu-watch.c 变化时**（内嵌 `include \| sha256sum`） | gcc 编译 |
 | `run_onchange_after_30-build-niri-windows.sh.tmpl` | 构建助手变化时（内嵌 hash）；**不再自动跟随 fork HEAD** | 从 fork 构建 CFFI 模块 |
 | `run_onchange_after_40-fcitx5.sh.tmpl` | **fcitx5 五个配置文件变化时**（内嵌 hash） | 下载 Rime Ice 词库、`rime_deployer --build`、重启 fcitx5 |
-| `run_once_after_50-pi-config.sh` | 只跑一次 | 装 pi CLI、clone pi-config |
-| `run_once_after_60-zed-cli.sh` | 只跑一次 | `zed` → `/usr/bin/zeditor` 符号链接 |
+| `run_once_after_50-pi-config.sh.tmpl` | 只跑一次 | 装 pi CLI、clone pi-config |
+| `run_once_after_60-zed-cli.sh.tmpl` | 只跑一次 | `zed` → `/usr/bin/zeditor` 符号链接 |
+| `run_onchange_after_70-aerospace.sh.tmpl` | `dot_aerospace.toml` 变化时（仅 macOS） | `aerospace reload-config` |
+| `run_once_after_80-inputsourcepro.sh.tmpl` | 只跑一次（仅 macOS） | 走 `inputsourcepro://import` 恢复设置 |
 
 四处设计要点：
 
-- `run_after_40-fcitx5.sh` 的 `after` 是必须的：`rime_deployer` 要在 `profile` /
+- `run_onchange_after_40-fcitx5.sh.tmpl` 的 `after` 是必须的：`rime_deployer` 要在 `profile` /
   `classicui.conf` / `*.custom.yaml` 落盘之后才能在其上构建。它**只保留词库、rebuild 和
   重启**，复制配置那半已由 chezmoi 接管。
 - `run_onchange_after_20` 用 `{{ include "scripts/gpu-watch.c" | sha256sum }}` 嵌一个源文件
@@ -626,7 +628,7 @@ Windows 上由 `bootstrap/windows.bat` 的 `:ENSURE_PI_CONFIG` 步骤 clone 到 
 - 脚本用 `.tmpl` 后缀拿 `{{ .chezmoi.sourceDir }}`，因为辅助文件
   （`scripts/gpu-watch.c`、`scripts/waybar-niri-windows.sh`）放在被 `.chezmoiignore` 排除的
   `scripts/` 里；不这做它们会被部署到家目录。
-- `run_once_after_50-pi-config.sh` **不调用** `pi-config/install.sh`：它复制的东西
+- `run_once_after_50-pi-config.sh.tmpl` **不调用** `pi-config/install.sh`：它复制的东西
   （先是 `agents/` / `skills/` / `prompts/` / `themes/`，后来是 `settings.json` / `mcp.json`）
   全部归 chezmoi，两边会争同一份文件。脚本只负责 clone，npm 插件由 pi 自己按
   `settings.json` 的 `packages` 装。
@@ -681,9 +683,9 @@ sourceDir = "/home/jwu/bin/dotfiles"
 
 ### provision 需要 TTY（重要约束）
 
-`run_once_before_10-provision-arch.sh` 有 5 处 `sudo`（pacman、`sed /etc/vconsole.conf`、
-`tee /etc/modules-load.d`、`modprobe`、`chsh`），所以它**必须在交互式 shell 里由
-`chezmoi apply` 触发**。
+早先规划里那个 `run_once_before_10-provision-arch.sh`（最终没有落地，sudo 动作直接进了
+`bootstrap/arch.sh`）有 5 处 `sudo`（pacman、`sed /etc/vconsole.conf`、
+`tee /etc/modules-load.d`、`modprobe`、`chsh`），所以它**必须在交互式 shell 里跑**。
 
 在无 TTY 的环境（CI、脚本包装、agent 工具）里跑会失败：
 
@@ -750,7 +752,7 @@ chezmoi apply -v
 
 `pi-config/install.sh` 现在只部署 `settings.json`（唯一无法交给 chezmoi 的文件，因为它记录本机
 的认证、provider 与模型），并检查仓库是否位于 `~/bin/pi-config`（`settings.json` 用绝对路径指向
-它的 `extensions/`）。`run_once_after_50-pi-config.sh` 恢复了调用。
+它的 `extensions/`）。`run_once_after_50-pi-config.sh.tmpl` 恢复了调用。
 
 这一步在 2026-09-27 被推翻：`settings.json` 与 `mcp.json` 改用 chezmoi 的 `create_` 落地，
 install.sh 因此不再被调用，见「pi 的 settings/mcp 纳入 `create_`」。
