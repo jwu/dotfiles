@@ -8,9 +8,10 @@
 :: So the environment and the injection have to happen here.
 ::
 :: `--profile` and `--scripts` point at %LOCALAPPDATA%\clink explicitly: that is
-:: where chezmoi deploys clink.lua / session.lua / fzf.lua / zoxide.lua, and
-:: naming it keeps clink from also eager-loading every top-level script of the
-:: scoop clink-completions package (those are meant to be loaded on demand).
+:: where chezmoi deploys clink.lua / session.lua / fzf.lua / zoxide.lua. The
+:: clink-completions package is not part of this path -- it is registered with
+:: 'clink installscripts' in bootstrap/windows.bat, and only a registered script
+:: directory makes Clink find its completions\ subdirectory for on-demand load.
 ::
 :: See docs/windows-shell.md.
 
@@ -20,7 +21,6 @@ set "STARSHIP_CONFIG=%USERPROFILE%\.config\starship.toml"
 set "LANG=en_US.utf8"
 set "PI_NERD_FONTS=1"
 set "FZF_COMPLETE_OPTS=-e"
-set "CLINK_COMPLETIONS_DIR=%USERPROFILE%\scoop\apps\clink-completions\current\completions"
 
 clink inject --quiet --profile "%LOCALAPPDATA%\clink" --scripts "%LOCALAPPDATA%\clink"
 

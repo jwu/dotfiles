@@ -42,7 +42,7 @@ call :REQUIRE "configure chezmoi sourceDir" :WRITE_CONFIG || goto :ABORT
 call :DO "scoop buckets (extras, nerd-fonts)" :SCOOP_BUCKETS
 call :DO "scoop packages" :SCOOP_PACKAGES
 call :DO "user environment variables" :WRITE_ENV
-call :DO "clink: lazy completions only" :CLINK_SCRIPTS
+call :DO "clink: register clink-completions" :CLINK_SCRIPTS
 call :DO "pi-config checkout" :ENSURE_PI_CONFIG
 
 call :REQUIRE "chezmoi init --apply" :CHEZMOI_APPLY || goto :ABORT
@@ -230,12 +230,12 @@ call setx STARSHIP_CONFIG "%USERPROFILE%\.config\starship.toml" >nul || exit /b 
 exit /b 0
 
 :CLINK_SCRIPTS
-:: The scoop clink-completions package registers its own directory with
-:: 'clink installscripts', which makes Clink eager-load every top-level script in
-:: it. The session launcher points CLINK_COMPLETIONS_DIR at just the completions
-:: subdirectory instead (Clink loads those on demand), so drop the registration.
-:: Not fatal if it is absent: 'clink uninstallscripts' then just reports it.
-call clink uninstallscripts "%USERPROFILE%\scoop\apps\clink-completions\current"
+:: The scoop clink-completions package registers its own directory at install
+:: time; re-assert it here. Its top-level scripts are the argmatchers for git,
+:: npm, scoop and friends, and its completions\ subdirectory is only found under
+:: a registered script directory -- dropping the registration costs every one of
+:: them (see docs/windows-shell.md).
+call clink installscripts "%USERPROFILE%\scoop\apps\clink-completions\current"
 exit /b 0
 
 :CHEZMOI_APPLY

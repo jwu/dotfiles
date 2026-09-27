@@ -34,8 +34,10 @@ clone configs → win/install.bat（把便携工具下载到 %USERPROFILE%\bin�
 - `FiraMono-NF` 在 Win10 1809+ 上是 **per-user** 安装（`%LOCALAPPDATA%\Microsoft\Windows\Fonts`
   + HKCU），所以**不再需要管理员**。旧的 `win/cmds/addfonts.cmd` 写 `%SystemRoot%\Fonts` 与
   HKLM，那才是唯一需要提权的东西。
-- `clink-completions` 的 scoop manifest 在 installer 里调 `clink installscripts <dir>`，所以
-  `clink.lua` 里「手动遍历 `%USERPROFILE%/bin/clink-completions/`」那段被删掉了。
+- `clink-completions` 的 scoop manifest 在 installer 里调 `clink installscripts <dir>`，
+  `bootstrap/windows.bat` 再幂等地重申一次；`clink.lua` 里「手动遍历
+  `%USERPROFILE%/bin/clink-completions/`」那段因此删掉了。为什么不能只保留它的
+  `completions\` 子目录，见下面「踩到的坑：只留 completions 目录吃掉了所有补全」。
 
 ### 2. Clink 的加载 → 由终端执行 `session.cmd`
 
@@ -95,6 +97,29 @@ LANG=en_US.utf8        PI_NERD_FONTS=1        FZF_COMPLETE_OPTS=-e
 `cmd.exe /s /k "%LOCALAPPDATA%\clink\session.cmd"`（`args` 与 `default_prog`）：位置从旧的
 `init.bat` 换成了 chezmoi 部署的 `session.cmd`，而那正是让 `set` 落进 cmd 环境块的一层。显式
 写 `cmd` 是因为 Alacritty/WezTerm 在 Windows 的默认 shell 不保证是 cmd。
+
+## 踩到的坑：只留 completions 目录吃掉了所有补全
+
+24804d9 为了「lazy」把接线改成：`bootstrap/windows.bat` 用 `clink uninstallscripts` 删掉
+scoop 的注册，`session.cmd` 把 `%CLINK_COMPLETIONS_DIR%` 指向包的 `completions\` 子目录，
+`--scripts` 只指 `%LOCALAPPDATA%\clink`。补全因此整体消失，实测证据：
+
+- `HKCU\Software\Clink\InstalledScripts` 是空的（注册被删掉了）；
+- `%LOCALAPPDATA%\clink\clink.log` 只有 `Loaded 4 Lua scripts`，完整状态应是 24（`1+4+19`，见上面 autorun 时代的记录）；
+- 包的 19 个顶层脚本（`git.lua` / `npm.lua` / `pip.lua` / `scoop.lua` / `ssh.lua` /
+  `kubectl.lua` …）不再加载，而 `!init.lua` 还负责把 `modules/` 追加进 `package.path`；
+- `completions\` 那 48 个脚本大量 `require('arghelper')` / `require('clink_version')`，
+  `!init.lua` 没跑 → 连惰性加载也直接失败。
+
+Clink 文档的 [Completion directories](https://chrisant996.github.io/clink/clink.html#completion-directories)
+说得很明确：`completions\` 只适合「除了补全不做别的」的脚本，clink-completions 的脚本必须放
+普通脚本目录；而且这个 `completions\` 子目录只有在**它所在的包目录被 `clink installscripts`
+注册之后**才会被发现。只留子目录等于两头都不要。
+
+修法：`bootstrap/windows.bat` 的 `:CLINK_SCRIPTS` 改成 `clink installscripts`，`session.cmd`
+里那行 `CLINK_COMPLETIONS_DIR` 删掉。注册写的是注册表
+（`HKCU\Software\Clink\InstalledScripts`），不是 profile 文件，所以 chezmoi 部署的
+`clink_settings` 不会把它覆盖回去。
 
 ## 踩到的坑：批处理必须 CRLF
 
@@ -171,9 +196,12 @@ starship 用的是内置默认值（提示符在，但 config 不生效）。
 
 ```bat
 reg query "HKCU\Software\Microsoft\Command Processor" /v AutoRun  :: 应当不存在：AutoRun 方案已弃用
+clink installscripts --list        :: 应列出 scoop\apps\clink-completions\current
+clink info                         :: scripts 行除了 DLL 与 profile 目录，还应列出包目录
 type "%LOCALAPPDATA%\clink\session.cmd"                          :: 终端注入 Clink 的入口
 reg query HKCU\Environment         :: LANG / PI_NERD_FONTS / FZF_COMPLETE_OPTS
 scoop list                         :: 工具来自 scoop 而不是 %USERPROFILE%\bin
 ```
 
-新开一个终端，确认：提示符是 starship、`chcp` 是 65001、`pstat` / `gl` / `ll` 等别名可用。
+新开一个终端，确认：提示符是 starship、`chcp` 是 65001、`pstat` / `gl` / `ll` 等别名可用，
+补全也在（`clink.log` 里是 `Loaded 24 Lua scripts` 而不是 4）。

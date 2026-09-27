@@ -43,9 +43,9 @@ os.setenv('STARSHIP_CONFIG', os.getenv('USERPROFILE')..'\\.config\\starship.toml
 
 load(io.popen('starship init cmd'):read("*a"))()
 
--- clink-completions used to be loaded by hand from %USERPROFILE%\bin; the scoop
--- package now registers itself with 'clink installscripts', so nothing is needed
--- here. See docs/design.md.
+-- clink-completions is registered with 'clink installscripts' by
+-- bootstrap/windows.bat (the scoop manifest does the same at install time), so
+-- nothing is loaded by hand here. See docs/windows-shell.md.
 ----------------------------------------
 
 -- set ls_colors (for eza/lsd)
