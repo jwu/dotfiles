@@ -285,6 +285,26 @@ load_drivetemp() {
   echo drivetemp | sudo tee /etc/modules-load.d/drivetemp.conf > /dev/null
 }
 
+# sudo caches credentials per TTY, so unattended tooling (an agent editing
+# /etc-level state) cannot use sudo at all without this. Widening the cache to
+# the whole machine is the point, and the cost, of the file. See docs/design.md,
+# the provision section.
+install_sudo_window() {
+  local file="/etc/sudoers.d/00-global-timestamp"
+  local wanted='Defaults timestamp_type=global
+Defaults timestamp_timeout=10'
+  if [ -f "$file" ] && [ "$(sudo cat "$file")" = "$wanted" ]; then
+    echo "    already in place"
+    return 0
+  fi
+  printf '%s\n' "$wanted" | sudo tee "$file" > /dev/null
+  # `sudo tee` leaves 0644; files under sudoers.d must be exactly 0440 or visudo
+  # refuses them (the runtime sudo plugin is more forgiving than visudo).
+  sudo chown root:root "$file"
+  sudo chmod 0440 "$file"
+  sudo visudo -c > /dev/null
+}
+
 # ==========================================
 # Run
 # ==========================================
@@ -310,6 +330,7 @@ step "xwayland-satellite-git (AUR)" install_xwayland_satellite
 step "default shell (zsh)" set_default_shell
 step "TTY font (vconsole)" set_tty_font
 step "drivetemp module" load_drivetemp
+step "passwordless sudo window for unattended tooling" install_sudo_window
 
 step_required "chezmoi init --apply" chezmoi init --apply
 
