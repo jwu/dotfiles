@@ -12,6 +12,28 @@ ${@:-（未指定，处理本次会话中所有已谈定的改动）}
 
 ## 0. 前置检查
 
+### 0.1 先把本地源同步到 origin
+
+改动必须落在一个最新的基线上：本仓库同时驱动多台机器，落在过期基线上的提交会变成
+分叉。先同步：
+
+```bash
+git fetch --prune origin
+git status -sb | head -1     # ## main...origin/main [ahead N, behind M]
+```
+
+按差距处理：
+
+- 未分叉且落后：`git pull --ff-only`
+- 分叉（本地有未推送提交、远程也前进）：`git pull --rebase`
+- 已是最新：跳过
+
+任何一步失败——无网络、未提交改动挡住 rebase、rebase 冲突——都**立即中止 `/apply`**，
+不要落源、不要 apply。把 `git status` 和冲突文件报告给我，说明仓库正卡在 rebase 中间态
+（`git rebase --continue` 继续 / `git rebase --abort` 放弃），等我把 git 冲突解决干净再重跑。
+
+### 0.2 其余检查
+
 - `git status --short` 看源里已有哪些未提交改动，避免和本次改动混淆
 - 如果家目录与源的差异远超本次改动（像是这台机器尚未对账），停下报告，不要 apply
 
