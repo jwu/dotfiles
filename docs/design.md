@@ -313,6 +313,30 @@ git 先读 XDG 那份、再读 `~/.gitconfig`，后者覆盖前者，所以个�
 `extensions/eko24ive-pi-ask.json` 有被 pi-ask 写回的历史（见 `pi-config` 的
 `"pi-ask: sync config back to schemaVersion 5"` 提交），它和 `auth.json` 一样不纳入。
 
+### 项目级：仓库根的 `.pi/`
+
+仓库根的 `.pi/` 是 pi 的**项目级**配置，只在把本仓库当工作目录时加载，不进家目录，
+与上面那份 `~/.pi/agent/` 是两套互不相干的东西。它放两个方向相反的命令：
+
+- `prompts/apply.md` —— `/apply`，源 → 家目录：把会话改动落源，`diff` → 等确认 → `apply`，
+  跑两次验证 no-op
+- `prompts/collect.md` —— `/collect`，家目录 → 源：把家目录侧的改动回收进仓库
+
+两个命令都刻意不含提交动作，提交仍由人显式跑 `/commit`。
+
+`/collect` 的判据是 `chezmoi status` 的**第一列**——它表示家目录相对 chezmoi 上次写入的
+差异，所以第一列非空即家目录侧漂移（`/apply` 的活），第一列为空、第二列为 `M` 才是源侧
+改动。回收靠 `chezmoi re-add`，它自己会跳过模板，`create_` 文件连 `status` 都不显示，
+构建产物（`~/.local/bin` 下那类）也不是受管目标，因此手工要做的只剩两件：把模板漂移
+**语义合并**回模板（而不是把渲染结果整份写进去），以及判断家目录里未被管理的新配置
+要不要纳入。
+
+它不需要在 `.chezmoiignore` 里排除：chezmoi 本来就忽略源目录里以点开头的条目。反过来，
+往那里加 `.pi` 是错的——`.chezmoiignore` 匹配目标路径，加进去会连 `~/.pi` 一起踢出管理
+范围。见 [`chezmoi-notes.md`](chezmoi-notes.md)。
+
+项目级配置要等 project trust 授予之后才加载，所以首次用到 `/apply` 的机器要先信任本仓库。
+
 ## fcitx5 的运行时边界
 
 `~/.local/share/fcitx5/rime/` 实测 **156 MB**，内含下载的词库、编译产物 `build/` 和用户词频

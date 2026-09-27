@@ -7,6 +7,14 @@
 不是源路径。所以里面写 `README.md` 指的是家目录下的 `~/README.md`——不加这一行，
 `chezmoi apply` 会真的在 `~` 下创建 `README.md`。
 
+## 源里以点开头的条目不算目标
+
+chezmoi 忽略源目录中名字以 `.` 开头的条目（`.chezmoi*` 系列除外），所以仓库根的
+`.pi/` 这类目录既不会被部署，也不会出现在 `chezmoi managed` 里。
+
+推论：**不要**为了「排除」它而往 `.chezmoiignore` 里写 `.pi`。那一行匹配的是目标路径，
+排除掉的是家目录的 `~/.pi`（那份真源在 `private_dot_pi/`），等于凭空卸掉一整套 pi 配置。
+
 ## 排除要双向做
 
 只写「非 Linux 时排除 macOS / Windows 目标」是不够的，反过来同样需要。否则在 macOS
