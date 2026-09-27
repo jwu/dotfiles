@@ -25,6 +25,9 @@ AppData
 .aerospace.toml
 Library
 .config/ghostty/config
+# Input Source Pro is macOS-only; its exported settings are only the input to a
+# one-off restore on a new Mac.
+.config/inputsourcepro
 {{ end }}
 
 # Linux-only target: ghostty reads a different filename on each side.

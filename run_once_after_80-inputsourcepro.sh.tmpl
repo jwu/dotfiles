@@ -1,0 +1,27 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+# Restore Input Source Pro on a new Mac from the settings exported on an old one.
+# run_once_ on purpose: this is a restore, not a source of truth. The rules live
+# in the app's Core Data store and are edited in its UI, so re-importing whenever
+# the source changes would eat whatever was edited since the last export.
+# See docs/inputsource-pro/inputsource-pro-config.md.
+set -uo pipefail
+
+SETTINGS="$HOME/.config/inputsourcepro/settings.json"
+
+# chezmoi is fail-fast, so every path out of here has to be a successful exit.
+if [ ! -f "$SETTINGS" ]; then
+  echo "no exported settings.json in the source; skipping the Input Source Pro restore."
+  exit 0
+fi
+if [ ! -d "/Applications/Input Source Pro.app" ]; then
+  echo "Input Source Pro is not installed; skipping the restore."
+  exit 0
+fi
+
+# The app's own URL scheme is the only supported way in: writing its Core Data
+# store directly would fight the WAL and the model metadata. The path goes into
+# the URL unescaped, so a home directory containing spaces would need encoding.
+open -g "inputsourcepro://import?path=$SETTINGS" \
+  || echo "inputsourcepro://import failed; restore the settings by hand."
+{{ end -}}

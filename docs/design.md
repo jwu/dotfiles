@@ -470,6 +470,7 @@ neovide 是**重复**（Windows 的真目标在 AppData 里），yazi / gitui / 
 | `desktop-settings/fcitx5/install-linux.sh` | `run_after_fcitx5.sh` | **必须缩水**，见下 |
 | `desktop-settings/fcitx5/update-rime-dict.sh` | 一并迁入，保持手动 | 词库维护工具，不自动化 |
 | `desktop-settings/mac/install.sh` 的 `aerospace reload-config` | `run_onchange_after_70-aerospace.sh.tmpl` | 复制那半由 chezmoi 接管，只剩重载；不启用 AeroSpace 原生的 `auto-reload-config`，见下 |
+| `desktop-settings/inputsource-pro/` 的说明与截图 | 文档（含截图的文字）迁入 `docs/inputsource-pro/` | 配置本身不迁，改用应用自己的导出/导入，见下 |
 | `install-arch/install.sh` | `bootstrap/arch.sh` | 见「安装入口」 |
 | `configs/win/install.bat`、`config.bat` | 转成 `bootstrap/windows.bat` 与 scoop 清单 | Windows 装机层 |
 
@@ -490,6 +491,16 @@ neovide 是**重复**（Windows 的真目标在 AppData 里），yazi / gitui / 
 它还是仓库里第一个 **macOS 专属**的 `run_*`：其余脚本用 `{{ if ne .chezmoi.os "windows" }}`
 （Linux 与 macOS 都跑），这一个用 `{{ if eq .chezmoi.os "darwin" }}`，在另两个平台上渲染为空
 字符串。为什么不能用脚本内 `exit 0` 短路，见前文「Windows 接入时补的三处」的 (c)。
+
+`run_once_after_80-inputsourcepro.sh.tmpl` 走的是第三条路：它不迁移任何文件，只调 Input
+Source Pro 自己的 `inputsourcepro://import?path=…`，把一份手工导出的 `settings.json` 灌
+回去。之所以绕着走，是因为它的存储没法纳管：规则在 Core Data 库（`ZAPPRULE` /
+`ZKEYBOARDCONFIG`，带 `Z_METADATA` 的模型哈希与 `Z_PRIMARYKEY.Z_MAX` 的主键计数）里，
+plist 那份又被 `cfprefsd` 缓存，而且混着 `NSWindow Frame SUUpdateAlert` 与
+`SULastCheckTime` 这种每次都会变的值。`run_once_` 而非 `run_onchange_`：规则平时在应用
+里改，仓库里存的是恢复用的备份，不是真源。代价是 `run_once_` **一次性消耗**——它在应用
+就绪之前跑过一次就再没机会，所以 `input-source-pro` 必须留在 `bootstrap/macos.sh` 的
+`CASKS` 里；aerospace 的 `run_onchange_` 没这个约束（脚本内容再变一次就会重跑）。
 
 ### pi-config 的编排
 

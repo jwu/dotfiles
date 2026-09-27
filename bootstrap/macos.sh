@@ -41,8 +41,12 @@ PACKAGES=(
 )
 
 # GUI applications and fonts ship as casks, not formulae.
+# input-source-pro must stay here rather than being left to the docs: the
+# run_once_ that imports its exported settings is consumed if it fires before
+# the app exists.
 CASKS=(
   "neovide"
+  "input-source-pro"
   "font-fira-mono-nerd-font"
 )
 
@@ -225,7 +229,7 @@ step_required "clone/update dotfiles" ensure_repo
 step_required "configure chezmoi sourceDir" write_chezmoi_config
 
 step "Homebrew formulae" install_formulae
-step "Homebrew casks (Neovide, FiraMono Nerd Font)" install_casks
+step "Homebrew casks (Neovide, Input Source Pro, FiraMono Nerd Font)" install_casks
 step "default shell (zsh)" set_default_shell
 
 step_required "chezmoi init --apply" chezmoi init --apply
