@@ -7,6 +7,16 @@
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
+  // theme and icon_theme below come from one-dark-pro and material-icon-theme.
+  "auto_install_extensions": {
+    "gdscript": true,
+    "html": true,
+    "lua": true,
+    "material-icon-theme": true,
+    "one-dark-pro": true,
+    "toml": true,
+    "windows-batch": true
+  },
   "cli_default_open_behavior": "new_window",
   "project_panel": {
     "dock": "left"
