@@ -77,7 +77,7 @@ PowerShell 是为了和原来的 Windows 脚本层一致；批处理没有 `curl
 
 **Linux 与 macOS 的 bootstrap 是各自平台上唯一需要 root 或终端的脚本。** Linux 侧的 sudo
 动作：装 41 个包、yay 与 AUR 的 xwayland-satellite-git、`chsh`（走 PAM，同样需要终端）、TTY
-字体、drivetemp、sudoers 的免密窗口（见下）。macOS 侧只有两处：`chsh`，以及首次把 Homebrew 的 zsh 加进 `/etc/shells`。
+字体、drivetemp、mihomo 的包与 drop-in 与面板、sudoers 的免密窗口（见下）。macOS 侧只有两处：`chsh`，以及首次把 Homebrew 的 zsh 加进 `/etc/shells`。
 **Windows 侧不需要任何提权**：scoop 是 per-user 安装，字体 manifest 也写
 `%LOCALAPPDATA%\Microsoft\Windows\Fonts`，所以 `bootstrap/windows.bat` 与 `chezmoi apply`
 都既不需要管理员、也不需要终端。`run_*` 脚本只剩不需要 root 的部分——这正是 Oh My Zsh 与
@@ -901,6 +901,46 @@ ExecStart=/usr/bin/mihomo -d /etc/mihomo -ext-ctl 127.0.0.1:9090
 **用 drop-in 而不是改 `config.yaml` 是有意的**：那份 config 是机场给的完整订阅，每次手工更新
 都会整文件覆盖，`external-controller: "0.0.0.0:9090"` 会被带回来；命令行覆盖与订阅无关。
 
-**仍未处理**：config 里的 `allow-lan: true` + `bind-address: "*"` 让代理端口 `7890` 仍对整个
-局域网开放（实测局域网地址上可作代理使用）。mihomo 没有对应命令行开关，只能改 config，
-而同样会被下次订阅覆盖。
+**`allow-lan` 是有意保留的**：`allow-lan: true` + `bind-address: "*"` 让 `7890` 对整个局域网
+开放（实测局域网地址上可作代理使用）。这是订阅的内容，服务层不碰它；唯一被钉住的设置是
+`mixed-port`，见下一节。
+
+### mihomo：哪些能管，哪些不能
+
+服务栈是 pacman 的 `mihomo` + `clash-geoip`，外面套三处本地策略。**配置本体不能进仓库**：
+`/etc/mihomo/config.yaml` 是机场给的完整订阅，445 KB，顶行的 `#!MANAGED-CONFIG` 里就带着
+订阅链接（含用户 ID），正文另有 32 处 `password` / `uuid` / `secret` / `psk` 节点凭据。仓库是
+public，所以它和 `~/.gitconfig` 一样留在本机。
+
+能管的部分靠两种手段，区别在于**能否抵挡订阅覆盖**：
+
+| 手段 | 管什么 | 抗订阅覆盖 |
+| --- | --- | --- |
+| drop-in 里的命令行 flag | `external-controller`（`-ext-ctl`）、面板目录（`-ext-ui`）、配置目录（`-d`） | 是 |
+| `ExecStartPre` 补丁脚本 | `mixed-port`（mihomo 没有对应 flag，只能改文件） | 是（每次启动重打） |
+| 直接改 `config.yaml` | 其余全部：`allow-lan`、`bind-address`、`mode`、`dns`… | 否 |
+
+`/etc/systemd/system/mihomo.service.d/override.conf`（由 `bootstrap/arch.sh` 的
+`install_mihomo_overlay` 写入）：
+
+```ini
+[Service]
+ExecStart=
+ExecStart=/usr/bin/mihomo -d /etc/mihomo -ext-ctl 127.0.0.1:9090 -ext-ui ui/xd
+ExecStartPre=+/usr/local/bin/mihomo-overlay
+```
+
+`+` 前缀不能省：unit 是 `User=mihomo`，而 `config.yaml` 是 `root:root`，服务写不了自己的
+配置；`+` 让这一条以 root 跑（systemd 262 实测可用）。
+
+补丁脚本是仓库里的 `scripts/mihomo-overlay.sh`，装到 `/usr/local/bin/mihomo-overlay`。它只钉
+`mixed-port: 7890`——理由是与纳管的 `chrome-flags.conf` / `chromium-flags.conf` 强耦合，订阅
+若把端口换掉，浏览器代理会**整体断掉**且很难查。脚本幂等，键缺失时不凭空添加。
+
+面板（MetaCubeXD）不提交构建产物：`deploy_mihomo_ui` 从上游 release 拉
+`compressed-dist.tgz`（2.5 MB，解压后直接是 `index.html` / `_nuxt/`，没有顶层目录）解到
+`/etc/mihomo/ui/xd`，与 config 里的 `external-ui: ui/xd` 对齐。bootstrap 跑在任何代理存在之前，
+所以这一步失败只记录、不阻塞。
+
+`Country.mmdb` 由 bootstrap 重新指到 `clash-geoip` 的副本（`/etc/clash/Country.mmdb`，上游
+地理库更新更勤）。
