@@ -77,7 +77,7 @@ PowerShell 是为了和原来的 Windows 脚本层一致；批处理没有 `curl
 
 **Linux 与 macOS 的 bootstrap 是各自平台上唯一需要 root 或终端的脚本。** Linux 侧的 sudo
 动作：装 41 个包、yay 与 AUR 的 xwayland-satellite-git、`chsh`（走 PAM，同样需要终端）、TTY
-字体、drivetemp。macOS 侧只有两处：`chsh`，以及首次把 Homebrew 的 zsh 加进 `/etc/shells`。
+字体、drivetemp、sudoers 的免密窗口（见下）。macOS 侧只有两处：`chsh`，以及首次把 Homebrew 的 zsh 加进 `/etc/shells`。
 **Windows 侧不需要任何提权**：scoop 是 per-user 安装，字体 manifest 也写
 `%LOCALAPPDATA%\Microsoft\Windows\Fonts`，所以 `bootstrap/windows.bat` 与 `chezmoi apply`
 都既不需要管理员、也不需要终端。`run_*` 脚本只剩不需要 root 的部分——这正是 Oh My Zsh 与
@@ -103,6 +103,8 @@ dot_omnisharp/omnisharp.json           ← configs: common/.omnisharp/
 dot_config/
   alacritty/alacritty.toml             ← configs: linux/.config/alacritty/
   autostart/nm-applet.desktop          ← configs: linux/.config/autostart/
+  chrome-flags.conf                    ← 本机手写，无旧仓库来源（见「浏览器代理」）
+  chromium-flags.conf                  ← 同上
   environment.d/fcitx5.conf            ← configs: linux/.config/environment.d/
   fcitx5/private_profile               ← desktop-settings: fcitx5/profile（600 → private_，见下）
   fcitx5/conf/classicui.conf           ← desktop-settings: fcitx5/classicui.conf
@@ -113,6 +115,7 @@ dot_config/
   glow/one-dark.json                   ← configs: common/.config/glow/
   gtk-4.0/gtk.css                      ← configs: linux/.config/gtk-4.0/
   hypr/*                               ← configs: linux/.config/hypr/
+  mimeapps.list                        ← 本机手写，无旧仓库来源（见「浏览器代理」）
   neovide/config.toml                  ← configs: common/.config/neovide/
   nvim/init.lua                        ← configs: common/.config/nvim/
   starship.toml.tmpl                   ← configs: linux/ + mac/ 合并
@@ -194,7 +197,7 @@ chezmoi 依据权限位给源文件加前缀，所以**源路径与目标路径�
 
 ### 已导入的文件
 
-阶段 1 与平台搬入已完成（见「实施状态」）。源里共 **77 个文件** = 67 个 Linux 目标 +
+阶段 1 与平台搬入已完成（见「实施状态」）。源里共 **80 个文件** = 70 个 Linux 目标 +
 3 个 macOS 专有 + 7 个 Windows 专有；5 个模板。`chezmoi diff` 在 Linux 上为空，macOS /
 Windows 目标由 `.chezmoiignore` 按 OS 排除。
 
@@ -632,6 +635,31 @@ TTY 的缓存不生效。
 需要终端）。现在 `run_*` 脚本里没有任何 `sudo` / `chsh` 调用，`chezmoi apply` 可以在没有
 终端的自动化环境里完整跑通——实测退出码 0。
 
+**这台机器加了一个例外**：`/etc/sudoers.d/00-global-timestamp`（`0440 root:root`）：
+
+```ini
+Defaults timestamp_type=global
+Defaults timestamp_timeout=10
+```
+
+它把凭据缓存从「按 TTY 隔离」放宽成「全机共享」，于是任意终端 `sudo -v` 之后 10 分钟内，
+**所有进程**——包括没有 TTY 的 agent 工具——都能免密 sudo。代价是比默认隔离宽：要收回成默认，
+删掉那个文件即可；要再临时授权，重复 `sudo -v`。
+
+**它由 `bootstrap/arch.sh` 的 `install_sudo_window` 安装，而不是 chezmoi 的文件层。** 三层原因：
+chezmoi 根本没有 `absolute_` 这类属性（官方 attributes 表里只有 `after_`…`symlink_` 那十几个，
+源里的路径一律相对 home）；普通 `chezmoi apply` 写不了 `/etc`，会 fail-fast 拖停整个 apply，
+而 `sudo chezmoi apply` 会把家目录文件的 owner 变成 root；同时 `chezmoi diff` 会永远非空，
+破坏「diff 必须为空」这条对账判据。官方 FAQ 对 home 之外的文件的立场也是「可行但强烈不建议」，
+推荐做法就是 `run_` 脚本 + sudo。
+
+代价是它只在新机器 bootstrap 时落地：已经对账的机器（本机）要手工装一次，之后源里改了
+也不会自动同步。脚本本身幂等，内容一致时直接跳过。
+
+一个坑：`sudo tee` 写出来的 `sudoers.d` 文件默认是 `0644`，**运行时 sudo 会接受，但
+`visudo -c` 报 `bad permissions, should be mode 0440`**——目录里的文件要恰好 `0440` 才两边都
+干净。
+
 ### chezmoi 把失败的脚本也记账
 
 首次 apply 时 provision 因无 TTY 失败（退出码 1），但它的内容 hash 仍然进了
@@ -812,3 +840,67 @@ macOS 那台在 `505a4fa` 之后一直没再 apply，累积了一批源改动：
 留意：`~/.local/share/chezmoi` 不存在意味着脚本记账（`scriptState`）也一并丢了，这次
 apply 把 6 个 `run_*` 全部重跑了一遍。它们都幂等，重跑的代价是 Oh My Zsh 插件与
 `~/bin/pi-config` 各拉一次 `git pull`。
+
+### 2026-09-27 浏览器代理：chrome/chromium flags 与 mimeapps
+
+本机 `~/.config/` 下三份文件一直没在源里，这次收进来：
+
+| 源 | 目标 | 说明 |
+| --- | --- | --- |
+| `dot_config/chrome-flags.conf` | `~/.config/chrome-flags.conf` | Arch 的 `google-chrome-stable` wrapper 读它 |
+| `dot_config/chromium-flags.conf` | `~/.config/chromium-flags.conf` | 同一机制的 chromium 版，内容与上一份逐字相同（除首行） |
+| `dot_config/mimeapps.list` | `~/.config/mimeapps.list` | 默认浏览器与几个 `x-scheme-handler` 指向 `google-chrome.desktop` |
+
+**口径是「所有 Linux 主机都带代理行」，不是只在本机渲染。** 三份都是普通文件而不是模板，
+因为这次没有按机器分岔的需求。这与 [`onboarding-a-machine.md`](onboarding-a-machine.md) §6
+对 gitconfig 代理的态度不同——**那一条仍然只属于本机**，没有跟着进仓库。差别在代价：
+gitconfig 的代理写错只会让 `github.com` 的拉取失败，而 chrome 这份的 `--proxy-bypass-list`
+只放行内网，一旦那台机器上没跑 mihomo，浏览器会**完全上不了网**。新机器若不用这套代理，
+删掉 `--proxy-server` 与 `--proxy-bypass-list` 两行即可。
+
+三份都在 `.chezmoiignore` 的 Linux-only 块里排除：`*-flags.conf` 由 Arch 的 wrapper 读，
+macOS 与 Windows 的 Chrome 不认这些文件名，`mimeapps.list` 是 XDG 的东西。
+
+顺带清掉两处残留：`~/.config/zellij/config.kdl`（zellij 移除时留下的孤儿，见上一节）与
+`~/.oh-my-zsh.bak.1790327059`、空的 `~/.config/gtk-3.0/`。当时 **`zellij` 二进制还装着**，上一节
+「不再被使用」只对 macOS 成立；删掉的是那份 `default_shell` / `copy_command` 两行配置。
+同一天稍后把包也卸了：`pacman -Rns zellij`，52 MiB，无反向依赖。
+
+### 2026-09-27 metacubexd 老方案残留清理
+
+这台机器的代理现在是**系统级 mihomo**：`mihomo.service`（pacman 包）读
+`/etc/mihomo/config.yaml`，其中 `external-controller: "0.0.0.0:9090"` 加 `external-ui: ui/xd`，
+于是 `http://127.0.0.1:9090/ui/` 直接提供 MetaCubeXD 面板——`/etc/mihomo/ui/xd` 就是那个面板的
+构建产物（Nuxt 静态站，8.1M，`<title>MetaCubeXD</title>`）。订阅来自 `config.yaml` 顶部的
+`#!MANAGED-CONFIG`（wgetcloud，10 天自动更新一次）。**`/etc/mihomo/ui` 不能删**，面板靠它。
+
+那套「源码跑 Nuxt server 再派生子进程 mihomo」的 All-in-One 方案同时退役，它留下的三份
+残留这次清掉：
+
+| 清掉的东西 | 当时的角色 |
+| --- | --- |
+| `~/.config/systemd/user/metacubexd.service` | 用户级 unit，disabled 且从未自启，只在 09-25 手工跑过约 3.5 小时 |
+| `~/.config/metacubexd/env` | 600，`CONTROL_TOKEN` / `CLASH_SECRET` / `MIHOMO_BIN` 等 |
+| `~/.local/share/metacubexd/` | 48M，含一份自带的 mihomo 二进制副本、空的 `profiles/`、`cache.db` |
+
+判定它已废弃的依据是 unit 的 `ExecStart` 指向 `/home/jwu/src/metacubexd`，而那个源码目录
+已经不存在——现在再拉起它也只会失败。
+
+**9090 的对外暴露同时收紧了。** `/etc/systemd/system/mihomo.service.d/override.conf` 原本两行都
+拼成 `EexcStart=`（systemd 实报 `Unknown key 'EexcStart' in section [Service], ignoring`），改成
+正确的
+
+```ini
+[Service]
+ExecStart=
+ExecStart=/usr/bin/mihomo -d /etc/mihomo -ext-ctl 127.0.0.1:9090
+```
+
+之后 `external-controller` 收到 `127.0.0.1:9090`，`ss` 从 `*:9090` 变 `127.0.0.1:9090`，
+从局域网地址 `192.168.3.81:9090` 已拒绝连接，面板与本机代理不受影响。
+**用 drop-in 而不是改 `config.yaml` 是有意的**：那份 config 是机场给的完整订阅，每次手工更新
+都会整文件覆盖，`external-controller: "0.0.0.0:9090"` 会被带回来；命令行覆盖与订阅无关。
+
+**仍未处理**：config 里的 `allow-lan: true` + `bind-address: "*"` 让代理端口 `7890` 仍对整个
+局域网开放（实测局域网地址上可作代理使用）。mihomo 没有对应命令行开关，只能改 config，
+而同样会被下次订阅覆盖。
