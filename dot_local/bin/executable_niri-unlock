@@ -1,0 +1,73 @@
+#!/bin/bash
+# niri-unlock -- unlock the session from another tty or over ssh, without a
+# password.
+#
+# hyprlock and swaylock both treat SIGUSR1 as "unlock and exit", so a running
+# locker is just signalled. In niri's red locked state no locker is left to
+# signal, so one is started first. See docs/lockscreen.md.
+
+set -uo pipefail
+
+unlock_locker() {
+  pkill -USR1 -x hyprlock 2>/dev/null || pkill -USR1 -x swaylock 2>/dev/null
+}
+
+# Session variables live in the systemd user manager -- the same source
+# 'wattach' uses (docs/wayland-attach.md). Needed to start a locker and to know
+# which session to ask about.
+session_env=$(systemctl --user show-environment 2>/dev/null) || session_env=
+
+locked() {
+  local id
+  id=$(sed -n 's/^XDG_SESSION_ID=//p' <<<"$session_env")
+  [ -n "$id" ] || return 1
+  [ "$(loginctl show-session "$id" -p LockedHint 2>/dev/null)" = LockedHint=yes ]
+}
+
+# A locker registers its SIGUSR1 handler only after taking the session lock, and
+# SIGUSR1's default action is to terminate: signalling too early kills the
+# locker and we are back on the red screen. Wait for the handler instead of
+# guessing a delay -- SIGUSR1 is signal 10, i.e. bit 9 of SigCgt.
+locker_ready() {
+  local pid cgt
+  pid=$(pgrep -x hyprlock | head -1)
+  [ -n "$pid" ] || pid=$(pgrep -x swaylock | head -1)
+  [ -n "$pid" ] || return 1
+  cgt=$(sed -n 's/^SigCgt:[[:space:]]*//p' "/proc/$pid/status" 2>/dev/null)
+  [ -n "$cgt" ] || return 1
+  (( 0x${cgt: -4} & 0x200 ))
+}
+
+if unlock_locker; then
+  echo "[niri] Unlocked"
+  exit 0
+fi
+
+if ! locked; then
+  echo "niri-unlock: the session is not locked" >&2
+  exit 1
+fi
+
+# Red locked state: the locker died and niri deliberately stayed locked. Bring
+# a new one up so there is something to unlock.
+: "${WAYLAND_DISPLAY:=$(sed -n 's/^WAYLAND_DISPLAY=//p' <<<"$session_env")}"
+: "${NIRI_SOCKET:=$(sed -n 's/^NIRI_SOCKET=//p' <<<"$session_env")}"
+export WAYLAND_DISPLAY NIRI_SOCKET
+if [ -z "$WAYLAND_DISPLAY" ]; then
+  echo "niri-unlock: no wayland display found; run 'wattach' first" >&2
+  exit 1
+fi
+
+setsid -f niri-lock >/dev/null 2>&1
+
+for _ in $(seq 1 100); do
+  if locker_ready && unlock_locker; then
+    echo "[niri] Unlocked (recovered from the red locked screen)"
+    exit 0
+  fi
+  sleep 0.1
+done
+
+echo "niri-unlock: the locker never took the session lock; the screen should show" >&2
+echo "             a normal lockscreen now, unlock it by hand" >&2
+exit 1

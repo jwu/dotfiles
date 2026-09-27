@@ -1,7 +1,8 @@
 # 锁屏
 
 Linux 侧锁屏统一走 `linux/.local/bin/niri-lock`：默认用 **hyprlock**；`hyprlock` 不在时回退
-到 `swaylock`，这样锁屏不会因为缺包而静默失败。`Mod+L` 调用这个脚本。
+到 `swaylock`，这样锁屏不会因为缺包而静默失败。`Mod+L` 调用这个脚本，反向的 `niri-unlock`
+见下面的「远程解锁」一节。
 
 ## 熄屏
 
@@ -272,17 +273,19 @@ pstree -sp $(pgrep -x hyprlock)
 客户端，niri 会用它替换掉死掉的那个。这不是锁屏特有的问题，任何「要活过我退出 ssh」的
 GUI 程序都一样，见 [`wayland-attach.md`](wayland-attach.md)。
 
-## 远程解锁：hyprlock 的 `SIGUSR1`
+## 远程解锁：`niri-unlock`
 
-锁屏客户端还活着时，从 ssh 能不解密码地解锁：
+从另一个 tty 或 ssh 里：
 
 ```sh
-pkill -USR1 hyprlock
+niri-unlock
 ```
 
-这是 hyprlock 特意注册的脚本化入口（`src/core/hyprlock.cpp`）：
+hyprlock 和 swaylock **都**把 `SIGUSR1` 当作「解锁并退出」，所以对正在跑的 locker 发这个
+信号就是解锁。两条路径都有源码依据：
 
 ```cpp
+// hyprlock src/core/hyprlock.cpp
 static void handleUnlockSignal(int sig) {
     if (sig == SIGUSR1) {
         Log::logger->log(Log::INFO, "Unlocking with a SIGUSR1");
@@ -293,29 +296,51 @@ static void handleUnlockSignal(int sig) {
 registerSignalAction(SIGUSR1, handleUnlockSignal, SA_RESTART);
 ```
 
-实测日志是连续三行 `Unlocking with a SIGUSR1` → `Unlocking session` → `Unlocked,
-exiting!`，随后 hyprlock 与 niri-lock 都正常退出，`loginctl` 的 `LockedHint` 转回 `no`。
-`SIGUSR2` 是另一个用途（强制刷新 label 定时器），就是上面「背景能不能实时？」用的那个。
+```c
+// swaylock main.c
+void do_sigusr(int sig) { (void)write(sigusr_fds[1], "1", 1); }
+static void term_in(int fd, short mask, void *data) { state.run_display = false; }
+...
+sigaction(SIGUSR1, &sa, NULL);
+/* 主循环退出后 */
+ext_session_lock_v1_unlock_and_destroy(state.ext_session_lock_v1);
+```
 
-同一份 `SigCgt` 里 **SIGHUP / SIGTERM 都没被捕获**：
+实测（hyprlock）日志是连续三行 `Unlocking with a SIGUSR1` → `Unlocking session` →
+`Unlocked, exiting!`，随后 hyprlock 与 niri-lock 都正常退出，`loginctl` 的 `LockedHint`
+转回 `no`。`SIGUSR2` 是另一个用途（强制刷新 label 定时器），就是上面「背景能不能实时？」
+用的那个。
+
+### 红屏：没有 locker 可发信号时
+
+`niri-unlock` 发现没有 locker 在跑时，先确认会话真的处于锁定状态（`LockedHint=yes`），
+再起一个 `niri-lock`，等它就绪后解锁 —— 实测从红屏恢复到解锁 396 ms。那个 `LockedHint`
+守卫不是多余：没有它，在已经解锁的会话上跑 `niri-unlock` 会先锁上再解开，白闪一下。
+
+「等它就绪」也不是可有可无的：hyprlock 的 `registerSignalAction(SIGUSR1, ...)` 在
+`acquireSessionLock()` **之后**才执行，而 `SIGUSR1` 的默认动作是**终止进程**。抢在它拿到
+锁之前发信号，等于把刚起的 locker 杀掉，又回到红屏。判据用 `/proc/<pid>/status` 的
+`SigCgt` 第 9 位（`SIGUSR1` 是信号 10）：
 
 ```console
 $ grep SigCgt /proc/$(pgrep -x hyprlock)/status
 SigCgt:	0000000300000a00        # 0xa00 = bit9 + bit11 = SIGUSR1(10) + SIGUSR2(12)
 ```
 
-这补上了「从 ssh 锁屏」那个坑的另一半：ssh 断开时 SIGHUP 直接终止 hyprlock，它没有机会做
-任何善后，所以只会留下红屏 —— 而**红屏时已经没有进程能接 `SIGUSR1` 了**，那条路仍然只能靠
-本地键盘输入密码。
+同一份 `SigCgt` 里 **SIGHUP / SIGTERM 都没有被捕获**，这补上了「从 ssh 锁屏」那个坑的
+另一半：ssh 断开时 SIGHUP 直接终止 hyprlock，它没有机会做任何善后，所以只会留下红屏。
 
-解锁入口总共三个，都得由 hyprlock 自己动手（`ext-session-lock-v1` 只允许持有锁的客户端
-unlock）：PAM 密码、指纹、`SIGUSR1`。niri 的 IPC 里没有 unlock 动作，`loginctl
-unlock-session` 也没用：niri 不监听 logind 的 Unlock 信号，hyprlock 连 logind 更是只为
-inhibit —— `src/core/Dbus.cpp` 里只有一个到 `org.freedesktop.login1.Manager` 的代理，没有
-对外暴露任何可调用的方法。
+### 其它入口都不通
 
-安全含义：锁屏防物理接触，不防「已经能以你的身份执行代码的人」。任何 ssh 登录你账号的人
-都能用 `SIGUSR1` 解锁，所以锁屏在「ssh 暴露到公网 + 弱密码」的组合里不构成防线。
+解锁动作必须由持有锁的客户端发起（`ext-session-lock-v1` 的语义）。niri 的 IPC 里没有
+unlock 动作，`loginctl unlock-session` 也没用：niri 不监听 logind 的 Unlock 信号，hyprlock
+连 logind 更是只为 inhibit —— `src/core/Dbus.cpp` 里只有一个到
+`org.freedesktop.login1.Manager` 的代理，没有对外暴露任何可调用的方法。
+
+### 安全含义
+
+锁屏防物理接触，不防「已经能以你的身份执行代码的人」。任何 ssh 登录你账号的人都能
+`niri-unlock`，所以锁屏在「ssh 暴露到公网 + 弱密码」的组合里不构成防线。
 
 ## 已知取舍
 
