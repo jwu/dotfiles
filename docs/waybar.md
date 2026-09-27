@@ -1,6 +1,6 @@
 # Waybar
 
-Linux 侧 Waybar 配置位于 `linux/.config/waybar/`：`config.jsonc`、`modules.json`、
+Linux 侧 Waybar 配置位于 `dot_config/waybar/`：`config.jsonc`、`modules.json.tmpl`、
 `style.css`、`colors.css`，以及 `scripts/` 下的取值脚本。
 
 ## 基线与行高
@@ -48,7 +48,8 @@ Waybar 只加载用户这一份样式表（见 `src/client.cpp`），它自带�
 按最热那块决定图标。机械还是固态看 `/sys/block/*/queue/rotational`（1 = HDD）。
 
 SATA 盘的读数来自 `drivetemp` 内核模块，它**不会自动加载**，没有它那些盘只显示 `--°C`。
-`config.sh` 会 `modprobe` 一次，并写 `/etc/modules-load.d/drivetemp.conf` 让它开机加载。
+`bootstrap/arch.sh` 的 `load_drivetemp()` 会 `modprobe` 一次，并写
+`/etc/modules-load.d/drivetemp.conf` 让它开机加载。
 
 阈值不是写死的：每块盘用自己的 `temp1_max` / `temp1_crit`（NVMe 来自标准字段 WCTEMP/CCTEMP，
 SATA 由 drivetemp 报出，本机 HDD 是 60/65），盘不报或报 0 时回退 60/75。因为阈值逐盘不同，
@@ -63,8 +64,8 @@ SATA 由 drivetemp 报出，本机 HDD 是 60/65），盘不报或报 0 时回�
 
 ## GPU 模块（gpu-watch）
 
-两个 GPU 模块背后是 `~/.local/bin/gpu-watch`，由 `linux/src/gpu-watch.c` 编出来（`install.sh`
-里一句 `gcc -O2 ... -ldl`）。它用 **dlopen 打开 `libnvidia-ml.so.1`**：不链驱动、不需要
+两个 GPU 模块背后是 `~/.local/bin/gpu-watch`，由 `scripts/gpu-watch.c` 编出来
+（`run_onchange_after_20-build-gpu-watch.sh.tmpl` 里一句 `gcc -O2 ... -ldl`，C 源一变就重编）。它用 **dlopen 打开 `libnvidia-ml.so.1`**：不链驱动、不需要
 `nvml.h`、没有构建期依赖。驱动不在时它打一行 `class: off` 就退出，`modules.json` 里的
 `restart-interval: 10` 会再把它拉起来（驱动重载/休眠回来后也是这么恢复的）。
 
@@ -131,7 +132,8 @@ OBEX / blueman / bluetuith 那一侧见 `bluetooth.md`。
 
 `nm-applet` 的托盘图标与这个模块重复，所以它的 XDG autostart 被
 `~/.config/autostart/nm-applet.desktop`（`Hidden=true`）覆盖关闭；系统文件
-`/etc/xdg/autostart/nm-applet.desktop` 不动，`config.sh` 负责部署这份覆盖。
+`/etc/xdg/autostart/nm-applet.desktop` 不动，这份覆盖由 chezmoi 从 `dot_config/autostart/`
+部署。
 
 ## cffi/niri-windows
 
@@ -140,15 +142,29 @@ OBEX / blueman / bluetuith 那一侧见 `bluetooth.md`。
 commit 写进 `~/.config/waybar/waybar-niri-windows.so.version`，作为「装的是哪一版」的判据
 （不像上游那样比 sha256：不同 Go / gtk3 版本编不出同一个字节）。
 
-目标版本是 **fork main 的 HEAD**，由 `linux/waybar-niri-windows.sh` 里的 `wnmw_want_commit`
-解析（`git ls-remote`），所以把补丁 push 到 fork 之后不需要改任何 pin：
+构建由 `run_onchange_after_30-build-niri-windows.sh.tmpl` 负责：它 source
+`scripts/waybar-niri-windows.sh`，用 `wnmw_want_commit` 解析 fork main 的 HEAD
+（`git ls-remote`）、用 `wnmw_is_installed` 拿 `.version` 和它比对，不一致就
+`wnmw_build_and_install` 从源码重建 —— 这就是「更新了 dotfiles 但模块还是旧的」不再发生的
+原因。2026-09-23 就是这么漏掉的：当时只跑了更新脚本，而它的旧版只检查 `.so` **是否存在**，
+文件在就永远不提示。
 
-- `install.sh`（新机器）构建 HEAD 并写下 `.version`；
-- `config.sh`（已有机器）拿 `.version` 和 HEAD 比对，不一致就从源码重建 —— 这就是
-  「更新了 dotfiles 但模块还是旧的」不再发生的原因。2026-09-23 就是这么漏掉的：当时只跑了
-  `config.sh`，而它的旧版只检查 `.so` **是否存在**，文件在就永远不提示。
+**`run_onchange_` 带来一个代价**：脚本只在它盯的文件（`scripts/waybar-niri-windows.sh` 的
+哈希，见脚本头部）变化时才跑，所以它**不会自己跟随 fork 的 HEAD**。往 fork push 补丁之后要
+重建，得先动一下那个 helper（哪怕改一行注释）再 apply：
 
-`WNMW_COMMIT=<sha> ./install.sh` 可以显式覆盖（复现旧版本）。GitHub 不可达时 15 秒超时后
+```bash
+chezmoi apply     # helper 哈希变了才会重新构建
+```
+
+想直接跑一次构建，source 那个库即可：
+
+```bash
+. ./scripts/waybar-niri-windows.sh
+wnmw_build_and_install "$(wnmw_want_commit)"
+```
+
+`WNMW_COMMIT=<sha>` 可以显式覆盖版本（复现旧版）。GitHub 不可达时 `git ls-remote` 15 秒超时后
 回退到脚本里的 `WNMW_FALLBACK_COMMIT`（当前 `3f30472`，即切 focus 不再重建、活动色建砖时
 就上的那版）；此时 `.version` 若已等于 fallback 就直接跳过，离线不会误重建（fork 未推送时
 记得同步 bump 这个常量）。
@@ -157,8 +173,15 @@ commit 写进 `~/.config/waybar/waybar-niri-windows.so.version`，作为「装�
 带上环境变量，或让 `WNMW_REPO` 走 SSH：
 
 ```bash
-https_proxy=http://127.0.0.1:7890 bash linux/config.sh
-WNMW_REPO=git@github.com:jwu/waybar-niri-windows.git bash linux/config.sh
+# 走代理
+export https_proxy=http://127.0.0.1:7890
+. ./scripts/waybar-niri-windows.sh
+wnmw_build_and_install "$(wnmw_want_commit)"
+
+# 或换成 SSH 拉取
+export WNMW_REPO=git@github.com:jwu/waybar-niri-windows.git
+. ./scripts/waybar-niri-windows.sh
+wnmw_build_and_install "$(wnmw_want_commit)"
 ```
 
 ### 别就地覆盖 `.so`
@@ -170,7 +193,7 @@ waybar `dlopen()` 之后一直把 `.so` 映射着，**就地覆盖这个文件�
 没有旁的证据）。
 
 做法：先装到 `.new` 再 `mv -f` 顶上去（rename 换 inode，老映射继续有效）。
-`install.sh` / `config.sh`（共用 `linux/waybar-niri-windows.sh`）和 fork 里的
+`scripts/waybar-niri-windows.sh` 的 `wnmw_build_and_install` 和 fork 里的
 `build-and-install.sh` 都这么做；重启 waybar 仍然必要，但不再需要「先关 bar 再装」。
 
 2026-09-24 之前，活动状态那套（`procs/` + `module/activity.go`）只活在 fork 的
@@ -325,8 +348,8 @@ pid 写进标题，模块从标题里读出来，就得到「窗口 ↔ 这棵�
 `pango-view` 分别渲染带标记和不带标记的标题，两张 PNG 逐字节相同。模块只认完整形态
 （开 + 至少一位数字 + 闭），所以 emoji 的 tag 序列（旗帜末尾也是 `U+E007F`）不会被误读。
 
-shell 侧是 `linux/.config/waybar/zsh-announce.zsh`（`config.sh` 拷到
-`~/.config/waybar/zsh-announce.zsh`，`linux/.zshrc` 末尾 source 它），只做一件事：注册一个
+shell 侧是 `dot_config/waybar/zsh-announce.zsh`（chezmoi 部署到
+`~/.config/waybar/zsh-announce.zsh`，`dot_zshrc.tmpl` 末尾 source 它），只做一件事：注册一个
 `precmd` hook，在每个提示符前把标题重写成「prompt 自己会写的那个 idle 标题」+ 标记 ——
 文本取自 `ZSH_THEME_TERM_TITLE_IDLE`（oh-my-zsh 和多数主题都会设它），没有这个变量则退回
 ghostty 那套截断工作目录。实测和 oh-my-zsh 自己写的那串剥掉标记后**逐字节相同**，所以窗口
@@ -399,9 +422,9 @@ GPU 则是「能拿到，但不值得」。结论记在这里，哪天要接就�
 
 ## module_path 占位符
 
-Waybar 直接 `dlopen()` `module_path`，不展开 `~` / `$HOME`，所以 `config.sh` 在拷贝
-`modules.json` 前会把 `__WAYBAR_MODULE_DIR__` 替换成绝对路径（和 swaylock 背景路径同一套
-做法）。
+Waybar 直接 `dlopen()` `module_path`，不展开 `~` / `$HOME`，所以 `modules.json` 是
+`dot_config/waybar/modules.json.tmpl`，用 `{{ .chezmoi.homeDir }}` 渲染出绝对路径（和 swaylock
+背景路径同一套做法）。
 
 ## 配色
 

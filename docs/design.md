@@ -197,9 +197,14 @@ chezmoi 依据权限位给源文件加前缀，所以**源路径与目标路径�
 
 ### 已导入的文件
 
-阶段 1 与平台搬入已完成（见「实施状态」）。源里共 **80 个文件** = 70 个 Linux 目标 +
-3 个 macOS 专有 + 7 个 Windows 专有；5 个模板。`chezmoi diff` 在 Linux 上为空，macOS /
-Windows 目标由 `.chezmoiignore` 按 OS 排除。
+阶段 1 与平台搬入已完成（见「实施状态」）。当前源里共 **95 个目标文件**（去重口径 = Linux
+目标 + macOS 专有 + Windows 专有）：**74 个 Linux 目标 + 4 个 macOS 专有 + 17 个 Windows
+专有**；16 个 `.tmpl`（其中 8 个是 `run_*` 动作脚本），3 个 `create_` 目标。`chezmoi diff`
+在 Linux 上为空，macOS / Windows 目标由 `.chezmoiignore` 按 OS 排除。
+
+数字这样复现：当前平台直接跑 `chezmoi managed --include=files`；另两个平台把
+`.chezmoiignore` 里的 `.chezmoi.os` 替换成 `"linux"` / `"windows"` 字面量各存一份临时源，
+再用 `chezmoi --source <临时源> managed --include=files`，最后 `comm` 去重相减。
 
 > Windows 接入又添了 5 个 Windows 目标（yazi / gitui / glow / zed），见「Windows 侧」。
 
@@ -438,9 +443,10 @@ neovide 是**重复**（Windows 的真目标在 AppData 里），yazi / gitui / 
 **(c) `run_*.sh` 在 Windows 上必然失败：`exec(3)` 不认 shebang。** 实测 `chezmoi apply` 把脚本
 写到临时文件后直接 exec，Windows 报 `%1 is not a valid Win32 application`。`.chezmoiignore`
 拦不住脚本（脚本没有目标路径），`20`/`30` 那种「`exit 0` 短路」也**执行不到**——失败发生在
-解释器起来之前。按 chezmoi 官方做法改成：7 个脚本全部带 `.tmpl`，最外层
-`{{ if ne .chezmoi.os "windows" -}} ... {{ end -}}`，Windows 上渲染为**空字符串**，chezmoi
-就不执行它。Linux / macOS 的渲染逐字节不变（已逐个比对）。
+解释器起来之前。按 chezmoi 官方做法改成：8 个脚本全部带 `.tmpl`，最外层
+`{{ if ne .chezmoi.os "windows" -}} ... {{ end -}}`（两个 macOS 专属的用
+`{{ if eq .chezmoi.os "darwin" }}`），其余平台上渲染为**空字符串**，chezmoi 就不执行它。
+Linux / macOS 的渲染逐字节不变（已逐个比对）。
 
 ## 脚本层：`run_` 前缀
 

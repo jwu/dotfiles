@@ -1,6 +1,7 @@
 # 锁屏
 
-Linux 侧锁屏统一走 `linux/.local/bin/niri-lock`：默认用 **hyprlock**；`hyprlock` 不在时回退
+Linux 侧锁屏统一走 `~/.local/bin/niri-lock`（源是 `dot_local/bin/executable_niri-lock.tmpl`）：
+默认用 **hyprlock**；`hyprlock` 不在时回退
 到 `swaylock`，这样锁屏不会因为缺包而静默失败。`Mod+L` 调用这个脚本，反向的 `niri-unlock`
 见下面的「远程解锁」一节。
 
@@ -28,7 +29,7 @@ Linux 侧锁屏统一走 `linux/.local/bin/niri-lock`：默认用 **hyprlock**�
 
 ## hyprlock 配置
 
-样式拆成四份文件，都在 `linux/.config/hypr/`：
+样式拆成四份文件，都在 `dot_config/hypr/`：
 
 | 文件 | 作用 |
 | --- | --- |
@@ -194,12 +195,12 @@ Style-10 的头像 `image` 已删掉（没有头像，注释块也一并删了�
 
 ## 装什么、拷什么
 
-- `linux/install.sh` 的 `PACKAGES` 里有 `hyprlock`（`extra`）和 `adwaita-fonts`（星期/日期/
+- `bootstrap/arch.sh` 的 `PACKAGES` 里有 `hyprlock`（`extra`）和 `adwaita-fonts`（星期/日期/
   时间那几行用 `Adwaita Sans Bold`）；图标字体的 `otf-firamono-nerd`、🔒 用的
   `noto-fonts-emoji` 本来就在列表里。
-- `linux/config.sh`：把 `backgrounds/` 拷到 `~/.config/swaylock/backgrounds/`（swaylock 和
-  hyprlock 共用，所以这段从 `command -v swaylock` 的 guard 里提出来了），再拷
-  `.config/hypr/hyprlock{,-small,-medium,-large}.conf` 和 `.local/bin/niri-lock`。
+- 文件本身由 chezmoi 部署：`dot_config/swaylock/backgrounds/` → `~/.config/swaylock/backgrounds/`
+  （swaylock 与 hyprlock 共用），以及 `dot_config/hypr/hyprlock{,-small,-medium,-large}.conf`
+  与 `dot_local/bin/executable_niri-lock.tmpl`。
 
 ## 图标右边被切掉（坑）
 

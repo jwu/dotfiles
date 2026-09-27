@@ -1,23 +1,24 @@
-# Zed 配置同步说明
+# Zed 配置同步
 
-本目录包含 Zed 编辑器的配置文件。
+Zed 的设置由 chezmoi 部署。仓库里有两份内容相同的 `private_settings.json`
+（`private_` 前缀只表示目标权限 0600，不是文件名的一部分）：
 
-## 配置文件位置与方法
+| 平台 | 源 | 目标 |
+| --- | --- | --- |
+| Linux / macOS | `dot_config/zed/private_settings.json` | `~/.config/zed/settings.json` |
+| Windows | `AppData/Roaming/Zed/private_settings.json` | `%APPDATA%\Zed\settings.json` |
 
-### macOS
+有两份是因为 Zed 在 Windows 上读 `%APPDATA%` 而不是 `~/.config`，`.chezmoiignore` 按 OS
+只放行对应的一份。
 
+改完源之后应用一次：
+
+```bash
+chezmoi apply ~/.config/zed/settings.json
 ```
-cp settings.json ~/.config/zed/settings.json
-```
 
-### Windows
+Zed 重启后加载新配置。配置写坏时删掉 `settings.json` 可以让 Zed 回到默认设置——源里那份
+还在仓库，`chezmoi apply` 就能拿回来。
 
-```
-copy /Y settings.json %APPDATA%\zed\settings.json
-```
-
-## 注意事项
-
-- Zed 会在重启后加载新的配置
-- 如果配置有误，Zed 可以通过删除 `settings.json` 重置为默认设置
-- 建议定期备份当前配置
+`run_once_after_60-zed-cli.sh.tmpl` 另管一件事：Arch 的 `zed` 包只提供 `zeditor`，它会在
+`~/.local/bin/zed` 建一个指向 `zeditor` 的符号链接，让 `$EDITOR` 与 `zed <path>` 可用。

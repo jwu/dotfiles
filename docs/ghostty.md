@@ -2,7 +2,7 @@
 
 Linux 侧的 `config.ghostty` 有几处和上游写法不同：一处是 niri 这个会话环境逼出来的，
 一处是 Linux 字体栈与 macOS 的差异（同样的写法在 macOS 上并不需要），还有一处是跟随
-上游替换 deprecated 字段。macOS 的 `mac/.config/ghostty/config` 不受这些差异影响。
+上游替换 deprecated 字段。macOS 的 `dot_config/ghostty/config` 不受这些差异影响。
 标题栏相关的部分见 `docs/ghostty-titlebar.md`。
 
 ## 中文字重：`font-codepoint-map` 与 Sarasa 缺失的 Medium
@@ -74,7 +74,7 @@ niri 下想要「随手开一个终端」，用 niri 自己的绑定（`config.k
 后者是脚本而不是 Ghostty 特性：它先用 `niri msg --json event-stream` 等新窗口出现，再
 对那个 window id 执行 `consume-or-expel-window-left`，所以不依赖固定 `sleep`、顺序稳定。
 
-macOS 不涉及这条：`mac/.config/ghostty/config` 里保留了 `global:ctrl+backquote`，那边
+macOS 不涉及这条：`dot_config/ghostty/config` 里保留了 `global:ctrl+backquote`，那边
 的全局快捷键不走 XDG 门户。
 
 ## `bold-is-bright` → `bold-color = bright`

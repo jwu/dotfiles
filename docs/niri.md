@@ -1,6 +1,6 @@
 # niri 配置
 
-`linux/.config/niri/config.kdl` 里的输入与光标部分有几处和上游默认值不同，
+`dot_config/niri/config.kdl` 里的输入与光标部分有几处和上游默认值不同，
 起因是 `focus-follows-mouse` 这条规则的行为，下面记录推导过程。
 
 ## focus-follows-mouse 只在「跨进新窗口」时触发
@@ -90,7 +90,7 @@ Ghostty 侧的 `mouse-hide-while-typing = true` 只覆盖它自己的窗口，ni
 
 ## 触控板手感
 
-`linux/.config/niri/config.kdl` 的 `touchpad` 段按 macOS 的手感调过一轮，取舍记录如下。
+`dot_config/niri/config.kdl` 的 `touchpad` 段按 macOS 的手感调过一轮，取舍记录如下。
 
 ### 加速度用 adaptive，不用 flat
 

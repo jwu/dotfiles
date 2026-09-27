@@ -2,7 +2,7 @@
 
 Linux 侧的 X11 支持走 niri 集成的 [xwayland-satellite](https://github.com/Supreeeme/xwayland-satellite)：
 niri 自己建 X11 socket、导出 `$DISPLAY=:0`，第一个 X11 客户端连上时才按需 spawn 卫星，卫星再拉起
-Xwayland。`linux/install.sh` 因此额外从 AUR 装 `xwayland-satellite-git` 盖住官方包。
+Xwayland。`bootstrap/arch.sh` 因此额外从 AUR 装 `xwayland-satellite-git` 盖住官方包。
 
 这篇记录为什么、怎么验证、以及什么时候能拆掉。
 
@@ -53,14 +53,14 @@ Steam 的弹窗 `override_redirect=true`、`input=True`、无 `WM_TAKE_FOCUS`：
 
 ## 落地方式
 
-`linux/install.sh` 从 AUR 装 `xwayland-satellite-git`（它 `provides` / `conflicts: xwayland-satellite`，
-所以脚本先把官方包摘掉）。
+`bootstrap/arch.sh` 的 `install_xwayland_satellite()` 从 AUR 装 `xwayland-satellite-git`
+（它 `provides` / `conflicts: xwayland-satellite`，所以脚本先把官方包摘掉）。
 
 - 官方 `extra` 停在 0.8.2-1（2026-07-22），打包仓库 `git log` 里没有重打包记录，修复只在 master 上。
 - 拿 AUR `-git` 就不用在本仓库 vendor patch + 自己跑 makepkg 出包。
-- 代价一：引入 `yay`，这是本仓库第一次依赖 AUR helper。`linux/install.sh` 自己不装它，
-  没有 yay 时只提示、不中断；上层入口 `install-arch` 会在跑 configs 之前自动构建
-  `yay-bin`（预编译二进制，不需要 Go/Rust 工具链）。那一步失败时手动补：
+- 代价一：引入 `yay`，这是本仓库第一次依赖 AUR helper。`install_xwayland_satellite()`
+  自己不装它，没有 yay 时只提示、不中断；`bootstrap/arch.sh` 的 `ensure_yay()` 会在它之前
+  构建 `yay-bin`（预编译二进制，不需要 Go/Rust 工具链）。那一步失败时手动补：
   `sudo pacman -S --needed base-devel git`，然后 `git clone https://aur.archlinux.org/yay-bin.git`、
   `cd yay-bin && makepkg -si`（`makepkg` 不能加 sudo，它会拒绝 root）。
 - 代价二：`-git` 跟随 master，上游后续改动会直接进来。**这是临时的**，见下节。
@@ -98,4 +98,4 @@ journalctl --user -f | grep --line-buffered "new window"
 sudo pacman -S xwayland-satellite   # 换回官方包
 ```
 
-然后删掉 `linux/install.sh` 里那段 AUR 安装，重跑 `linux/install.sh`。
+然后删掉 `bootstrap/arch.sh` 里的 `install_xwayland_satellite()`，重跑 `bootstrap/arch.sh`。

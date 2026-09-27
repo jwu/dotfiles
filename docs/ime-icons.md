@@ -138,7 +138,7 @@ compositor 的锁定状态，所以这条路径只能证明“拿到 `_upper` �
 - 颜色 `#abb2bf`（= waybar `@ghostty_fg`）。**注意**：只有键盘布局那张会跟着栏的 CSS 变（它的名字以
   `-symbolic` 结尾，GTK 会重新上色）；Rime 那三张名字是固定的，不会被重上色，所以颜色是写死的，改栏的
   配色时要记得一起改
-- 字体 `Sarasa Mono SC`（`linux/install.sh` 装的 `ttf-sarasa-gothic`），后面挂 `Noto Sans CJK SC` 兜底；
+- 字体 `Sarasa Mono SC`（`bootstrap/arch.sh` 的 `PACKAGES` 里有 `ttf-sarasa-gothic`），后面挂 `Noto Sans CJK SC` 兜底；
   换机器没装这些字体时会退到通用 `sans-serif`，颜色不受影响
 
 ## 生效与还原

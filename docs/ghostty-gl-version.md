@@ -65,9 +65,9 @@ Ghostty 有三条不同的启动路径，彼此绕不过，要分别处理：
    —— 桌面项带 `DBusActivatable=true`，fuzzel 之类走 D-Bus 激活，这条路连 `Exec=` 都不
    经过，只能靠 drop-in 的 `UnsetEnvironment=` + `Environment=`。
 
-这三处都是**本机专用、不入库**的文件：它们依赖 Intel HD 4000 这一具体硬件，`config.sh`
-也不会覆盖它们（该脚本只复制 `linux/.local/bin/` 下已跟踪的三个 niri 脚本）。同理，
-`linux/.config/hypr/hyprland.lua` 里没有也不需要这条 override。
+这三处都是**本机专用、不入库**的文件：它们依赖 Intel HD 4000 这一具体硬件，chezmoi
+也不会覆盖它们（它只部署 `dot_local/bin/` 下已跟踪的五个 niri 脚本）。同理，
+`dot_config/hypr/hyprland.lua` 里没有也不需要这条 override。
 
 ## 验证
 

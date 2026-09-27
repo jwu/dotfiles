@@ -1,8 +1,9 @@
 # chezmoi 迁移评估
 
-> **方案已演进**：本文最初设想把配置合并进本仓库。后续改为**另建独立项目**
-> `jwu/dotfiles` 作为 chezmoi 配置真源，本仓库与 `desktop-settings`、`pi-config`
-> 一并收窄为脚本与工程仓库。当前方案见 `~/bin/dotfiles/docs/design.md`。
+> **方案已演进，本文是历史文档。**最初设想把配置合并进本仓库；后续改为**另建独立项目**
+> `jwu/dotfiles` 作为 chezmoi 配置真源。`configs` 已在 GitHub 上归档、内容迁入
+> `~/bin/dotfiles`，`desktop-settings` 与 `pi-config` 按同一方向收尾。当前方案见
+> `~/bin/dotfiles/docs/design.md`。
 > 本文保留，因为其中「边界划分」「模板化点」「`gh` 抢写 `git config`」「迁移阶段」
 > 等分析对独立项目方案同样成立。
 

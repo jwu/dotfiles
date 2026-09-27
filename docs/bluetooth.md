@@ -29,7 +29,7 @@ OBEX Receive Files: Capabilities 'OBEX Receive Files' cannot be activated: Agent
 本仓库的 niri 配置**不启动 blueman-applet**（历史上一度启动过，才撞上这个问题）：
 
 ```
-# 不要把下面这行加回 linux/.config/niri/config.kdl
+# 不要把下面这行加回 dot_config/niri/config.kdl
 spawn-at-startup "blueman-applet"
 ```
 

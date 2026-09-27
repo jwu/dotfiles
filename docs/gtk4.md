@@ -1,6 +1,6 @@
 # GTK4 / libadwaita 微调
 
-`linux/.config/gtk-4.0/gtk.css` 由 GTK4 自动加载，优先级是
+`dot_config/gtk-4.0/gtk.css` 由 GTK4 自动加载，优先级是
 `GTK_STYLE_PROVIDER_PRIORITY_USER`(800)，高于 libadwaita 自带的
 `PRIORITY_APPLICATION`(600)，所以这里的规则一定生效。
 

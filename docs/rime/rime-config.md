@@ -34,7 +34,8 @@ cd ../fcitx5
 
 ### 2. 安装雾凇拼音
 
-**Linux**：通常不用手动安装，`fcitx5/install-linux.sh` 首次运行会下载 `full.zip` 解压到
+**Linux**：通常不用手动安装。`chezmoi apply` 跑到的
+`run_onchange_after_40-fcitx5.sh.tmpl` 会在词库缺失时下载 `full.zip` 解压到
 `~/.local/share/fcitx5/rime/`。下载失败时可手动补：
 
 ```bash
@@ -82,12 +83,11 @@ Rime 配置目录：`~/Library/Rime/`
 
 ## 更新词库
 
-`fcitx5/install-linux.sh` 只在首次安装时下载词库，之后不会更新。要跟进上游雾凇拼音的
-词库，运行：
+`run_onchange_after_40-fcitx5.sh.tmpl` 只在词库缺失时下载，之后不会更新。要跟进上游雾凇
+拼音的词库，从仓库根目录运行：
 
 ```bash
-cd ../fcitx5
-./update-rime-dict.sh
+./scripts/update-rime-dict.sh
 ```
 
 脚本会下载最新的 `full.zip` 并覆盖解压到用户目录，先把用户目录里的 `*.custom.yaml`
