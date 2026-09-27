@@ -272,6 +272,51 @@ pstree -sp $(pgrep -x hyprlock)
 客户端，niri 会用它替换掉死掉的那个。这不是锁屏特有的问题，任何「要活过我退出 ssh」的
 GUI 程序都一样，见 [`wayland-attach.md`](wayland-attach.md)。
 
+## 远程解锁：hyprlock 的 `SIGUSR1`
+
+锁屏客户端还活着时，从 ssh 能不解密码地解锁：
+
+```sh
+pkill -USR1 hyprlock
+```
+
+这是 hyprlock 特意注册的脚本化入口（`src/core/hyprlock.cpp`）：
+
+```cpp
+static void handleUnlockSignal(int sig) {
+    if (sig == SIGUSR1) {
+        Log::logger->log(Log::INFO, "Unlocking with a SIGUSR1");
+        g_pAuth->enqueueUnlock();
+    }
+}
+...
+registerSignalAction(SIGUSR1, handleUnlockSignal, SA_RESTART);
+```
+
+实测日志是连续三行 `Unlocking with a SIGUSR1` → `Unlocking session` → `Unlocked,
+exiting!`，随后 hyprlock 与 niri-lock 都正常退出，`loginctl` 的 `LockedHint` 转回 `no`。
+`SIGUSR2` 是另一个用途（强制刷新 label 定时器），就是上面「背景能不能实时？」用的那个。
+
+同一份 `SigCgt` 里 **SIGHUP / SIGTERM 都没被捕获**：
+
+```console
+$ grep SigCgt /proc/$(pgrep -x hyprlock)/status
+SigCgt:	0000000300000a00        # 0xa00 = bit9 + bit11 = SIGUSR1(10) + SIGUSR2(12)
+```
+
+这补上了「从 ssh 锁屏」那个坑的另一半：ssh 断开时 SIGHUP 直接终止 hyprlock，它没有机会做
+任何善后，所以只会留下红屏 —— 而**红屏时已经没有进程能接 `SIGUSR1` 了**，那条路仍然只能靠
+本地键盘输入密码。
+
+解锁入口总共三个，都得由 hyprlock 自己动手（`ext-session-lock-v1` 只允许持有锁的客户端
+unlock）：PAM 密码、指纹、`SIGUSR1`。niri 的 IPC 里没有 unlock 动作，`loginctl
+unlock-session` 也没用：niri 不监听 logind 的 Unlock 信号，hyprlock 连 logind 更是只为
+inhibit —— `src/core/Dbus.cpp` 里只有一个到 `org.freedesktop.login1.Manager` 的代理，没有
+对外暴露任何可调用的方法。
+
+安全含义：锁屏防物理接触，不防「已经能以你的身份执行代码的人」。任何 ssh 登录你账号的人
+都能用 `SIGUSR1` 解锁，所以锁屏在「ssh 暴露到公网 + 弱密码」的组合里不构成防线。
+
 ## 已知取舍
 
 - hyprlock 锁定期间持续 ~60fps 重绘（GPU 加速），耗电比 swaylock 高。
