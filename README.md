@@ -126,7 +126,7 @@ dotfiles/
 
 | 层 | 手段 | 需要 root |
 | --- | --- | --- |
-| 配置同步 | `chezmoi apply`：源里 77 个文件，按平台筛出该机器要的那些（macOS 30 个 / Linux 67 个） | 否 |
+| 配置同步 | `chezmoi apply`：源里 80 个文件，按平台筛出该机器要的那些（macOS 30 个 / Linux 70 个） | 否 |
 | 装机（一次性） | `bootstrap/<platform>.sh` | 是 |
 | 运行时动作 | `run_*` 脚本，按内容 hash 记账 | 否 |
 

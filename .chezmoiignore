@@ -51,10 +51,14 @@ Library
 {{ end }}
 
 # Linux-only targets. They are the source of truth on Linux, but hyprland /
-# niri / waybar / swaylock / fcitx5 do not exist on macOS, and the titlebar CSS
-# only applies to the GTK build of ghostty. See docs/ghostty-titlebar.md.
+# niri / waybar / swaylock / fcitx5 do not exist on macOS, the titlebar CSS only
+# applies to the GTK build of ghostty, the *-flags.conf files are read by the
+# Arch chrome / chromium wrappers, and mimeapps.list is XDG. See
+# docs/ghostty-titlebar.md.
 {{ if ne .chezmoi.os "linux" }}
 .config/autostart
+.config/chrome-flags.conf
+.config/chromium-flags.conf
 .config/environment.d
 .config/fcitx5
 .config/gtk-4.0
@@ -63,6 +67,7 @@ Library
 .config/ghostty/titlebar-colors-onedark.css
 .config/ghostty/titlebar-colors-onedark-purple.css
 .config/hypr
+.config/mimeapps.list
 .config/niri
 .config/swaylock
 .config/waybar

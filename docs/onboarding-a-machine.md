@@ -304,6 +304,12 @@ Linux 机器上**直连 GitHub 的 HTTPS 是坏的**（`OpenSSL SSL_read: unexpe
 先判断是网络环境问题还是本机代理没开，再决定怎么处理；需要时用一次性 `git -c http.proxy=...`
 而不是写进配置。
 
+浏览器侧是另一个口径：`~/.config/{chrome,chromium}-flags.conf` 里的
+`--proxy-server=http://127.0.0.1:7890` **由 dotfiles 管着，每台 Linux 机器都会拿到**。
+它来自本机的 mihomo。如果你的机器没在 7890 上跑代理，把那份文件里的 `--proxy-server` 与
+`--proxy-bypass-list` 两行删掉就行——`--proxy-bypass-list` 只放行内网，留着会让浏览器整体
+断网。取舍与理由见 `docs/design.md` 的「浏览器代理」一节。
+
 ---
 
 ## 7. 回报格式
