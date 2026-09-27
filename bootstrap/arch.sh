@@ -305,13 +305,19 @@ Defaults timestamp_timeout=10'
   sudo visudo -c > /dev/null
 }
 
-# mihomo ships as a package, but two things around it are local policy: the
+# mihomo ships as an AUR package, but two things around it are local policy: the
 # loopback-only controller and the overlay that re-pins what the subscription may
 # not change. The web panel is not ours to deploy -- mihomo downloads it itself
 # into the external-ui directory. See docs/design.md, the mihomo section.
 install_mihomo() {
-  sudo pacman -S --needed --noconfirm mihomo clash-geoip || return 1
-  # clash-geoip tracks upstream geodata; the mihomo package's own copy lags.
+  # Neither name is in the official repos, so `pacman -S` cannot resolve them:
+  # both mihomo and clash-geoip are AUR-only. mihomo-bin provides `mihomo`.
+  if ! command -v yay &> /dev/null; then
+    echo "    yay is required for mihomo-bin / clash-geoip; skipping" >&2
+    return 1
+  fi
+  yay -S --needed --noconfirm mihomo-bin clash-geoip || return 1
+  # clash-geoip tracks upstream geodata; mihomo-bin ships none of its own.
   sudo ln -sf /etc/clash/Country.mmdb /etc/mihomo/Country.mmdb
 }
 
