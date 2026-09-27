@@ -79,10 +79,43 @@ Ghostty 侧的 `mouse-hide-while-typing = true` 只覆盖它自己的窗口，ni
 
 ## 一份 config 管两台机器：output 段按端口名并存
 
-`config.kdl` 里同时留着三块 `output`：`DP-3`（Dell U2722DX）、`eDP-1`（笔记本内置 Retina）
-和 `HDMI-A-3`（那台 Mac mini 上 480x320 的小 HDMI 屏）。niri 对当前不存在的输出名只是不
-匹配，不报错也没有副作用，所以两台机器共用一个文件：Mac mini 上前两条规则空转，笔记本上
-第三条空转。
+`config.kdl` 里同时留着四块 `output`：`DP-3`（Dell U2722DX）、`DP-2`（这台 MacBook 外接
+的 Dell S2716DG）、`eDP-1`（笔记本内置 Retina）和 `HDMI-A-3`（那台 Mac mini 上 480x320
+的小 HDMI 屏）。niri 对当前不存在的输出名只是不匹配，不报错也没有副作用，所以两台机器
+共用一个文件：Mac mini 上前三条规则空转，笔记本上第四条空转。
+
+`DP-3` 与 `DP-2` 同时存在，是因为这台 MacBook 的外接屏与源里最早的记录（`DP-3` / 型号
+U2722DX）对不上，实际接在 `DP-2` 上的是一块 Dell S2716DG。两条并列留着，插哪一块就
+哪一条生效。
+
+### 双屏布局：两块屏的 position 都要显式写
+
+`eDP-1` 在原点 `position x=0 y=0`（逻辑 1600x1000），`DP-2` 在
+`position x=-480 y=-1440`（逻辑 2560x1440）：水平方向外接屏中心 `-480 + 2560/2 = 800`
+正是内屏中心（`1600/2`），竖直方向 `-1440 + 1440 = 0` 正好贴在内屏顶边，即外接屏居中
+正上方。
+
+关键在于**没有 `position` 的输出会被 niri 自动摆到其它输出的右边**。只给 `DP-2` 写
+position 时，`eDP-1` 会被丢到 `2080,0`，相对关系就错了（实测）。两块屏都写死位置，布局
+才与描述一致。负坐标合法，niri 不会把整个布局平移回非负象限。
+
+### 切屏用 focus-monitor-previous，不用方向式 action
+
+`Mod+Grave` 绑了 `focus-monitor-previous`，`Mod+Ctrl+Grave` 绑了
+`move-window-to-monitor-previous`（把当前窗口送过去）。两屏时两者都是 toggle（实测
+`eDP-1 → DP-2 → eDP-1`），也完全不依赖两块屏的相对位置。
+
+实测（niri 26.04）确认了「送过去」的落点：窗口从 `eDP-1` 的 `ws 3` 出发，执行
+`move-window-to-monitor-previous` 后落在 `DP-2` 当时正在显示的 `ws 5`，即**目标屏的
+active workspace**，而不是同名或新建的 workspace；焦点跟随窗口一起过去，再执行一次
+就回到原屏的 active workspace。
+
+备选的 `focus-monitor-up` / `focus-monitor-down` 在本机同样能工作（外接屏在内屏上方，
+方向与物理位置一致），但有两个缺点：`Mod+Up/Down` 已经被 `focus-window-up/down` 占用，
+换到 `Mod+Shift+方向` 又与 niri 「Mod+Shift+方向 = move-column-to-monitor-*」的惯例
+相反；而且布局一旦改成左右并排，上下方向就拐了弯。`previous` 两个话题都不会碰到。
+
+`move-column-to-monitor-*`（整列而非单窗口）没有绑定。
 
 `HDMI-A-3` 那块屏用的本来就是它的 preferred mode，`mode` 与 `scale 1` 都等于 niri 默认值，
 仍显式写出来，是为了让「这块屏走原生分辨率、不缩放」成为配置里看得见的事实，而不是依赖

@@ -74,13 +74,25 @@ output "DP-3" {
     transform "normal"
 }
 
+// DP-2 is the Dell S2716DG on the MacBook, centered above the built-in panel:
+// eDP-1 is 1600 wide in logical pixels, so x = 800 - 2560/2.
+output "DP-2" {
+    mode "2560x1440@59.951"
+    scale 1
+    transform "normal"
+    position x=-480 y=-1440
+}
+
 // eDP-1 is the built-in Apple Retina panel (2560x1600, ~227 PPI).
 // scale 1.6 gives a 1600x1000 logical size (~142 PPI), matching a
 // typical 15.6" 1080p laptop for comfortable UI sizing.
+// Pinned explicitly: niri auto-places an output without a position to the right
+// of the others, which broke the above-centering. See docs/niri.md.
 output "eDP-1" {
     mode "2560x1600@60.001"
     scale 1.6
     transform "normal"
+    position x=0 y=0
 }
 
 // HDMI-A-3 is a small RTK HDMI panel; 480x320 is its preferred/native mode.
@@ -152,6 +164,12 @@ binds {
     Mod+H     { focus-column-left; }
     Mod+J     { focus-window-down; }
     Mod+K     { focus-window-up; }
+
+    // Two displays here, so `previous` is a plain toggle between them. The move
+    // form drops the window on the other monitor's active workspace and follows
+    // it. See docs/niri.md.
+    Mod+Grave { focus-monitor-previous; }
+    Mod+Ctrl+Grave { move-window-to-monitor-previous; }
     Mod+L { spawn "~/.local/bin/niri-lock"; }
 
     // Recovery from a wedged/dead screen locker: niri keeps a red locked session
