@@ -1,0 +1,328 @@
+#!/usr/bin/env bash
+# niri-stream-res -- Sunshine prep-cmd helper for niri, with a stream watchdog.
+#
+# Usage: niri-stream-res {up|down|status} [high|native]
+#        niri-stream-res --watch <connects> <disconnects>   (internal)
+#
+# Sunshine runs "up" when a stream starts and "down" when the app terminates.
+# In practice it keeps the app alive after the client disconnects (so Moonlight
+# can reconnect), which means "down" never runs and the display stays at the
+# streaming resolution. To cover that, "up" also starts a detached watchdog that
+# watches Sunshine's log and restores the original mode once the stream ends.
+#
+# Two modes are offered through apps.json:
+#   up high    -- match the resolution the client asked for (SUNSHINE_CLIENT_*)
+#   up native  -- return to the output's preferred (native) mode
+#
+# Nothing here is machine-specific: the output is detected at runtime, the mode
+# to restore to is recorded before switching, and the fallback is the output's
+# own preferred mode. That way one copy works on every niri machine.
+
+set -uo pipefail
+
+FALLBACK_MODE="${NIRI_STREAM_FALLBACK_MODE:-}"
+GRACE="${NIRI_STREAM_GRACE:-8}"
+POLL="${NIRI_STREAM_POLL:-4}"
+SUNSHINE_LOG="${NIRI_STREAM_SUNSHINE_LOG:-$HOME/.config/sunshine/sunshine.log}"
+
+log() { printf '[niri-stream-res] %s\n' "$*" >&2; }
+
+uid="$(id -u)"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$uid}"
+PIDFILE="$XDG_RUNTIME_DIR/niri-stream-res.watchdog.pid"
+SAVEFILE="$XDG_RUNTIME_DIR/niri-stream-res.saved-mode"
+
+# niri's IPC socket name contains its PID, so it changes on every niri restart.
+# Resolve it fresh rather than trusting whatever NIRI_SOCKET was inherited.
+if [ ! -S "${NIRI_SOCKET:-}" ]; then
+    unset NIRI_SOCKET
+    for s in "$XDG_RUNTIME_DIR"/niri.*.sock; do
+        [ -S "$s" ] && NIRI_SOCKET="$s"
+    done
+    export NIRI_SOCKET="${NIRI_SOCKET:-}"
+fi
+if [ ! -S "$NIRI_SOCKET" ]; then
+    log "no niri IPC socket in $XDG_RUNTIME_DIR"
+    exit 1
+fi
+
+if [ -z "${WAYLAND_DISPLAY:-}" ]; then
+    for w in "$XDG_RUNTIME_DIR"/wayland-[0-9]*; do
+        [ -S "$w" ] && export WAYLAND_DISPLAY="$(basename "$w")"
+    done
+fi
+
+# --- output and mode discovery ------------------------------------------------
+
+list_outputs() {
+    niri msg outputs 2>/dev/null | sed -n 's/^Output .*[[:space:]](\(.*\))$/\1/p'
+}
+
+# Detect the output to drive. NIRI_STREAM_OUTPUT wins; otherwise a single
+# attached output is used, and with several we follow the focused one, which is
+# where a stream is almost always expected to land.
+resolve_output() {
+    if [ -n "${NIRI_STREAM_OUTPUT:-}" ]; then
+        printf '%s\n' "$NIRI_STREAM_OUTPUT"
+        return 0
+    fi
+
+    local outputs count focused
+    outputs="$(list_outputs)"
+    count="$(printf '%s\n' "$outputs" | grep -c .)"
+    case "$count" in
+        1)
+            printf '%s\n' "$outputs"
+            ;;
+        0)
+            return 1
+            ;;
+        *)
+            focused="$(niri msg focused-output 2>/dev/null |
+                sed -n 's/^Output .*[[:space:]](\(.*\))$/\1/p')"
+            if [ -n "$focused" ]; then
+                printf '%s\n' "$focused"
+            else
+                return 1
+            fi
+            ;;
+    esac
+}
+
+# Emit "WIDTHxHEIGHT@RATE" for the currently active mode of $OUTPUT.
+current_mode() {
+    niri msg outputs 2>/dev/null | awk -v out="$OUTPUT" '
+        /^Output / { inblock = index($0, "(" out ")") > 0; next }
+        inblock && /Current mode:/ { printf "%s@%s\n", $3, $5; exit }'
+}
+
+# Emit the mode the panel marks as preferred -- what the machine looks like when
+# nothing is overriding it.
+preferred_mode() {
+    niri msg outputs 2>/dev/null | awk -v out="$OUTPUT" '
+        /^Output / { inblock = index($0, "(" out ")") > 0; next }
+        inblock && /preferred/ && /@/ { print $1; exit }'
+}
+
+# Map a client-requested "WIDTHxHEIGHT" onto a mode this output actually
+# advertises. Nothing is hardcoded: whatever EDID offers is what can be matched.
+mode_for_size() {
+    niri msg outputs 2>/dev/null | awk -v out="$OUTPUT" -v want="$1" '
+        /^Output / { inblock = index($0, "(" out ")") > 0; next }
+        inblock && /^[[:space:]]+[0-9]+x[0-9]+@/ {
+            size = $1; sub(/@.*/, "", size)
+            if (size == want) { print $1; exit }
+        }'
+}
+
+# Highest-pixel-count mode, used as the "high" fallback when the client asks for
+# something the panel cannot do.
+largest_mode() {
+    niri msg outputs 2>/dev/null | awk -v out="$OUTPUT" '
+        /^Output / { inblock = index($0, "(" out ")") > 0; next }
+        inblock && /^[[:space:]]+[0-9]+x[0-9]+@/ {
+            split($1, r, "@"); split(r[1], d, "x")
+            px = d[1] * d[2]
+            if (px > best) { best = px; mode = $1 }
+        }
+        END { if (mode) print mode }'
+}
+
+set_mode() {
+    local m="$1"
+    if niri msg output "$OUTPUT" mode "$m" >/dev/null 2>&1; then
+        log "mode -> $m"
+        return 0
+    fi
+    log "mode $m rejected by niri"
+    return 1
+}
+
+# --- restore bookkeeping ------------------------------------------------------
+
+# Remember what the display looked like before we changed it. Recording the real
+# current mode (rather than a configured default) is what makes restore correct
+# on any machine.
+save_current_mode() {
+    local m
+    m="$(current_mode)"
+    if [ -n "$m" ]; then
+        printf '%s\n' "$m" >"$SAVEFILE"
+        log "recorded pre-stream mode: $m"
+    else
+        log "could not read current mode; nothing recorded"
+    fi
+}
+
+restore_mode() {
+    local m
+    m="$(cat "$SAVEFILE" 2>/dev/null || true)"
+    if [ -n "$m" ]; then
+        log "restoring recorded mode $m"
+    else
+        m="$(preferred_mode)"
+        log "no recorded mode; using the output's preferred mode: ${m:-<unknown>}"
+    fi
+    [ -n "$m" ] || m="$FALLBACK_MODE"
+    if [ -z "$m" ]; then
+        log "cannot determine a mode to restore to"
+        return 1
+    fi
+    if set_mode "$m"; then
+        rm -f "$SAVEFILE"
+        return 0
+    fi
+    return 1
+}
+
+# --- watchdog -----------------------------------------------------------------
+
+count() {
+    local n
+    n="$(grep -c "$1" "$SUNSHINE_LOG" 2>/dev/null)"
+    printf '%s\n' "${n:-0}"
+}
+
+stop_watchdog() {
+    [ -f "$PIDFILE" ] || return 0
+    local pid
+    pid="$(cat "$PIDFILE" 2>/dev/null || true)"
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+        kill "$pid" 2>/dev/null
+        log "stopped existing watchdog (pid $pid)"
+    fi
+    rm -f "$PIDFILE"
+}
+
+start_watchdog() {
+    stop_watchdog
+    local watchlog="${XDG_CACHE_HOME:-$HOME/.cache}/niri-stream-res.log"
+    # Pass the baseline captured at the very start of "up", before Sunshine can
+    # log this session's CLIENT CONNECTED, so the watchdog never counts it twice.
+    # setsid detaches it from Sunshine's process group so Sunshine cannot reap
+    # it, and so it survives long after the prep-cmd itself returns.
+    setsid nohup "$0" --watch "${1:-}" "${2:-}" >>"$watchlog" 2>&1 </dev/null &
+    printf '%s\n' "$!" >"$PIDFILE"
+    log "watchdog started (pid $!, log: $watchlog)"
+}
+
+# Watch Sunshine's own view of the session. The log is the most reliable signal
+# available: Sunshine prints CLIENT CONNECTED/DISCONNECTED itself, and it is
+# right even when the client dies without a clean shutdown.
+watch() {
+    local c0 d0 c d dc dd idle=0
+    c0="${1:-}"
+    d0="${2:-}"
+    [ -n "$c0" ] || c0="$(count 'CLIENT CONNECTED')"
+    [ -n "$d0" ] || d0="$(count 'CLIENT DISCONNECTED')"
+    log "watching $SUNSHINE_LOG (baseline connects=$c0 disconnects=$d0, grace=${GRACE}s)"
+
+    while :; do
+        sleep "$POLL"
+        c="$(count 'CLIENT CONNECTED')"
+        d="$(count 'CLIENT DISCONNECTED')"
+
+        # Sunshine restarted or rotated its log: rebase instead of letting the
+        # deltas go negative and misread the session state.
+        if [ "$c" -lt "$c0" ] || [ "$d" -lt "$d0" ]; then
+            log "log rotated (connects $c0->$c, disconnects $d0->$d); rebasing"
+            c0=$c d0=$d idle=0
+            continue
+        fi
+
+        dc=$((c - c0))
+        dd=$((d - d0))
+
+        # A stream is over once at least one connect happened and disconnects
+        # have caught up with connects. A reconnect resets the idle timer.
+        if [ "$dc" -gt 0 ] && [ "$dd" -ge "$dc" ]; then
+            idle=$((idle + POLL))
+            if [ "$idle" -ge "$GRACE" ]; then
+                log "stream ended (connects=$dc disconnects=$dd)"
+                restore_mode || log "restore failed"
+                rm -f "$PIDFILE"
+                exit 0
+            fi
+        else
+            idle=0
+        fi
+    done
+}
+
+# --- commands -----------------------------------------------------------------
+
+cmd_up() {
+    local pref="${1:-high}"
+
+    OUTPUT="$(resolve_output)" || {
+        log "cannot pick an output to drive; set NIRI_STREAM_OUTPUT"
+        exit 1
+    }
+    log "driving output: $OUTPUT"
+
+    if [ "$pref" = "native" ]; then
+        # Nothing to restore: the preferred mode is the resting state.
+        stop_watchdog
+        rm -f "$SAVEFILE"
+        set_mode "$(preferred_mode)" || log "could not set the preferred mode"
+        exit 0
+    fi
+
+    # Read the baseline before touching anything: Sunshine may log
+    # CLIENT CONNECTED while this script is still switching modes.
+    local c0 d0 want target
+    c0="$(count 'CLIENT CONNECTED')"
+    d0="$(count 'CLIENT DISCONNECTED')"
+
+    want="${SUNSHINE_CLIENT_WIDTH:-0}x${SUNSHINE_CLIENT_HEIGHT:-0}"
+    log "stream start: client=${SUNSHINE_CLIENT_NAME:-?} app=${SUNSHINE_APP_NAME:-?} requested=$want@${SUNSHINE_CLIENT_FPS:-?}"
+
+    save_current_mode
+
+    target="$(mode_for_size "$want")"
+    if [ -n "$target" ]; then
+        log "client resolution $want is available as $target"
+    else
+        target="$(largest_mode)"
+        log "client resolution $want is not offered by this output; using the largest mode ${target:-<none>}"
+    fi
+    [ -n "$target" ] || target="$FALLBACK_MODE"
+
+    set_mode "$target" || log "could not switch; leaving the mode unchanged"
+    start_watchdog "$c0" "$d0"
+}
+
+cmd_down() {
+    OUTPUT="$(resolve_output)" || {
+        log "cannot pick an output to restore; set NIRI_STREAM_OUTPUT"
+        exit 1
+    }
+    stop_watchdog
+    restore_mode || log "run manually: niri msg output $OUTPUT mode <mode>"
+}
+
+cmd_status() {
+    OUTPUT="$(resolve_output)" || OUTPUT="(none detected)"
+    printf 'output:      %s\n' "$OUTPUT"
+    if [ "$OUTPUT" != "(none detected)" ]; then
+        printf 'current:     %s\n' "$(current_mode)"
+        printf 'preferred:   %s\n' "$(preferred_mode)"
+    fi
+    printf 'recorded:    %s\n' "$(cat "$SAVEFILE" 2>/dev/null || echo '(none)')"
+    if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+        printf 'watchdog:    running (pid %s)\n' "$(cat "$PIDFILE")"
+    else
+        printf 'watchdog:    not running\n'
+    fi
+}
+
+case "${1:-}" in
+    up)      cmd_up "${2:-high}" ;;
+    down)    cmd_down ;;
+    status)  cmd_status ;;
+    --watch) watch "${2:-}" "${3:-}" ;;
+    *)
+        echo "usage: $0 {up [high|native]|down|status}" >&2
+        exit 2
+        ;;
+esac

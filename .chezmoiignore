@@ -69,6 +69,7 @@ Library
 .config/hypr
 .config/mimeapps.list
 .config/niri
+.config/sunshine
 .config/swaylock
 .config/waybar
 # Whole subtree: ignoring the files alone still makes chezmoi create the empty

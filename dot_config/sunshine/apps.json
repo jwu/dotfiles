@@ -1,0 +1,40 @@
+{
+  "env": {
+    "PATH": "$(PATH):$(HOME)/.local/bin"
+  },
+  "apps": [
+    {
+      "name": "Desktop",
+      "image-path": "desktop.png",
+      "prep-cmd": [
+        {
+          "do": "niri-stream-res up high",
+          "undo": "niri-stream-res down"
+        }
+      ]
+    },
+    {
+      "name": "Low Res Desktop",
+      "image-path": "desktop.png",
+      "prep-cmd": [
+        {
+          "do": "niri-stream-res up native",
+          "undo": "niri-stream-res down"
+        }
+      ]
+    },
+    {
+      "name": "Steam Big Picture",
+      "detached": [
+        "setsid steam steam://open/bigpicture"
+      ],
+      "prep-cmd": [
+        {
+          "do": "",
+          "undo": "setsid steam steam://close/bigpicture"
+        }
+      ],
+      "image-path": "steam.png"
+    }
+  ]
+}
