@@ -5,6 +5,11 @@
 # Fallback value (if you omit the key): config-version = 1
 config-version = 2
 
+# Reloading is driven by chezmoi's run_onchange_* script, so AeroSpace's own
+# watcher stays off: it would be a permanent filesystem watch for a file that
+# changes a few times a year. See docs/aerospace/.
+auto-reload-config = false
+
 # You can use it to add commands that run after AeroSpace startup.
 # Available commands : https://nikitabobko.github.io/AeroSpace/commands
 after-startup-command = []

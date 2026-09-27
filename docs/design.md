@@ -428,7 +428,7 @@ neovide 是**重复**（Windows 的真目标在 AppData 里），yazi / gitui / 
 **(c) `run_*.sh` 在 Windows 上必然失败：`exec(3)` 不认 shebang。** 实测 `chezmoi apply` 把脚本
 写到临时文件后直接 exec，Windows 报 `%1 is not a valid Win32 application`。`.chezmoiignore`
 拦不住脚本（脚本没有目标路径），`20`/`30` 那种「`exit 0` 短路」也**执行不到**——失败发生在
-解释器起来之前。按 chezmoi 官方做法改成：6 个脚本全部带 `.tmpl`，最外层
+解释器起来之前。按 chezmoi 官方做法改成：7 个脚本全部带 `.tmpl`，最外层
 `{{ if ne .chezmoi.os "windows" -}} ... {{ end -}}`，Windows 上渲染为**空字符串**，chezmoi
 就不执行它。Linux / macOS 的渲染逐字节不变（已逐个比对）。
 
@@ -459,6 +459,7 @@ neovide 是**重复**（Windows 的真目标在 AppData 里），yazi / gitui / 
 | `configs/linux/config.sh` 的 `rm nvme-temp.sh` | `run_once_after_cleanup-stale.sh` | 一次性清理 |
 | `desktop-settings/fcitx5/install-linux.sh` | `run_after_fcitx5.sh` | **必须缩水**，见下 |
 | `desktop-settings/fcitx5/update-rime-dict.sh` | 一并迁入，保持手动 | 词库维护工具，不自动化 |
+| `desktop-settings/mac/install.sh` 的 `aerospace reload-config` | `run_onchange_after_70-aerospace.sh.tmpl` | 复制那半由 chezmoi 接管，只剩重载；不启用 AeroSpace 原生的 `auto-reload-config`，见下 |
 | `install-arch/install.sh` | `bootstrap/arch.sh` | 见「安装入口」 |
 | `configs/win/install.bat`、`config.bat` | 转成 `bootstrap/windows.bat` 与 scoop 清单 | Windows 装机层 |
 
@@ -467,6 +468,18 @@ neovide 是**重复**（Windows 的真目标在 AppData 里），yazi / gitui / 
 `after` 前缀**，因为词库重建必须在 `profile` / `classicui.conf` / `*.custom.yaml` 落盘之后
 跑。`desktop-settings/AGENTS.md` 要求的「绝不覆盖 `build/`、用户词频和键盘缓存」这条约束
 在缩水后仍须保持。
+
+`run_onchange_after_70-aerospace.sh.tmpl` 只有一行有效代码，但它背后的取舍值得记：AeroSpace
+自带 `auto-reload-config = true`（配置文件保存即重载），本可以完全省掉这个脚本。实测它能用
+——chezmoi 部署 `~/.aerospace.toml` 时是**替换**而非原地写（inode 每次都变：`45930525` →
+`46463436` → `46463443` → `46463454`），而 AeroSpace 的监视扛得住这种替换，三次连续替换
+都在 3 秒内自动生效。没选它，是因为常驻的文件监视与「这份配置一年只改几次」不匹配，而
+`apply` 时多跑一次 CLI 是零成本。配置里于是显式写着 `auto-reload-config = false`，免得被
+读成漏迁。
+
+它还是仓库里第一个 **macOS 专属**的 `run_*`：其余脚本用 `{{ if ne .chezmoi.os "windows" }}`
+（Linux 与 macOS 都跑），这一个用 `{{ if eq .chezmoi.os "darwin" }}`，在另两个平台上渲染为空
+字符串。为什么不能用脚本内 `exit 0` 短路，见前文「Windows 接入时补的三处」的 (c)。
 
 ### pi-config 的编排
 

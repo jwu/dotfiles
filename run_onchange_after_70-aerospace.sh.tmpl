@@ -1,0 +1,18 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+# Reload AeroSpace after the config lands. Deliberately not AeroSpace's native
+# auto-reload-config, which would keep a filesystem watcher alive for a file that
+# changes a few times a year. See docs/aerospace/.
+#
+# dot_aerospace.toml: {{ include "dot_aerospace.toml" | sha256sum }}
+set -uo pipefail
+
+# The CLI talks to AeroSpace.app over a unix socket, so it fails when the app is
+# not running. chezmoi is fail-fast: never exit non-zero.
+if ! command -v aerospace &> /dev/null; then
+  echo "aerospace CLI not found; skipping the reload."
+  exit 0
+fi
+
+aerospace reload-config || echo "aerospace reload-config failed (is AeroSpace.app running?); skipping."
+{{ end -}}
