@@ -398,9 +398,19 @@ call "%MY_CONFIGS%\cmds\aliases.cmd"
 - **`win/nu/*.nu` 是过时孤儿，跳过**。它没有任何脚本部署，含旧机器的真实路径
   （`e:\Alacritty\settings\`、`E:\Alacritty\vendor\starship.exe`），且用的是 nushell 旧
   语法 `let-env`。重写需要先确定 nushell 版本与目标位置（`%APPDATA%\nushell\`）。
-- **`desktop-settings/totalcmd/wincmd.ini` 不纳入**。它含
-  `InstallDir=C:\Program Files\totalcmd` 等本机安装状态与窗口布局，且
-  `desktop-settings/AGENTS.md` 明确说 Total Commander 属「按文档手动配置」。
+- **`desktop-settings/totalcmd/wincmd.ini` 只取一份脱敏基线**。真正的原因不是「含本机安装
+  状态」，而是 **TC 会持续重写同一个文件**：`Savepath` / `Savepanels` / `SaveCommands` /
+  `SaveHistory` 默认全开，面板路径、搜索历史、插件 checksum 与按分辨率命名的窗口几何节
+  （`[2560x1440 (8x16)]`）都由它写回去。纳入 managed 的话每次 `apply` 都会抹掉这些——与
+  `~/.pi/agent/extensions/*.json` 同类。所以
+  `AppData/Roaming/GHISLER/create_wincmd.ini` 只在目标缺失时写一次，且只含偏离 TC 默认值
+  的五行加 `[Shortcuts]`、`[Colors]`、`[AllResolutions]` 三节；旧快照里那几十个
+  `[Configuration]` 键逐项对照官方帮助后确认**全等于默认值**，写进去只会让基线与未来的
+  默认值脱钩。见 [`totalcmd/totalcmd-config.md`](totalcmd/totalcmd-config.md)。
+
+  TC 自己另有一招：`AlternateUserIni` 与 `RedirectSection`（官方帮助 "Using multiple ini
+  files"）能把易变节分出去，让主 ini 只读。没有采用——主 ini 的骨架漏掉哪个节，那个节就
+  会留在受管文件里被回写。
 
 `win/` 整个目录后来被删除：`install.bat`（便携工具下载器）与 `cmds/addfonts.cmd` 由 scoop
 取代，`init.bat` 由终端的 `session.cmd` + `AppData/Local/clink/session.lua` 取代，
@@ -505,7 +515,7 @@ Windows 上由 `bootstrap/windows.bat` 的 `:ENSURE_PI_CONFIG` 步骤 clone 到 
 | 仓库 / 位置 | 动作 |
 | --- | --- |
 | `configs` | 配置文件迁入本仓库；`install.sh` / `config.sh` 的非文件动作转成 `run_*` 脚本；`docs/` 整体迁入；`src/gpu-watch.c`、`waybar-niri-windows.sh` 迁入；`win/` 迁入；`common/`、`linux/`、`mac/` 的配置副本删除。**最后删除仓库** |
-| `desktop-settings` | `profile`、`classicui.conf`、`themes/`、`rime/*.custom.yaml`、`zed/settings.json`、`aerospace/.aerospace.toml`、`totalcmd/wincmd.ini` 迁入；两个 shell 脚本迁入为 `run_*`；`*-config.md` 迁入 `docs/`。**最后删除仓库** |
+| `desktop-settings` | `profile`、`classicui.conf`、`themes/`、`rime/*.custom.yaml`、`zed/settings.json`、`aerospace/.aerospace.toml`、`totalcmd/wincmd.ini` 取脱敏基线；两个 shell 脚本迁入为 `run_*`；`*-config.md` 迁入 `docs/`。**最后删除仓库** |
 | `pi-config` | 删除 `agents/`、`prompts/`、`skills/`、`themes/`、`extensions-settings/`、`settings.json`、`mcp.json`、`APPEND_SYSTEM.md`、`keybindings.json`、`install.sh`；**保留仓库** |
 | `install-arch` | 演化为 `bootstrap/arch.sh`，**删除仓库** |
 | `configs/linux/config.sh:299` | 现在靠 `$ROOT_DIR/../desktop-settings` 定位 fcitx5 脚本，迁入后改为直接引用本仓库的 `run_after_fcitx5.sh` |
