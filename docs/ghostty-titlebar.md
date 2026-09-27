@@ -93,20 +93,31 @@ ssh 状态。所以只能在标题**内容**上做，而且判定要放在**远�
 按需覆盖它：
 
 ```zsh
-[[ -n ${SSH_CONNECTION:-} ]] && ZSH_THEME_TERM_TITLE_IDLE='🖥 %n@%m:%~'
+# field 3 of "client_ip client_port server_ip server_port" = this machine
+[[ -n ${SSH_CONNECTION:-} ]] && ZSH_THEME_TERM_TITLE_IDLE="🖥(${${(s: :)SSH_CONNECTION}[3]}) %~"
 ```
 
 本地 shell 没有 `SSH_CONNECTION`，格式保持原样，于是标记天然只出现在远程。
 
 **远程 pi**：pi 是 TUI，自己控制标题。pi-config 的 `terminal-signals` 扩展在 `SSH_CONNECTION`
-/ `SSH_TTY` 存在时给标题加 `🖥 <远程主机名> ` 前缀。这里有个坑：**pi 核心也有一个
-`updateTerminalTitle()`**，把标题设成 `π - <session> - <cwd>`，触发点是 `session_info_changed`
-事件；而该事件的扩展 handler 先于核心的 UI handler 跑，所以扩展得**延后一拍**
-（`setTimeout(…, 0)`）再重设自己的标题，否则空闲时会被核心盖掉——现象就是「只有对话时才有
+/ `SSH_TTY` 存在时给标题加 `🖥(<ip>) ` 前缀（同样取第 3 段；只有 `SSH_TTY` 时回退为主机名）。
+这里有**两个坑**，都出在「核心也会写标题」：
+
+1. **核心在会话绑定完成时也会写一次标题**（`bindCurrentSessionExtensions()` 之后的
+   `updateTerminalTitle()`），它排在扩展的 `session_start` handler 之后，于是刚进 pi 时空闲
+   标题**没有** ssh 标记；
+2. 核心还会在 `session_info_changed` 事件里再写一次（`π - <session> - <cwd>`），而该事件的
+   扩展 handler 先于核心的 UI handler 跑。
+
+两处都用**延后一拍**（`setTimeout(…, 0)`）解决：`session_start` 与 `session_info_changed`
+的 handler 都在下一 tick 重设自己的标题。否则空闲时会被核心盖掉——现象就是「只有对话时才有
 标记」，因为工作时 spinner 每 80ms 刷一次。
 
-图标 `🖥`（U+1F5A5）走 fontconfig 回退到 `Noto Emoji`，是**单色**、与文字同色（加 `VS16`
-无效）；想要彩色就换 `💻`（`Noto Color Emoji`）。
+早期版本把标记写成 `🖥 <主机名> `，图标后紧跟空格。braille spinner 帧（如 `⠹`）紧挨在 🖥
+前面时，Pango 会把那个空格划进 emoji 字体串，宽度从 ~7px 涨到 ~21px，看上去就是「图标和主机名
+之间多了一大截空格」（10 个 spinner 帧全命中，用 `pango-view --font="Adwaita Sans 11"` 可复现）。
+现在统一成 `🖥(<ip>)`，图标后面直接是 `(`、不再有相邻空格，这个坑自然消失，也就不需要在图标上
+加 `VS15`。GTK 标题栏走的就是这套 Pango 渲染。
 
 标题栏文字颜色仍是 `titlebar-colors-*.css` 里的主题色——上游一天不提供 ssh 状态，就一天没
 法只给这段信息上色。别的远程程序（如 nvim）照样会覆盖标题，目前不管。

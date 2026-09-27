@@ -43,8 +43,9 @@ source $ZSH/oh-my-zsh.sh
 
 # Mark the window title when this shell is the remote end of an ssh session.
 # omz reads this on every precmd; a local shell has no SSH_CONNECTION and stays
-# unmarked. See docs/ghostty-titlebar.md.
-[[ -n ${SSH_CONNECTION:-} ]] && ZSH_THEME_TERM_TITLE_IDLE='🖥 %n@%m:%~'
+# unmarked. Field 3 of SSH_CONNECTION is sshd's own address, i.e. this machine.
+# See docs/ghostty-titlebar.md.
+[[ -n ${SSH_CONNECTION:-} ]] && ZSH_THEME_TERM_TITLE_IDLE="🖥(${${(s: :)SSH_CONNECTION}[3]}) %~"
 
 source $ZSH/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 eval "$(starship init zsh)"
