@@ -1,12 +1,18 @@
 # Zed 配置同步
 
-Zed 的设置由 chezmoi 部署。仓库里有两份内容相同的 `private_settings.json`
-（`private_` 前缀只表示目标权限 0600，不是文件名的一部分）：
+Zed 的设置由 chezmoi 部署。仓库里有两份内容相同的 `settings.json`：
 
 | 平台 | 源 | 目标 |
 | --- | --- | --- |
-| Linux / macOS | `dot_config/zed/private_settings.json` | `~/.config/zed/settings.json` |
-| Windows | `AppData/Roaming/Zed/private_settings.json` | `%APPDATA%\Zed\settings.json` |
+| Linux / macOS | `dot_config/zed/settings.json` | `~/.config/zed/settings.json` |
+| Windows | `AppData/Roaming/Zed/settings.json` | `%APPDATA%\Zed\settings.json` |
+
+源文件**刻意不加 `private_` 前缀**，目标权限因此是 0644 而不是 0600：文件里没有密钥，
+Zed 的凭据在 `~/.local/share/zed/credentials`。带上前缀时源文件名会变成
+`private_settings.json`，不再匹配 Zed 默认的 JSONC 规则
+`**/{zed,Zed}/{settings,keymap,tasks,debug}.json`，于是它被当作严格 JSON，在编辑器里打开源
+文件会满屏报 `Comments are not permitted in JSON`（目标名仍是 `settings.json`，所以实际生效
+的那份一直没受影响，只有编辑仓库源文件时才看得见）。
 
 有两份是因为 Zed 在 Windows 上读 `%APPDATA%` 而不是 `~/.config`，`.chezmoiignore` 按 OS
 只放行对应的一份。

@@ -158,7 +158,7 @@ AppData/Roaming/neovide/config.toml        ← configs: common/.config/neovide/
 AppData/Local/glow/Config/one-dark.json    ← configs: common/.config/glow/
 AppData/Roaming/gitui/theme.ron            ← configs: common/.config/gitui/
 AppData/Roaming/yazi/config/*.toml         ← configs: common/.config/yazi/
-AppData/Roaming/Zed/private_settings.json  ← Windows 接入时从本机收进（Unix 侧是 dot_config/zed/）
+AppData/Roaming/Zed/settings.json          ← Windows 接入时从本机收进（Unix 侧是 dot_config/zed/）
 .wezterm.lua                               ← configs: common/.wezterm.lua（仅 Windows）
 .chezmoiignore
 bootstrap/arch.sh
@@ -173,13 +173,12 @@ run_*.sh
 ### 属性前缀会进源路径
 
 chezmoi 依据权限位给源文件加前缀，所以**源路径与目标路径不一定逐字对应**。本仓库里目前有
-九个，其中 `private_` 那个曾经绊了一下：`run_onchange_after_40-fcitx5.sh.tmpl` 的 `include`
+八个，其中 `private_` 那个曾经绊了一下：`run_onchange_after_40-fcitx5.sh.tmpl` 的 `include`
 写目标路径 `profile` 会直接渲染失败，必须写源路径 `private_profile`。
 
 | 源路径 | 目标 | 权限 |
 | --- | --- | --- |
 | `dot_config/fcitx5/private_profile` | `~/.config/fcitx5/profile` | 600 |
-| `dot_config/zed/private_settings.json` | `~/.config/zed/settings.json` | 600 |
 | `private_dot_pi/private_agent/**` | `~/.pi/agent/**` | 700（目录） |
 | `private_Library/Rime/squirrel.custom.yaml` | `~/Library/Rime/squirrel.custom.yaml` | 700（目录） |
 | `dot_config/waybar/scripts/executable_disk-temp.sh` | `~/.config/waybar/scripts/disk-temp.sh` | 755 |
