@@ -37,7 +37,7 @@ chezmoi 依据权限位给源文件加前缀，所以源路径与目标路径不
 
 ## `create_` 是「一次性初始化」，不是真源
 
-`settings.json`、`mcp.json` 这种会被工具自己回写的文件用 `create_` 前缀：chezmoi 只在**目标
+`settings.json`、`mcp-adapter.json` 这种会被工具自己回写的文件用 `create_` 前缀：chezmoi 只在**目标
 不存在**时渲染并写入，目标一旦存在就不再碰它。它既不是「纳入真源」（那会在每次 apply 抹掉
 工具写进去的东西），也不是「排除」（新机器上就没有基线）。
 

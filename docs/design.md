@@ -141,7 +141,7 @@ dot_pi/agent/
   keybindings.json                     ← pi-config
   APPEND_SYSTEM.md                     ← pi-config
   create_settings.json.tmpl            ← 新机器的初始 settings.json（`create_`，只落地一次）
-  create_mcp.json                      ← 新机器的初始 mcp.json（同上）
+  create_mcp-adapter.json              ← 新机器的初始 mcp-adapter.json（同上）
 # macOS 专有（本机不存在，从仓库搬入）
 dot_aerospace.toml                         ← desktop-settings: aerospace/.aerospace.toml
 dot_config/ghostty/config                  ← configs: mac/.config/ghostty/config
@@ -291,12 +291,12 @@ git 先读 XDG 那份、再读 `~/.gitconfig`，后者覆盖前者，所以个�
 | --- | --- | --- |
 | 静态资源（pi 只读） | `agents/`、`skills/`、`prompts/`、`themes/` | **已纳入**，源是真源 |
 | 人工维护的配置 | `keybindings.json`、`APPEND_SYSTEM.md` | **已纳入**，源是真源 |
-| 会被 pi 回写 | `settings.json`、`mcp.json` | **已纳入**，但用 `create_` 前缀 |
+| 会被 pi 回写 | `settings.json`、`mcp-adapter.json` | **已纳入**，但用 `create_` 前缀 |
 | 工具独占写入 | `extensions/*.json`（pi-ask 写回） | **排除** |
 | 凭据与运行时 | `auth.json`、`sessions/`、`models-store.json`、`*-cache.json`、`install/`、`bin/`、`npm/` | **绝不纳入** |
 
 `settings.json` 会被 pi 写入 `lastChangelogVersion`（看过哪版 changelog）、
-`defaultProvider` / `defaultModel` / `defaultThinkingLevel`（`/model` 切换），`mcp.json` 会被
+`defaultProvider` / `defaultModel` / `defaultThinkingLevel`（`/model` 切换），`mcp-adapter.json` 会被
 `/mcp` 改写。这两份用 `create_` 前缀：**只在目标不存在时**渲染一次，之后不再碰。新机器因此
 拿到一份能开箱用的配置，本机后来被 pi 改成什么样，都不会在下次 apply 时被抹掉。
 
@@ -476,7 +476,7 @@ run_once_after_50-pi-config.sh
   └─ 提示 /reload 生效
 ```
 
-它**不调用** `pi-config/install.sh`（该脚本已删除）：`settings.json` 与 `mcp.json` 都是 chezmoi
+它**不调用** `pi-config/install.sh`（该脚本已删除）：`settings.json` 与 `mcp-adapter.json` 都是 chezmoi
 的 `create_` 目标，再复制一遍就是两个所有者争同一份文件（见上节）。clone 目标仍是固定的
 `~/bin/pi-config`，因为 `create_settings.json.tmpl` 渲染出的 `extensions` 指向它。
 
@@ -817,7 +817,7 @@ Zed 的 Windows settings 与 Unix 侧那份已经对齐（补齐 `project_panel`
 | 源 | 目标 | 说明 |
 | --- | --- | --- |
 | `private_dot_pi/private_agent/create_settings.json.tmpl` | `~/.pi/agent/settings.json` | `extensions` 按 `.chezmoi.os` 分支 |
-| `private_dot_pi/private_agent/create_mcp.json` | `~/.pi/agent/mcp.json` | 取本机现状：chrome-devtools 用 `--wsEndpoint ws://127.0.0.1:9222/devtools/browser/pi-agent`，不是 pi-config 里的 `--autoConnect` |
+| `private_dot_pi/private_agent/create_mcp-adapter.json` | `~/.pi/agent/mcp-adapter.json` | 取本机现状：chrome-devtools 用 `--wsEndpoint ws://127.0.0.1:9222/devtools/browser/pi-agent`，不是 pi-config 里的 `--autoConnect` |
 
 `create_` 只在目标不存在时写一次，于是：
 
@@ -838,6 +838,22 @@ Zed 的 Windows settings 与 Unix 侧那份已经对齐（补齐 `project_panel`
   `create_mcp.json` 里只留 `blender` 与 `chrome-devtools`（`open-pencil` 已去掉）。
 - Windows 那台已有的 `settings.json` 指向 `c:/dev/pi-config/extensions`，`create_` **不会**改它。
   迁移时要么手工改这一行，要么删掉该文件让模板按 `c:/bin/pi-config/extensions` 重写。
+
+### pi-mcp-adapter 改读 `mcp-adapter.json`（2026-09-27）
+
+`pi-mcp-adapter` 升级后不再读 `~/.pi/agent/mcp.json`，改读 `~/.pi/agent/mcp-adapter.json`，并在
+启动时打印迁移提示。源文件跟着从 `create_mcp.json` 重命名为 `create_mcp-adapter.json`，对应目标
+变为 `~/.pi/agent/mcp-adapter.json`。
+
+改名对已有机器无影响：`create_` 只在目标不存在时写入，而磁盘上那份已按提示手工改名，
+`chezmoi diff --include=files` 因此没有输出。内容这次**没有**跟随磁盘——后者多了
+`open-pencil`，且 `chrome-devtools` 换成了 `--autoConnect`，源里维持 `blender` +
+`chrome-devtools`（`--wsEndpoint ws://127.0.0.1:9222/devtools/browser/pi-agent`）两条。
+
+顺带把 `run_once_after_50-pi-config.sh.tmpl` 的提示文本与各文档里的旧名一起改掉；脚本
+内容一变，这个 `run_once_` 会在下次 apply 重跑一遍（只做幂等的 clone / pull）。
+
+本节之前的各节里的 `mcp.json` 都是改名前的名字，与 `mcp-adapter.json` 是同一个文件。
 
 ### 2026-09-27 macOS 增量同步：zellij 与 gh helper
 
