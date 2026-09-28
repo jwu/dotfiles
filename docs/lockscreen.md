@@ -349,9 +349,8 @@ unlock 动作，`loginctl unlock-session` 也没用：niri 不监听 logind 的 
 - `--grace <sec>` **不要用**：niri 下 hyprlock 会收到一个 stray key 事件
   （`ERR: Invalid key down event (stray release event?)`），而 grace 期间任何输入直接解锁，
   实测 4 秒就自己解开了。
-- 底部三个 `onclick`（`systemctl suspend` / `reboot` / `poweroff`）能否生效取决于 polkit agent。
-  其中 `suspend` 只依赖 [`docs/suspend.md`](suspend.md) 里的 Alpine Ridge 修复到「不再等于强制
-  重启」那一步：修好后它仍会被硬件每 ~45 秒拽醒一次，外接屏也要拔插线才回来，所以这个按钮
-  目前只适合临时用一下。
+- 底部三个 `onclick`（`suspend` / `reboot` / `poweroff`）能否生效取决于 polkit agent。第一个
+  按钮在 MacBook 上是 `systemctl hibernate`（其余机器仍为 `suspend`）：这台机器的 deep S3
+  会被硬件每 ~45 秒拽醒，而 S4 真正断电。见 [`docs/suspend.md`](suspend.md)。
 
 [MrVivekRajan/Hyprlock-Styles]: https://github.com/MrVivekRajan/Hyprlock-Styles

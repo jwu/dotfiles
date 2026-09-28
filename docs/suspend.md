@@ -111,6 +111,30 @@ SSDT5: Scope (\_SB.PCI0.RP09) { Scope (\_GPE) { Method (_L33, ...) { ... \_SB.PC
 未 mask 时挂起前后的增量是 `gpe07 +148` / `sci +149`，那是 **resume 之后 EC 的正常活动**，
 不是唤醒源——全 mask 时它变成 0，机器照样醒。
 
+### s2idle 能睡住，但通常只到 Package C3
+
+deep S3 的手段全部用尽后，回头实测了本文原本禁止的 s2idle（临时把 `mem_sleep` 写成 `s2idle`），
+前后共三次 `rtcwake -m mem -s 90~120`：
+
+- **能睡满**：90 秒那次睡了 97 秒才醒（90s + 开销），没有 45 秒唤醒。
+- **设备不掉**：resume 后 `card1-DP-2` 仍是 `connected`、TB 绑定完好，外接屏不需要拔插。
+- journal 里只有 `PM: suspend entry (s2idle)`，**没有** `ACPI: PM: Waking up from system sleep state S3`。
+
+但用 `intel_pmc_core` 量「进去多深」，结论就不好了：
+
+| 次数 | 挂起时长 | `Package C10` 增量 | `Package C3` 增量 |
+| --- | --- | --- | --- |
+| 1 | 97 s | **+90 s** | 少量 |
+| 2 | 120 s | 0 | **+120 s** |
+| 3 | 120 s | 0 | **+120 s** |
+
+`slp_s0_residency_usec` 全程为 0。也就是 s2idle 大多只停在 **C3**，S0ix 根本没进去，整机处于
+浅 idle——正是 Omarchy 说的「发热路径」。只有第 1 次进了 C10，而那一次刚经历 `XHC1` 的
+remove + rescan、USB 枚举状态与常态不同，不足以作为依据。
+
+两条路的代价因此都很明确：deep 会被 45 秒硬件唤醒、且每次挂起废掉外接屏；s2idle 不唤醒、
+不掉设备，但**不省电**。
+
 ### 顺带的副作用（都是未修的状态）
 
 - **外接屏（USB-C DP-alt）在 resume 后会失效**：`card1-DP-2` 变 `disconnected`，USB 上多一个
@@ -125,12 +149,37 @@ SSDT5: Scope (\_SB.PCI0.RP09) { Scope (\_GPE) { Method (_L33, ...) { ... \_SB.PC
 - 手工 unbind NHI 之后 `bind` 回不来（`Invalid argument`），重载 `thunderbolt` 模块与
   `pci rescan` 都无效，**只能重启**。别再拿 unbind 当 sleep hook 用。
 
+## 改用 hibernate（2026-09-29 定案）
+
+deep S3 的 45 秒硬件唤醒既然无解，这台机器的「睡眠」改由 **S4 hibernate** 承担：它真正断电，
+那个 PME 够不着。配套三件事：
+
+1. **hibernate 可用**：8G `/swapfile`（写进 `/etc/fstab`）+ GRUB 的
+   `resume=UUID=<root> resume_offset=<swapfile 首块>` + `/etc/systemd/sleep.conf.d/` 里的
+   `HibernateMode=shutdown`。**必须从 `platform` 换成 `shutdown`**：Apple 固件不会真的进
+   S4，`platform` 下休眠会在 `Waking up from system sleep state S4` 处立刻返回。
+2. **合盖只锁屏**：`dot_config/niri/config.kdl` 的 `switch-events { lid-close … }` 调
+   `niri-lock`；`scripts/apple-macbook-suspend-fix.sh` 往 `/etc/systemd/logind.conf.d/`
+   写 `HandleLidSwitch=ignore`，否则 logind 会抢着 suspend。`logind` 只在启动时读配置，
+   所以这一半要重启才生效（重启 logind 会结束会话，不要那样做）。
+3. **锁屏按钮**：`hyprlock-large.conf.tmpl` / `hyprlock-medium.conf.tmpl` 在
+   `archlinux-macbook` 上把 `systemctl suspend` 换成 `systemctl hibernate`。
+
+### 验证 hibernate 时的陷阱：别看 uptime 和时间戳
+
+hibernate 恢复会**把系统时间还原**成休眠前的值，所以「命令输出里的时间戳没变、uptime 只
+涨了 0.05 秒」**不能**说明没休眠——拿它当判据会推出「内核拒绝休眠」这种完全相反的结论
+（本机踩过，连带把机器搞挂一次）。可靠判据只有两条：**机器是否完全断电（风扇停、屏幕黑）**，
+以及**开机是否跳过 GRUB 直接回到原来的会话与窗口**。
+
 ## 明确不要做的事
 
-- **不要切 `s2idle`**。deep S3 在这套固件上是工作的；s2idle 是发热路径，
+- **不要切 `s2idle`（前提是 deep 可用）**。deep S3 在这套固件上原本是工作的；s2idle 是发热路径，
   [omacom/omarchy#12194][issue-12194] 说得直白，而
   [discussions#7920][disc-7920] 给 `MacBookPro13,1` 的「confirmed fix」恰恰是
-  `mem_sleep_default=s2idle`。**两台机器的结论相反**，不要跨型号抄。本机保持 deep。
+  `mem_sleep_default=s2idle`。**两台机器的结论相反**，不要跨型号抄。
+  **但 2026-09-29 的实测动摇了这个前提**：deep 的 45 秒硬件唤醒无解，而且每次挂起都废掉外接屏；
+  s2idle 能睡住且设备不掉（见上）。若后续量出 s2idle 功耗可接受，就用它，而不是继续保 deep。
 - **不要 `pm_async=0`**。它在某些 T2 机器上正确，在这里会把 D3 超时串行化成约 60 秒
   黑屏。
 - **不要 blacklist `thunderbolt`**。能停掉 `tb_cfg_*` 的 WARN 刷屏，但 USB-C dock 与
@@ -169,15 +218,19 @@ sudo ~/bin/dotfiles/scripts/apple-macbook-suspend-fix.sh
    cat /sys/bus/pci/devices/0000:01:00.0/d3cold_allowed                 # 0
    ```
 2. 重启后 `cat /proc/cmdline` 里出现 `pcie_port_pm=off`。
-3. 拔掉外屏（否则 docked 判定会让你测不到 suspend），锁屏，合盖放置十几分钟：
+3. **合盖只锁屏**（改用 hibernate 后的判据）：合盖后屏幕锁上、**机器不睡**（风扇还在转、
+   uptime 继续走），开盖是锁屏界面。
    ```bash
-   journalctl -b | grep -E 'Lid |PM: suspend entry|PM: suspend exit|Waking up'
+   journalctl -b | grep -E 'Lid |PM: suspend entry'
    ```
-   判据是**只有一次** `PM: suspend entry (deep)`，期间没有 `Waking up`，机器摸起来是凉的；
-   翻开盖子后日志出现 `Lid opened.` 与 `PM: suspend exit`，回到锁屏。
-
-   **这条截至 2026-09-29 未通过**：挂起确实不再挂死，但 45–48 秒后必定自动醒一次（见上）。
-   1 / 2 两条现在是过的，第 3 条不是。测试时务必人别碰机器，否则分不清是人为唤醒还是自动唤醒。
+   应看到 `Lid closed`，而**没有** `PM: suspend entry`。
+4. **hibernate 可用**：锁屏界面第一个按钮（或 `systemctl hibernate`）→ 机器**完全断电**
+   （风扇停、屏幕黑），按电源键后**跳过 GRUB、直接回到原来的会话与窗口**。
+   > 不要用 uptime 或时间戳判断，hibernate 恢复会把系统时间还原（见上）。
+5. `systemd-analyze cat-config systemd/logind.conf` 里能看到 `HandleLidSwitch=ignore`——
+   由 `scripts/apple-macbook-suspend-fix.sh` 写入，**重启后**才生效。
+6. **待验**：hibernate 恢复后外接屏是否正常（suspend 是必定要拔插的，hibernate 重启设备，
+   预期不同，但还没实测过）。
 
 ## 遗留
 
@@ -187,13 +240,14 @@ sudo ~/bin/dotfiles/scripts/apple-macbook-suspend-fix.sh
      已经是不可恢复的，remove 大概同样要重启才收得回来，风险高。**未实验。**
   2. ACPI 表覆盖（往 initramfs 塞改过的 SSDT，删掉 `_L32` / `_L33`）：只在唤醒真走这两条
      GPE 时才有意义，而实测否定（全 mask 仍醒），**预计无用**。
-- **外接屏在每次 suspend 后都要手动拔插 USB-C 线**才能回来（见上面「副作用」）。这一条比
-  45 秒唤醒更影响日常使用，但目前没有不重启的恢复手段；如果要拿 suspend 当常规操作，
-  得先解决 TB 在 S3 里掉电的问题。
-- **没有搬 Omarchy 的 lid debounce**（[#12193][issue-12193] / [PR #12210][pr-12210]：
+- **外接屏在 suspend 后要拔插 USB-C 线**才能回来（见上面「副作用」）。改用 hibernate 后
+  suspend 不再是常规操作，但 **hibernate 恢复后外接屏是否正常还没验**（它重启设备，应该
+  会重新枚举；实测前不要假定两边一样）。
+- **不再需要 Omarchy 的 lid debounce**（[#12193][issue-12193] / [PR #12210][pr-12210]：
   logind 改 `HandleLidSwitch=ignore`，自己延迟 3 秒、确认盖子还关着且没有外屏再
-  `systemctl suspend`）。本机若出现「2 秒内合盖再打开、面板黑着」再补；现在 logind
-  还是默认 `suspend`。
+  `systemctl suspend`）。本机合盖根本不 suspend，所以那个「2 秒内合盖再打开」的竞态不成立。
+- **45 秒硬件唤醒本身仍未解决**，只是被 hibernate 绕开了：只要还用 deep S3（包括
+  `suspend-then-hibernate` 的前半段），它就会回来。已排除的软件手段见上面那张表。
 - 同批机器的另外几个已知坑与本机可能相关，但都没动：
   BCM4350 Wi-Fi 的 suspend 失败（omarchy#7180、#12314）、T1 Touch Bar 显示子设备
   resume 后不亮（omarchy#7950）、`Fix Thunderbolt suspend on the MacBookPro14,1`
