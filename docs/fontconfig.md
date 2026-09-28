@@ -137,6 +137,27 @@ Chrome 拿到的却是 Courier / Helvetica 的替身，还停在 Regular。
    `Preferences` 是应用数据，不进 chezmoi）。
 2. Chrome 的 `Fixed-width`（`Sarasa Mono SC`）就是代码块中文的落点，不需要额外处理。
 
+#### 这一层会丢
+
+`Preferences` 是应用数据，不在 chezmoi 里，profile 重建或换 profile 就会回到空。
+2026-09-28 复验时 `webkit` 段整个是空的，此时 CDP 读到的实际 face 是：
+
+| 场景 | 无 Chrome 设置时 |
+| --- | --- |
+| 代码块（GitHub 栈） | `FiraMono Nerd Font Medium` + 中文 `Noto Sans CJK KR` |
+| Arial / Helvetica / system-ui | `Noto Sans` + 中文 `Noto Sans CJK KR` |
+| `sans-serif` | `Noto Sans` + 中文 `Noto Sans CJK KR` |
+| 未知名 family、网页默认 | `Liberation Serif`（衜线兜底） |
+
+中文一律落到 `Noto Sans CJK KR`（韩文字形）——就是上面「未决」那节担心的那件事真的发生了；
+未知名 family 也不再是 `Sarasa Gothic SC`，而是退回 `Liberation Serif`。
+
+恢复：**完全退出 Chrome**（不是关窗口），然后改
+`~/.config/google-chrome/Default/Preferences` 里的 `webkit.webprefs.fonts`，或者去
+`chrome://settings/fonts` 手工填。`fonts` 的键是 `<standard|serif|sansserif|fixed>` 再套一层
+script 代码（全局是 `Zyyy`）。必须先退出 Chrome：运行时它会用自己的内存副本把文件覆写回去。
+补齐后 CDP 复验，落点就回到上面那张表。
+
 （曾有一版 `chrome-fonts.conf` 把 `Sarasa Gothic SC` 顶到 SemiBold，后来撤了；
 `Sarasa Mono SC → SemiBold` 那条留了下来，只作用于等宽。那条规则有个坑值得留档：要匹配的
 必须是**全局重定向的结果**而不是输入——
