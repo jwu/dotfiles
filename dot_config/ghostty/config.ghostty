@@ -22,10 +22,11 @@ font-thicken-strength = 0
 # gain. (macOS defaults to `native`; there it means Display P3, on Linux sRGB.)
 # alpha-blending = linear-corrected
 
-# Chinese fallback fonts, in order. Noto Sans **Mono** CJK SC (not the
-# proportional Noto Sans CJK SC) keeps fallback glyphs monospaced.
+# Fallback chain: Mono CJK SC (not the proportional face) keeps CJK monospaced,
+# the last entry covers symbols no text font carries. See docs/ghostty.md.
 font-family = Sarasa Mono SC
 font-family = Noto Sans Mono CJK SC
+font-family = Noto Sans Symbols 2
 window-title-font-family = Sarasa Gothic SC
 
 # Sarasa Mono SC ships no Medium, so the `font-style = Medium` above (which

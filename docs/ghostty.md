@@ -98,3 +98,32 @@ HOME=/tmp/gt-home ghostty +show-config | grep bold   # -> bold-color = bright
 注意 1.3.1 的 `+validate-config` 对 deprecated 字段是静默接受的，只有拼错的字段名才报
 `unknown field`，所以这次替换在启动日志上没有任何区别，纯粹是跟随官方方向；旧写法也不
 会刷警告，只是将来会被移除。
+
+## 符号字体回退（`Noto Sans Symbols 2`）
+
+字体链里的 `FiraMono Nerd Font`、`Sarasa Mono SC`、`Noto Sans Mono CJK SC` 都不含
+U+26D3 `⛓`，而终端里确实会用到它：pi 的 `rpiv-todo` 用它标注任务依赖，形如 `⛓ #7`。
+Ghostty 找不到字形时会退回它内置的 `Noto Emoji`，单色 emoji 字形在 13.5px 下被压成两坨
+像素，看上去就是乱码：
+
+```bash
+ghostty +show-face --font-family="FiraMono Nerd Font" --string="⛓"
+# -> U+26D3 « ⛓ » found in face “Noto Emoji”
+```
+
+只在系统里装上符号字体还不够（`noto-fonts` 提供的 `NotoSansSymbols2-Regular.ttf` 覆盖
+该码点，单色、非 emoji 呈现），必须把它显式排进字体链末尾：
+
+```ini
+font-family = Noto Sans Symbols 2
+```
+
+```bash
+ghostty +show-face --font-family="FiraMono Nerd Font" \
+  --font-family="Noto Sans Symbols 2" --string="⛓"
+# -> U+26D3 « ⛓ » found in face “Noto Sans Symbols 2”
+```
+
+`noto-fonts` 是个 630 文件的大包（含全套 Noto Sans/Serif 各语种），只为这一个字形装
+它偏重；不想装的话，把 `NotoSansSymbols2-Regular.ttf` 单独放到 `~/.local/share/fonts/`
+再 `fc-cache -f`，效果相同，仍用上面的 `+show-face` 验证即可。

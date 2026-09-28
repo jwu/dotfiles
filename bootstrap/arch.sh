@@ -52,6 +52,7 @@ PACKAGES=(
   "wl-clipboard"
   "noto-fonts-cjk"
   "noto-fonts-emoji"
+  "noto-fonts"
   "adwaita-fonts"
   "ttf-sarasa-gothic"
   "go"
