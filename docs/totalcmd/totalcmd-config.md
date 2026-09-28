@@ -13,8 +13,8 @@ AppData/Roaming/GHISLER/create_wincmd.ini   →   ~/AppData/Roaming/GHISLER/winc
 `Savepath` / `Savepanels` / `SaveCommands` / `SaveHistory` 默认全开，面板路径、搜索历史、
 插件 checksum，以及按屏幕分辨率命名的窗口几何节（`[2560x1440 (8x16)]`）都是 TC 写回去的。
 作为 managed 文件纳入的话，每次 `chezmoi apply` 都会把这些抹掉，`wincmd.ini` 因此和
-`~/.pi/agent/extensions/*.json` 属于同一类东西，见
-[`../onboarding-a-machine.md`](../onboarding-a-machine.md) 的「不由仓库管理的例子」。
+`~/.pi/agent/settings.json` 属于同一类东西，见 [`../design.md`](../design.md) 的
+「pi 的可变状态」。
 
 于是仓库里的这份只是**新机器/重装的起点**：它只含偏离 TC 默认值的几项设置与三个手工定制
 的节，其余交给 TC 的默认值，窗口布局和历史留给新机器自己长。已有机器上目标文件已存在，

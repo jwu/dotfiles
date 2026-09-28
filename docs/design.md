@@ -142,6 +142,8 @@ dot_pi/agent/
   APPEND_SYSTEM.md                     ← pi-config
   create_settings.json.tmpl            ← 新机器的初始 settings.json（`create_`，只落地一次）
   create_mcp-adapter.json              ← 新机器的初始 mcp-adapter.json（同上）
+  extensions/eko24ive-pi-ask.json      ← pi-ask 设置（真源；在 /ask-settings 里改设置会被写回）
+  extensions/pi-tui-animations.json    ← pi-animations 设置（同上）
 # macOS 专有（本机不存在，从仓库搬入）
 dot_aerospace.toml                         ← desktop-settings: aerospace/.aerospace.toml
 dot_config/ghostty/config                  ← configs: mac/.config/ghostty/config
@@ -296,7 +298,7 @@ git 先读 XDG 那份、再读 `~/.gitconfig`，后者覆盖前者，所以个�
 | 静态资源（pi 只读） | `agents/`、`skills/`、`prompts/`、`themes/` | **已纳入**，源是真源 |
 | 人工维护的配置 | `keybindings.json`、`APPEND_SYSTEM.md` | **已纳入**，源是真源 |
 | 会被 pi 回写 | `settings.json`、`mcp-adapter.json` | **已纳入**，但用 `create_` 前缀 |
-| 工具独占写入 | `extensions/*.json`（pi-ask 写回） | **排除** |
+| 设置面板会回写 | `extensions/*.json`（pi-ask、pi-animations） | **已纳入**，源是真源；只有改设置时才被写回 |
 | 凭据与运行时 | `auth.json`、`sessions/`、`models-store.json`、`*-cache.json`、`install/`、`bin/`、`npm/` | **绝不纳入** |
 
 `settings.json` 会被 pi 写入 `lastChangelogVersion`（看过哪版 changelog）、
@@ -314,8 +316,12 @@ git 先读 XDG 那份、再读 `~/.gitconfig`，后者覆盖前者，所以个�
 覆盖它。`extensions` 按 `.chezmoi.os` 渲染：Unix 是 `~/bin/pi-config/extensions`，Windows 是
 `c:/bin/pi-config/extensions`（pi 会展开 `~`，见 `dist/utils/paths.js` 的 `expandTilde`）。
 
-`extensions/eko24ive-pi-ask.json` 有被 pi-ask 写回的历史（见 `pi-config` 的
-`"pi-ask: sync config back to schemaVersion 5"` 提交），它和 `auth.json` 一样不纳入。
+`extensions/` 下的两份配置（`eko24ive-pi-ask.json`、`pi-tui-animations.json`）按真源纳入，与
+上面那组 `create_` 刻意不同：它们**只**在用户主动改设置时被回写——pi-ask 在 `/ask-settings`
+里切换开关，pi-animations 在其设置命令里 `persistConfig()`——不是 pi 每次会话都写，所以
+`apply` 不会持续和扩展抢同一份文件。代价是改过一次设置就会留下非空的 `chezmoi diff`，走
+`/collect` 回收即可。这两份先前按「排除」处理（诱因是 `pi-config` 的
+`"pi-ask: sync config back to schemaVersion 5"` 提交那次写回），2026-09 起改为按真源纳入。
 
 `packages` 里的 `@johnnywu/pi-ask` 是上游 `@eko24ive/pi-ask` 的本地 fork（仓库在
 `~/dev/pi-ask`），加了 `alt+a` 折叠 ask 面板等改动。fork 里的 `getAskConfigPath()` 有意
@@ -412,7 +418,7 @@ call "%MY_CONFIGS%\cmds\aliases.cmd"
   状态」，而是 **TC 会持续重写同一个文件**：`Savepath` / `Savepanels` / `SaveCommands` /
   `SaveHistory` 默认全开，面板路径、搜索历史、插件 checksum 与按分辨率命名的窗口几何节
   （`[2560x1440 (8x16)]`）都由它写回去。纳入 managed 的话每次 `apply` 都会抹掉这些——与
-  `~/.pi/agent/extensions/*.json` 同类。所以
+  `~/.pi/agent/settings.json` 同类。所以
   `AppData/Roaming/GHISLER/create_wincmd.ini` 只在目标缺失时写一次，且只含偏离 TC 默认值
   的五行加 `[Shortcuts]`、`[Colors]`、`[AllResolutions]` 三节；旧快照里那几十个
   `[Configuration]` 键逐项对照官方帮助后确认**全等于默认值**，写进去只会让基线与未来的

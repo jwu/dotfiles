@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 6,
+  "answer": {
+    "extractionModels": [
+      {
+        "provider": "deepseek",
+        "id": "deepseek-v4-flash"
+      },
+      {
+        "provider": "openai-codex",
+        "id": "gpt-5.4-mini"
+      }
+    ],
+    "extractionRetries": 1,
+    "extractionTimeoutMs": 30000
+  },
+  "behaviour": {
+    "autoSubmitWhenAnsweredWithoutNotes": false,
+    "confirmDismissWhenDirty": true,
+    "doublePressReviewShortcuts": true,
+    "presentSingleAsMulti": false,
+    "showFooterHints": true
+  },
+  "keymaps": {
+    "global": {
+      "dismiss": ["ctrl+c"],
+      "settings": ["h"],
+      "toggleVisibility": ["?"]
+    },
+    "main": {
+      "confirm": ["enter"],
+      "cancel": ["esc"],
+      "changeQuestionType": ["t"],
+      "toggle": ["space"],
+      "nextTab": ["tab", "right"],
+      "previousTab": ["shift+tab", "left"],
+      "nextOption": ["down"],
+      "previousOption": ["up"],
+      "optionNote": ["n"],
+      "questionNote": ["shift+n"]
+    },
+    "editor": {
+      "submit": ["enter"],
+      "close": ["esc"],
+      "nextTabWhenEmpty": ["tab", "right"],
+      "previousTabWhenEmpty": ["shift+tab", "left"],
+      "nextOptionWhenEmpty": ["down"],
+      "previousOptionWhenEmpty": ["up"]
+    },
+    "noteEditor": {
+      "save": ["enter"],
+      "close": ["esc"],
+      "nextTabWhenEmpty": ["tab", "right"],
+      "previousTabWhenEmpty": ["shift+tab", "left"],
+      "nextOptionWhenEmpty": ["down"],
+      "previousOptionWhenEmpty": ["up"]
+    },
+    "settingsModal": {
+      "close": ["esc", "ctrl+c", "h"],
+      "nextOption": ["down"],
+      "previousOption": ["up"],
+      "toggle": ["enter", "space"]
+    }
+  },
+  "notifications": {
+    "enabled": true,
+    "channels": ["bell"]
+  }
+}

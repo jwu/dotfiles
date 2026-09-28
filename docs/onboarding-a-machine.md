@@ -202,7 +202,6 @@ git push
 | 类型 | 例子 | 原因 |
 | --- | --- | --- |
 | 凭据 | `~/.pi/agent/auth.json` | 密钥 |
-| 工具自己写的状态 | `~/.pi/agent/extensions/*.json` | pi-ask 会改写，纳入后 `apply` 会抹掉 |
 | 运行时产物 | `~/.local/share/fcitx5/rime/`（156 MB，含词库、`build/`、用户词频） | 不是配置 |
 | 缓存与历史 | `sessions/`、`*-cache.json`、`install/`、`npm/` | 不是配置 |
 | 本机 UI 状态 | `totalcmd/wincmd.ini`（`AppData/Roaming/GHISLER/create_wincmd.ini` 只在目标缺失时写一份脱敏基线） | 含窗口布局与安装路径，而且 Total Commander 会持续回写它 |
@@ -214,6 +213,9 @@ git push
 由 chezmoi 的 `create_` 目标落地——只在目标不存在时写一次，所以既留在源里，又不会被 `apply`
 抹掉。代价是源与磁盘会漂移：改 `packages` 或 MCP server 时要手工同步已有机器。见 `design.md`
 的「pi 的可变状态」。
+
+`~/.pi/agent/extensions/*.json`（pi-ask、pi-animations 的设置）不属于这一类，它们按**真源**纳入：
+只有用户主动改设置时扩展才会写回，`apply` 不会持续覆盖，漂移出现时用 `/collect` 回收。
 
 ---
 
