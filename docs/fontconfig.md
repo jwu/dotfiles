@@ -22,7 +22,7 @@ light = true,     // "most common setting in GTK apps and therefore Ghostty's de
 映射到 fontconfig 就是 `hinting=true` + `hintstyle=hintslight` + `autohint=true`。
 本机发行版默认是 `hinting=True(slight)` + `autohint=False`。
 （**后一轮修正**：`autohint` 这一项 Chrome 根本不看，真正决定观感的是 `hintstyle`，
-见「hinting：Chrome 侧也对齐 Ghostty」。）
+见「hinting：全局也对齐 Ghostty」。）
 
 所以「把 Ghostty 的方案搬到 Chrome」在参数层就落成了两条：`autohint=true`（真正对齐），
 以及是否把 `hintstyle` 往 `hintfull` 推（观感更硬更清楚，但**不是** Ghostty 的取值）。
@@ -31,9 +31,9 @@ light = true,     // "most common setting in GTK apps and therefore Ghostty's de
 
 `dot_config/fontconfig/fonts.conf`（目标 `~/.config/fontconfig/fonts.conf`）：
 
-1. `hinting=true` / `hintstyle=hintfull` / `autohint=true`——全局生效。
-   `hintfull` 是主动选择的「更清楚」方向，代价是偏离 Ghostty 的 `hintslight`；
-   想严格对齐 Ghostty 就把 `hintfull` 换成 `hintslight`（实测两者分别 4.77% / 1.89% 像素差异）。
+1. `hinting=true` / `hintstyle=hintslight` / `autohint=true`——全局生效。
+   中间有一段时间用的是 `hintfull`（「更清楚」方向，实测像素差异 4.77% vs 1.89%），
+   后来统一回了 `hintslight`，理由见「hinting：全局也对齐 Ghostty」。
 2. 中文回退改指 Sarasa：`Noto Sans CJK SC → Sarasa Gothic SC`、
    `Noto Sans Mono CJK SC → Sarasa Mono SC`，让网页中文与终端的字体选择一致。
 
@@ -165,7 +165,7 @@ SemiBold。实测下来中英混排不匀：Sarasa 只有 Regular(400) 和 SemiB
 [`ghostty.md`](ghostty.md) 里那句「选 SemiBold 是为了中英混排时中文更醒目，代价是比英文略重」
 描述的正是同一个取舍的另一端。
 
-### hinting：Chrome 侧也对齐 Ghostty
+### hinting：全局也对齐 Ghostty
 
 Ghostty 和 fontconfig 的关系比第一轮以为的微妙：
 
@@ -187,11 +187,14 @@ Ghostty 和 fontconfig 的关系比第一轮以为的微妙：
   Linux 默认 `freetype-load-flags = hinting,no-force-autohint,no-monochrome,autohint,light`
   → `FT_LOAD_TARGET_LIGHT`。
 
-- 而 Skia 把 `hintstyle=hintslight` 映射到的也正是 `FT_LOAD_TARGET_LIGHT`
-  （`src/ports/SkFontHost_FreeType.cpp` 的 `case SkFontHinting::kSlight`）。
-  所以 `chrome-fonts.conf` 末尾一条 `hintstyle=hintslight` 就把两者在**字形栅格化**这一层拉齐。
-  实测（620x50 测试条，`--screenshot` 后比像素）：Chrome 从 hintfull 切到 hintslight
-  产生 **9.00%** 像素差异，墨量 292.6k → 287.2k。
+- 而 fontconfig 的 `hintstyle=hintslight`——Skia、cairo、Pango 都映射到同一个
+  `FT_LOAD_TARGET_LIGHT`（Skia 的 `case SkFontHinting::kSlight` 旁边那句注释直接写
+  *This implies FORCE_AUTOHINT*）。所以把**全局** `fonts.conf` 设成 `hintslight`，所有读
+  fontconfig 的应用就在**字形栅格化**这一层跟 Ghostty 拉齐了，Chrome 也不需要再单独写一条
+  覆盖。
+  实测（620x50 测试条，`--screenshot` 后比像素）：hintfull → hintslight 有 **9.00%**
+  像素差异、墨量 292.6k → 287.2k；但在 12pt 的输入法候选词上墨量几乎不动
+  （203.7k → 205.1k）。字号越小，这个差别越被稀释。
 
 - **`autohint` 这项对 Chrome 无效**。Skia 只在 Windows / macOS 端口设
   `kForceAutohinting_Flag`，fontconfig 端口不设；FreeType 端口里那个
@@ -206,6 +209,25 @@ Ghostty 和 fontconfig 的关系比第一轮以为的微妙：
 
 **仍然不可比的**：终端是固定网格（每个字形占同一个单元，字形宽度不参与布局），
 浏览器是 layout-driven。能对齐的是字形栅格化，行内间距本质上对不上。
+
+### 输入法（fcitx5）：字重对齐终端
+
+候选窗口不是 Qt / GTK 画的——`libclassicui.so` 链接的是 `libpango` + `libcairo` +
+`libfontconfig`，所以它直接吃**全局** `fonts.conf`，没有 Chrome 那种 `FONTCONFIG_FILE` 隔离。
+
+`classicui.conf` 里原本是 `Font=Sarasa Mono SC 12`（Regular），比 Ghostty 的中文
+（SemiBold）轻一档。改成 `Sarasa Mono SC SemiBold 12` 后两边一致；`TrayFont` 保持 `Bold`
+不动。
+
+`pango-view`（同一条 Pango + Cairo 链路）可以离线复现候选窗并量化：
+
+| 变体 | 墨量 | 明显笔画像素 |
+| --- | --- | --- |
+| Regular + hintfull（改前） | 203.7k | 785 |
+| Regular + hintslight | 205.1k | 786 |
+| SemiBold + hintslight（改后） | 254.8k | 989 |
+
+结论：**12pt 这个尺寸下，字重的影响远大于 hinting**（+25% 墨量 vs ±1%）。
 
 ### 被拒绝的替代方案
 
@@ -233,18 +255,18 @@ Ghostty 和 fontconfig 的关系比第一轮以为的微妙：
   能做的只有「网页显式请求某个 family 时把它顶到另一个 family」。
 - **复刻 `font-thicken`**：不必——Ghostty 的 `font-thicken` 只支持 macOS，在 Linux 上是死配置；
   fontconfig 的 `embolden` 对 Chrome 实测改动量为 0。
-- **`hintfull` vs `hintslight`**：两者都测过。选了 `hintfull`（更清楚），
-  没选「严格等于 Ghostty」的 `hintslight`。
+- **`hintfull` vs `hintslight`**：两者都测过。先选了 `hintfull`（更清楚），
+  后来又为了跟 Ghostty 统一回到 `hintslight`——见「hinting：全局也对齐 Ghostty」。
 - **改日韩字体**：不动。`Noto Sans CJK JP/KR/TC/HK` 保留原样，否则日韩字形会被简体写法顶掉。
 
 ## 怎么验证
 
 ```bash
-# 参数层：hintstyle 3 就是 hintfull，autohint 应为 True
+# 参数层：hintstyle 1 就是 hintslight（0/1/2/3 = none/slight/medium/full），autohint 应为 True
 fc-match -v "Noto Sans CJK SC" | rg -n 'hintstyle|autohint|family'
 # 回退层：应返回 Sarasa 而不是 Noto
 fc-match "Noto Sans CJK SC"
-# Chrome 侧应该是 hintslight（1），其他应用仍是 hintfull（3）
+# Chrome 共用同一份参数（它靠 FONTCONFIG_FILE 指到只多几条 alias 的文件），值应当一致
 FONTCONFIG_FILE=~/.config/fontconfig/chrome-fonts.conf fc-match -f '%{hintstyle}\n' 'FiraMono Nerd Font'
 # Ghostty 侧：字体发现能读到 face，hinting 来自它自己的 load flags
 ghostty +show-face --string="A中"
@@ -300,7 +322,7 @@ uv run --with pillow --with numpy python analyze.py report/check shots/fs-base.p
 ## 怎么回滚
 
 删掉 `dot_config/fontconfig/fonts.conf`（源与目标两侧）再 `chezmoi apply`，
-或只把 `hintstyle` 改回 `hintslight` / 整段 match 注释掉。回滚同样要重启应用。
+或只把 `hintstyle` 改成 `hintfull` / 整段 match 注释掉。回滚同样要重启应用。
 
 第二轮那套单独回滚：删掉 `dot_config/fontconfig/chrome-fonts.conf`、
 `dot_local/bin/executable_google-chrome-stable`、
