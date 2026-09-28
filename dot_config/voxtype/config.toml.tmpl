@@ -45,3 +45,11 @@ on_transcription = false
 # produces. See docs/voxtype.md.
 command = "{{ .chezmoi.homeDir }}/.local/bin/wordseg-rs"
 timeout_ms = 5000
+
+[osd]
+# gtk4 (the AUR package's only waveform frontend besides quickshell) routes
+# bottom-center through the same "anchor top, offset by top_margin x monitor
+# height" branch as top-center, so it never reaches the bottom edge and
+# margin_px is ignored. Corner positions use the plain margin_px anchor.
+# See docs/voxtype.md.
+position = "bottom-right"

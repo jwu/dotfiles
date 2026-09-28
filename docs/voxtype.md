@@ -68,6 +68,43 @@ ctrl+v，两者不能同时满足，改 `paste_keys` 即可切换。`restore_cli
 
 > 该问题在 voxtype 文档里对应 IBus/读入顺序的条目；这里遇到的虽是 fcitx5，解法相同。
 
+## OSD 位置：为什么是右下角
+
+1.1.0 起录音时会浮出一个波形 OSD，默认 `frontend = "gtk4"`。AUR 包只带 `gtk4` 与
+`quickshell` 两个波形前端，`native` 没打进包——选它会打一条 warn 并悄悄回退到 gtk4。
+
+**gtk4 的 `bottom-center` 不贴底**。`src/bin/voxtype_osd_gtk4.rs` 把 `bottom-center` 和
+`top-center` 塞进同一个 `centered` 分支：
+
+```rust
+let centered = matches!(cfg.position, BottomCenter | TopCenter);
+if centered {
+    let monitor_height = focused_monitor_height_px().unwrap_or(1080);
+    let top_px = (cfg.top_margin.clamp(0.0, 1.0) * monitor_height as f32) as i32;
+    window.set_anchor(Edge::Top, true);
+    window.set_margin(Edge::Top, top_px);   // margin_px 在这条路径上没人用
+}
+```
+
+两个后果：
+
+- OSD 停在 `top_margin × monitor_height` 处（默认 0.85），**与屏幕高度无关**——实测在
+  eDP-1（逻辑 1600×1000）与 DP-2（2560×1440）上，波形都落在逻辑 y≈884–931。
+- `focused_monitor_height_px()` 的名字骗人：它取的是 `display.monitors()` 里**第一个**非零
+  高度的 monitor，不是焦点的那个。本机拿到 eDP-1 的逻辑高 1000；两次 `top_margin` 取值做
+  回归，斜率 ≈ 976。
+
+要在 DP-2 上贴底需要 `top_margin = (1440-48-24)/1000 = 1.37`，被 `clamp(0.0, 1.0)` 截断，
+所以 `bottom-center` 在那块屏上**永远**到不了底部；两块屏高度不同，一个数值不可能同时满足。
+
+`margin_px` 只在四个 corner 位置生效（那条分支是正常的 `anchor + margin_px`）。因此配置选
+`bottom-right`：实测面板落在 DP-2 的 x 2136–2536 / y 1368–1416，正是「右下各留 24px」。
+代价是水平居中没了；如果更想要「顶部居中且在两块屏上位置一致」，那要改用 `top-center` +
+`top_margin ≈ 0.05`（waybar 逻辑高约 35，`0.05 × 1000 = 50` 正好在它下方）。
+
+`native` frontend 的实现其实是对的（`BottomCenter => (Anchor::BOTTOM, 0, margin, 0, 0)`），
+等它进包就能换回去。1.1.1-rc4 没有改 gtk4 这一段。
+
 ## 键盘权限：uaccess 而非 input 组
 
 evdev 监听要读 `/dev/input/event*`。加进 `input` 组是最常见的做法，但那是**永久**授权；
