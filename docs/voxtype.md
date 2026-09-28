@@ -43,8 +43,8 @@ voxtype 自身不提供英文分词，只提供 `[output.post_process]`：把识
 
 过滤器来自已归档的 `voice-input` 那套逻辑（`english_spacing.py` + vendored wordninja 2.0.0）：
 只处理 **7 个以上连续 ASCII 字母**，用词频动态规划切成词，中文原样透传。为了去掉
-Python 解释器与伴随文件，把它重写成 Rust（独立项目 `~/dev/wordseg-rs`，词表在
-编译期由 `build.rs` 解压烘焙进二进制，因此没有运行时依赖）。
+Python 解释器与伴随文件，把它重写成 Rust（独立项目 wordseg-rs，已发布到 crates.io；词表在编译期由 `build.rs` 解压
+烘焙进二进制，因此没有运行时依赖）。
 
 与 Python 版逐字节对拍过，确保替换后切词结果不变：
 
@@ -74,8 +74,21 @@ evdev 监听要读 `/dev/input/event*`。加进 `input` 组是最常见的做法
 `TAG+="uaccess"` 只对本地登录会话生效，权限面更小。规则文件按**设备名**匹配，所以换
 键盘要改这个文件并重跑 bootstrap 的对应步骤。
 
-规则里只列了这台机器的两把键盘。`Apple SPI Keyboard` 那类需要 `setfacl` 的特殊条目不
-在这里——用不到，且会引入用户名硬编码。
+规则里列了外接的 ROG OMNI RECEIVER / MOSART 两把键盘，以及 MacBook 内建的
+`Apple SPI Keyboard`（`ATTRS{name}` 精确匹配，`ID_INPUT_KEYBOARD=1` 已确认）。最后这把
+原先由已卸载的 voice-input 用 `setfacl -m u:<用户>` 授权，本仓库改用 `uaccess`，省掉
+用户名硬编码。删掉那两条旧规则、只留本文件后重新 `trigger`，`getfacl /dev/input/event5`
+仍有 `user:jwu:rw-`，说明 uaccess 确实接住了。
+
+## voice-input 已卸载
+
+听写最初由本地项目 `voice-input`（Python + FunASR）承担。逐条能力被 voxtype + wordseg-rs
+取代后整个卸载：服务与 unit、`~/.local/bin` 下的脚本、`~/.local/share/voice-input`、
+`~/.local/share/pi-voice-funasr`、`~/.cache/voice-input`、whisper 模型目录、
+`~/dev/voice-input`，以及 `/etc/udev/rules.d/` 下它装的两条规则。腾出约 3.6 GB。
+
+同批退役的还有 `pi-voice-input` / `pi-funasr-server` / `pi-whisper-server` 三个 user 服务
+（F12 + FunASR / Whisper）。它们不在本仓库里，是手装的，删掉不影响 chezmoi 对账。
 
 ## 音频设备
 
@@ -94,9 +107,9 @@ WirePlumber 会把默认源指向优先级更高的蓝牙设备（AirPods 2010 >
 | 内容 | 位置 | 由谁部署 |
 | --- | --- | --- |
 | voxtype 配置 | `~/.config/voxtype/config.toml` | chezmoi（`dot_config/voxtype/config.toml.tmpl`） |
-| 分词过滤器 | `~/.local/bin/wordseg-rs` | 独立项目（`~/dev/wordseg-rs`），已发布到 crates.io；`bootstrap/arch.sh` 用 `cargo install` 装 |
+| 分词过滤器 | `~/.local/bin/wordseg-rs` | 独立项目（源码不在本机），已发布到 crates.io；`bootstrap/arch.sh` 用 `cargo install` 装 |
 | 键盘 udev 规则 | `/etc/udev/rules.d/70-voxtype-uaccess.rules` | `bootstrap/arch.sh` 的 `install_voxtype_udev` |
-| 程序本体 | `voxtype-bin`（AUR） | `bootstrap/arch.sh`，必要时 `yay -S voxtype-bin` |
+| 程序本体 | `voxtype-bin`（AUR，当前 1.1.0） | `bootstrap/arch.sh`，必要时 `yay -S voxtype-bin` |
 | 用户服务 | `~/.config/systemd/user/voxtype.service` | `voxtype setup systemd`（**不**由 chezmoi 管） |
 | 模型 | `~/.local/share/voxtype/models/` | `voxtype setup --download --model <名字>` |
 
@@ -109,8 +122,17 @@ WirePlumber 会把默认源指向优先级更高的蓝牙设备（AirPods 2010 >
 ```bash
 voxtype status                    # idle / recording / transcribing
 journalctl --user -u voxtype -f   # 实时日志：Recording → Transcribed → Post-processed → Text pasted
-voxtype config                    # 打印解析后的最终配置
+voxtype config                    # 打印解析后的最终配置（只列部分段）
+voxtype config schema             # 每个可设置键的类型与当前值
+voxtype setup check               # 依赖、驱动链、模型的体检
 ```
+
+`voxtype config` 和 `config schema` 都不完整：前者不打印 `[paraformer]` 与
+`[output.post_process]`，后者漏了 `paste_keys` / `type_delay_ms` / `restore_clipboard`
+（`config get output.paste_keys` 甚至报 unknown key）。这三个键在 1.1.0 里确实生效——
+二进制里有 `OutputConfig.paste_keys` 与 `VOXTYPE_PASTE_KEYS`，`voxtype config` 打印的
+`[output]` 段也带出了 `type_delay_ms` / `restore_clipboard` 的值。别把「没列出来」当成
+「没生效」。
 
 | 现象 | 通常是什么 |
 | --- | --- |
@@ -118,3 +140,4 @@ voxtype config                    # 打印解析后的最终配置
 | 有日志但识别成"没有没有" | 麦克风采到静音：设备选错，或耳机没连 |
 | 英文连写没分开 | `[output.post_process]` 命令失败（cargo 没编译？），看日志的 `Post-processed` |
 | 文字没进输入框 | 粘贴键与目标应用不匹配，换 `paste_keys` |
+| `voxtype setup check` 报不在 `input` 组 | 忽略：权限走 uaccess，本来就不需要那个组 |
