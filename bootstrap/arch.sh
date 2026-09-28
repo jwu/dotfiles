@@ -293,7 +293,7 @@ load_drivetemp() {
 install_sudo_window() {
   local file="/etc/sudoers.d/00-global-timestamp"
   local wanted='Defaults timestamp_type=global
-Defaults timestamp_timeout=10'
+Defaults timestamp_timeout=15'
   if [ -f "$file" ] && [ "$(sudo cat "$file")" = "$wanted" ]; then
     echo "    already in place"
     return 0

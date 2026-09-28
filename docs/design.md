@@ -707,10 +707,10 @@ TTY 的缓存不生效。
 
 ```ini
 Defaults timestamp_type=global
-Defaults timestamp_timeout=10
+Defaults timestamp_timeout=15
 ```
 
-它把凭据缓存从「按 TTY 隔离」放宽成「全机共享」，于是任意终端 `sudo -v` 之后 10 分钟内，
+它把凭据缓存从「按 TTY 隔离」放宽成「全机共享」，于是任意终端 `sudo -v` 之后 15 分钟内，
 **所有进程**——包括没有 TTY 的 agent 工具——都能免密 sudo。代价是比默认隔离宽：要收回成默认，
 删掉那个文件即可；要再临时授权，重复 `sudo -v`。
 
