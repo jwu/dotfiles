@@ -193,7 +193,7 @@ Ghostty 和 fontconfig 的关系比第一轮以为的微妙：
   fontconfig 的应用就在**字形栅格化**这一层跟 Ghostty 拉齐了，Chrome 也不需要再单独写一条
   覆盖。
   实测（620x50 测试条，`--screenshot` 后比像素）：hintfull → hintslight 有 **9.00%**
-  像素差异、墨量 292.6k → 287.2k；但在 12pt 的输入法候选词上墨量几乎不动
+  像素差异、墨量 292.6k → 287.2k；但在输入法候选词上（当时 12pt）墨量几乎不动
   （203.7k → 205.1k）。字号越小，这个差别越被稀释。
 
 - **`autohint` 这项对 Chrome 无效**。Skia 只在 Windows / macOS 端口设
@@ -210,24 +210,33 @@ Ghostty 和 fontconfig 的关系比第一轮以为的微妙：
 **仍然不可比的**：终端是固定网格（每个字形占同一个单元，字形宽度不参与布局），
 浏览器是 layout-driven。能对齐的是字形栅格化，行内间距本质上对不上。
 
-### 输入法（fcitx5）：字重对齐终端
+### 输入法（fcitx5）：抬过一档字重，又用一个字号换回来
 
 候选窗口不是 Qt / GTK 画的——`libclassicui.so` 链接的是 `libpango` + `libcairo` +
 `libfontconfig`，所以它直接吃**全局** `fonts.conf`，没有 Chrome 那种 `FONTCONFIG_FILE` 隔离。
 
-`classicui.conf` 里原本是 `Font=Sarasa Mono SC 12`（Regular），比 Ghostty 的中文
-（SemiBold）轻一档。改成 `Sarasa Mono SC SemiBold 12` 后两边一致；`TrayFont` 保持 `Bold`
-不动。
-
-`pango-view`（同一条 Pango + Cairo 链路）可以离线复现候选窗并量化：
+先照着「跟终端一致」抬过一档：原本 `Font=Sarasa Mono SC 12`（Regular）比 Ghostty 的中文
+（SemiBold）轻，于是把 `Font` / `MenuFont` 都改成 `Sarasa Mono SC SemiBold 12`。
+`pango-view`（同一条 Pango + Cairo 链路）能离线复现候选窗并量化：
 
 | 变体 | 墨量 | 明显笔画像素 |
 | --- | --- | --- |
-| Regular + hintfull（改前） | 203.7k | 785 |
+| Regular + hintfull（抬字重前） | 203.7k | 785 |
 | Regular + hintslight | 205.1k | 786 |
-| SemiBold + hintslight（改后） | 254.8k | 989 |
+| SemiBold + hintslight（抬字重后） | 254.8k | 989 |
 
-结论：**12pt 这个尺寸下，字重的影响远大于 hinting**（+25% 墨量 vs ±1%）。
+12pt 下字重的影响远大于 hinting（+25% 墨量 vs ±1%），而这 +25% 正是问题：终端有等宽网格
+与行距分担笔画，候选窗里常常只有两三个词、每个词一两个字，笔画一粗就糊。于是**字重回
+Regular，把可读性交给尺寸**——`Font` / `MenuFont` 都改成 `Sarasa Mono SC 14`，
+`TrayFont` 保持 `Bold` 不动。
+
+写成 `Sarasa Mono SC`（不带字重词）就是 Regular。Sarasa 只给 SemiBold / Light 这些注册了
+family 别名（`Sarasa Mono SC SemiBold`），Regular 没有：`fc-match 'Sarasa Mono SC Regular'`
+会落到 `Noto Sans Mono`，而 `fc-match 'Sarasa Mono SC'` 正是 `Sarasa-Regular.ttc`。反过来
+要抬字重，那个 `SemiBold` 词必须写出来。
+
+代价和 Chrome 那边一样：候选项不再跟 zed / ghostty 的 CJK 字重对齐（它们仍是 Medium +
+SemiBold），见「字重：最终回到 Regular」。
 
 ### 被拒绝的替代方案
 
