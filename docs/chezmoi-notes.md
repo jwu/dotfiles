@@ -27,6 +27,16 @@ swaylock / fcitx5 一整套铺进家目录。
 `~/.local/share/applications` 就是这么被创建出来的，直到把 `.local` 整棵子树排除才
 消失——源里有那个目录，与它的文件是否被忽略无关。
 
+## `apply <target>` 撞上不存在的父目录会直接失败
+
+给单个目标做局部 apply 时，chezmoi 会先 stat 它的父目录；父目录不存在就直接报错退出，
+它**不会**顺手把父目录建出来：
+
+    chezmoi: .config/fontconfig/fonts.conf: stat /home/jwu/.config/fontconfig: no such file or directory
+
+先 `mkdir -p ~/.config/fontconfig` 再 apply 即可。不带 target 的整体 apply 没有这个问题。
+（与上一节的区别：那是「空目录被凭空创建」，这是「目录不存在就报错」。）
+
 ## 属性前缀会进源路径
 
 chezmoi 依据权限位给源文件加前缀，所以源路径与目标路径不一定逐字对应。典型后果：
