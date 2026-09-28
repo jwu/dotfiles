@@ -1,4 +1,5 @@
 {
   "app.clipboard.pasteImage": "ctrl+shift+v",
-  "tui.altScreen.search": "ctrl+f"
+  "tui.altScreen.search": "ctrl+f",
+  "tui.editor.cursorWordRight": ["alt+right", "ctrl+right"]
 }
