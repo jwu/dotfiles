@@ -154,6 +154,7 @@ chezmoi 的源路径与目标路径不一定逐字对应：`dot_` 加前置点�
 - [`docs/ghostty-titlebar.md`](docs/ghostty-titlebar.md) — GTK 标题栏几何、undershoot 线、配色预设。
 - [`docs/ghostty-gl-version.md`](docs/ghostty-gl-version.md) — Intel HD 4000 上保住硬件渲染的 MESA override。
 - [`docs/gtk4.md`](docs/gtk4.md) — GTK4 全局 CSD 直角微调。
+- [`docs/fontconfig.md`](docs/fontconfig.md) — 字体渲染参数与中文回退：对齐 Ghostty 的 FreeType 默认、`hintstyle` 的取舍、为什么只能用 family 名改字体。
 - [`docs/bluetooth.md`](docs/bluetooth.md) — BlueZ OBEX agent 单槽位与冲突诊断。
 - [`docs/audio.md`](docs/audio.md) — MacBook CS8409 内置音频：主线只支持 Dell，靠 AUR 的 DKMS 补丁出声。
 - [`docs/xwayland-satellite.md`](docs/xwayland-satellite.md) — X11 弹窗焦点、Steam 顶栏菜单闪退、AUR `-git` 包的取舍。
