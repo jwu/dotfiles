@@ -56,14 +56,17 @@ Library
 # Linux-only targets. They are the source of truth on Linux, but hyprland /
 # niri / waybar / swaylock / fcitx5 do not exist on macOS, the titlebar CSS only
 # applies to the GTK build of ghostty, the *-flags.conf files are read by the
-# Arch chrome / chromium wrappers, and mimeapps.list is XDG. See
-# docs/ghostty-titlebar.md.
+# Arch chrome / chromium wrappers, and mimeapps.list is XDG. fontconfig and
+# voxtype are Linux-shaped as well: the first is loaded by /etc/fonts/fonts.conf
+# and read by the chrome wrapper, the second by niri's evdev hotkey path. See
+# docs/ghostty-titlebar.md, docs/fontconfig.md and docs/voxtype.md.
 {{ if ne .chezmoi.os "linux" }}
 .config/autostart
 .config/chrome-flags.conf
 .config/chromium-flags.conf
 .config/environment.d
 .config/fcitx5
+.config/fontconfig
 .config/gtk-4.0
 .config/ghostty/titlebar.css
 .config/ghostty/titlebar-colors-default.css
@@ -74,6 +77,7 @@ Library
 .config/niri
 .config/sunshine
 .config/swaylock
+.config/voxtype
 .config/waybar
 # Whole subtree: ignoring the files alone still makes chezmoi create the empty
 # parent directories. See docs/chezmoi-notes.md.
