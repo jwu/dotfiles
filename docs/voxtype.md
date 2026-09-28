@@ -23,9 +23,10 @@ push-to-talk 依赖"松开即停"。
 | Dolphin base | 打磨院 ❌ | 乱码 | 0.06s | 100 MB |
 | Cohere q4f16 | 达摩院 ✅ | 全对 ✅ | 0.93s | 1.5 GB |
 
-结论：**Paraformer-zh**。中文最准，比 Cohere 快约 10 倍，常驻内存也小得多（Cohere 是
+横评结论：**Paraformer-zh**。中文最准，比 Cohere 快约 10 倍，常驻内存也小得多（Cohere 是
 2.2 GB）。代价是它作为字符级模型，**英文输出不带词间空格**——由下面的过滤器解决；
-中文则本来就不需要空格（但也没有标点）。
+中文则本来就不需要空格（但也没有标点）。当前配置使用 **Paraformer-zh**；英文输出由 `wordseg-rs` 补空格。
+
 
 切换引擎（模型都在 `~/.local/share/voxtype/models/`，需要时手工下载）：
 

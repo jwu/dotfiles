@@ -5,9 +5,7 @@
 
 state_file = "auto"
 
-# Paraformer: best Chinese accuracy of the four engines tested, and ~10x faster
-# than Cohere. Its English output has no spaces, which [output.post_process]
-# repairs. See docs/voxtype.md for the measurements.
+# Paraformer-zh provides fast Chinese transcription; wordseg-rs spaces its English output.
 engine = "paraformer"
 
 [hotkey]
