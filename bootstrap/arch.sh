@@ -307,6 +307,16 @@ Defaults timestamp_timeout=15'
   sudo visudo -c > /dev/null
 }
 
+# 2016-2017 T1 MacBook Pros (no T2 chip) carry two Alpine Ridge Thunderbolt 3
+# controllers whose PME loop heats the chassis until the Thunderbolt resume path
+# hangs for good. This installer stops the hang (wakeup sources off plus
+# pcie_port_pm=off); it does not stop the ~45s wakeup itself, which raises no ACPI
+# event at all. DMI-gated and idempotent; writes /etc, udev rules and the GRUB
+# cmdline. See docs/suspend.md.
+install_apple_suspend_fix() {
+  sudo "$SRC_DIR/scripts/apple-macbook-suspend-fix.sh"
+}
+
 # mihomo ships as an AUR package, but two things around it are local policy: the
 # loopback-only controller and the overlay that re-pins what the subscription may
 # not change. The web panel is not ours to deploy -- mihomo downloads it itself
@@ -432,6 +442,7 @@ step "default shell (zsh)" set_default_shell
 step "TTY font (vconsole)" set_tty_font
 step "drivetemp module" load_drivetemp
 step "passwordless sudo window for unattended tooling" install_sudo_window
+step "Alpine Ridge S3 wakeup fix (T1 MacBook Pro)" install_apple_suspend_fix
 step "mihomo (kernel + geodata)" install_mihomo
 step "mihomo service overrides" install_mihomo_overlay
 step "enable mihomo" enable_mihomo

@@ -148,6 +148,7 @@ chezmoi 的源路径与目标路径不一定逐字对应：`dot_` 加前置点�
 - [`docs/windows-shell.md`](docs/windows-shell.md) — Windows 的 shell 层：scoop、Clink 的 `session.cmd` 接线、用户环境变量、批处理必须 CRLF。
 - [`docs/waybar.md`](docs/waybar.md) — 模块基线与行高约定、配色、`cffi/niri-windows`、GPU 与磁盘取值脚本。
 - [`docs/lockscreen.md`](docs/lockscreen.md) — hyprlock / swaylock、熄屏计时、按屏幕尺寸挑样式。
+- [`docs/suspend.md`](docs/suspend.md) — MacBookPro14,2 合盖休眠：resume 挂死的修法（已生效）与仍在的 45 秒硬件唤醒（未解决，已排除全部软件手段）。
 - [`docs/niri.md`](docs/niri.md) — focus-follows-mouse、`warp-mouse-to-focus`、光标隐藏。
 - [`docs/wayland-attach.md`](docs/wayland-attach.md) — 从 ssh / tty 附加到 niri 会话：`wattach` / `wdetach` / `wstat`、变量来源与存活校验。
 - [`docs/ghostty.md`](docs/ghostty.md) — quick terminal 的 `global:` 绑定、`bold-is-bright` 的迁移。
