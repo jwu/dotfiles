@@ -109,9 +109,8 @@ Chrome 拿到的却是 Courier / Helvetica 的替身，还停在 Regular。
   `.chezmoiignore` 里已被限定为 Linux）。系统原文件用的是绝对路径
   `/usr/bin/google-chrome-stable`，不覆盖的话从启动器点开就绕过 wrapper 了。
 
-三个文件合起来的判据（CDP 实测）：等宽栈报 `FiraMono Nerd Font`，正文栈报 `Noto Sans`，
-两者都是 Regular。（字重这一层曾抬到 Medium/SemiBold，最后又降回去了，见「字重：
-最终回到 Regular」。）
+三个文件合起来的判据（CDP 实测）：等宽栈报 `FiraMono Nerd Font` **Medium**，正文栈报
+`Noto Sans` Regular。字重分两条链路走，见「字重：正文 Regular，等宽抬一档」。
 
 ### 更前面还有一层：Chrome 自己的字体设置
 
@@ -138,8 +137,9 @@ Chrome 拿到的却是 Courier / Helvetica 的替身，还停在 Regular。
    `Preferences` 是应用数据，不进 chezmoi）。
 2. Chrome 的 `Fixed-width`（`Sarasa Mono SC`）就是代码块中文的落点，不需要额外处理。
 
-（曾有一版 `chrome-fonts.conf` 把 `Sarasa Gothic SC` / `Sarasa Mono SC` 顶到 SemiBold，
-后来撤了。那条规则有个坑值得留档：它要匹配的必须是**全局重定向的结果**而不是输入——
+（曾有一版 `chrome-fonts.conf` 把 `Sarasa Gothic SC` 顶到 SemiBold，后来撤了；
+`Sarasa Mono SC → SemiBold` 那条留了下来，只作用于等宽。那条规则有个坑值得留档：要匹配的
+必须是**全局重定向的结果**而不是输入——
 规则按文件顺序执行，`include` 进来的全局规则会先把 `Noto Sans CJK SC` 改成
 `Sarasa Gothic SC`，所以按输入名去匹配永远不会命中。）
 
@@ -147,23 +147,28 @@ Chrome 拿到的却是 Courier / Helvetica 的替身，还停在 Regular。
 
 | 场景 | face |
 | --- | --- |
-| 代码块（GitHub 栈等） | `FiraMono Nerd Font`，中文 `Sarasa Mono SC` |
-| Arial / Helvetica / 微软雅黑栈 / system-ui | `Noto Sans` |
-| `sans-serif`、未知名 family、网页默认 | `Sarasa Gothic SC` |
+| 代码块（GitHub 栈等） | `FiraMono Nerd Font` Medium，中文 `Sarasa Mono SC SemiBold` |
+| Arial / Helvetica / 微软雅黑栈 / system-ui | `Noto Sans` Regular |
+| `sans-serif`、未知名 family、网页默认 | `Sarasa Gothic SC` Regular |
 
-### 字重：最终回到 Regular
+### 字重：正文 Regular，等宽抬一档
 
-上面那版给 `FiraMono Nerd Font` / `Noto Sans` 各加 `weight=medium`，并把两个 Sarasa 顶到
-SemiBold。实测下来中英混排不匀：Sarasa 只有 Regular(400) 和 SemiBold(600)、没有 Medium，
-于是中文(600) 明显比西文(500) 重，同一行里中文会「跳出来」。
+字重在两条链路上分开处理，`chrome-fonts.conf` 里各有一条：
 
-量化（16px，`--screenshot` 后比墨量）：Medium/SemiBold **490.5k** vs 全 Regular **400.8k**，
-差 18%，不是微小差别。最后选**两边都回到 Regular**：中英同重，混排均匀。
+- **等宽**：`FiraMono Nerd Font` 加 `weight=medium`，`Sarasa Mono SC` 重定向到
+  `Sarasa Mono SC SemiBold`。这是 zed（`buffer_font_weight = 500` + codepoint-map）和
+  ghostty（`font-style = Medium` + codepoint-map）的同一套做法，自 52ccc05 起未变。
+- **正文**：不加字重，Regular。
 
-代价是放弃「对齐 zed / ghostty 的字重」——它们仍是 Medium + SemiBold。这是刻意的取舍，
-不是回退：Chrome 面对的是网页排版，中英同重比「跟终端一致」更重要。
-[`ghostty.md`](ghostty.md) 里那句「选 SemiBold 是为了中英混排时中文更醒目，代价是比英文略重」
-描述的正是同一个取舍的另一端。
+正文曾经也抬过一档，实测中英混排不匀：Sarasa 只有 Regular(400) 和 SemiBold(600)、没有
+Medium，于是中文(600) 明显比西文(500) 重，同一行里中文会「跳出来」。量化（16px，
+`--screenshot` 后比墨量）：Medium/SemiBold **490.5k** vs 全 Regular **400.8k**，差 18%，
+不是微小差别。正文因此留在 Regular：网页正文以中英混排为主，中英同重比「跟终端一致」
+更重要。
+
+等宽保留抬重是同一取舍的另一端：终端本来就按 ghostty 的 codepoint-map 把中文顶到 SemiBold，
+代码块跟终端一致比中英同重更要紧。[`ghostty.md`](ghostty.md) 里那句「选 SemiBold 是为了
+中英混排时中文更醒目，代价是比英文略重」描述的正是这个取舍。
 
 ### hinting：全局也对齐 Ghostty
 
@@ -245,7 +250,8 @@ SemiBold），见「字重：最终回到 Regular」。
   见「留下的坑」。
 - **靠 `lang` 规则分流**：第一轮已证明 Chrome 的回退请求不带 lang。
 - **再试一次 `embolden` 复刻 `font-thicken`**：第一轮已证明 Skia 不读该属性；
-  第二轮改用「重定向 family」绕过去（字重最后没有动，见「字重：最终回到 Regular」）。
+  第二轮改用「重定向 family」绕过去（正文的字重最后没有动，见「字重：正文 Regular，
+  等宽抬一档」）。
 
 ### 未决：全新 profile 下中文会落到 Noto Sans CJK KR
 
@@ -282,6 +288,10 @@ ghostty +show-face --string="A中"
 ghostty +show-config --default | rg 'freetype-load-flags'
 ```
 
+`Noto Sans` 这个 family 由 `noto-fonts` 包提供（bootstrap 的包清单里有）。缺它的时候
+`fc-match 'Noto Sans'` 会落到 `Noto Sans CJK KR`——韩文字形变体，`chrome-fonts.conf` 那批
+正文重定向就整体偏了。上面那张落点表以这个包已安装为前提。
+
 **必须重启应用**：fontconfig 的参数在进程启动时读取，已运行的 Chrome 不会变
 （Chrome 要整个退出，不是关窗口）。
 
@@ -298,8 +308,8 @@ ghostty +show-config --default | rg 'freetype-load-flags'
 uv run --with websocket-client python /tmp/cfont/probe.py 9333
 ```
 
-判据：等宽栈应报 `FiraMono Nerd Font`，`sans-serif` / 未知名 family 应报
-`Sarasa Gothic SC`，Arial 一类具名 sans 应报 `Noto Sans`——都是 Regular。
+判据：等宽栈应报 `FiraMono Nerd Font` Medium，`sans-serif` / 未知名 family 应报
+`Sarasa Gothic SC` Regular，Arial 一类具名 sans 应报 `Noto Sans` Regular。
 要走整条链路（wrapper → `FONTCONFIG_FILE` → fontconfig），把第一行换成
 `~/.local/bin/google-chrome-stable ...`；要连带验证 Chrome 的字体设置，把那个 profile 的
 `Preferences` 里 `webkit.webprefs.fonts` 拷进一个临时 profile：
