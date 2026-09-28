@@ -1,0 +1,10 @@
+#!/bin/sh
+# Chrome-only fontconfig; see docs/fontconfig.md.
+#
+# Shadows the Arch /usr/bin/google-chrome-stable wrapper, which is the entry
+# point both the desktop entry and interactive shells go through. Without it
+# Chrome lands on Liberation Mono / Liberation Sans: metric clones that read
+# much thinner than the FiraMono Medium zed and ghostty use.
+conf="${XDG_CONFIG_HOME:-$HOME/.config}/fontconfig/chrome-fonts.conf"
+[ -f "$conf" ] && export FONTCONFIG_FILE="$conf"
+exec /usr/bin/google-chrome-stable "$@"
