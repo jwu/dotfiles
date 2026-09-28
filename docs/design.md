@@ -317,6 +317,12 @@ git 先读 XDG 那份、再读 `~/.gitconfig`，后者覆盖前者，所以个�
 `extensions/eko24ive-pi-ask.json` 有被 pi-ask 写回的历史（见 `pi-config` 的
 `"pi-ask: sync config back to schemaVersion 5"` 提交），它和 `auth.json` 一样不纳入。
 
+`packages` 里的 `@johnnywu/pi-ask` 是上游 `@eko24ive/pi-ask` 的本地 fork（仓库在
+`~/dev/pi-ask`），加了 `alt+a` 折叠 ask 面板等改动。fork 里的 `getAskConfigPath()` 有意
+保留 `eko24ive-pi-ask.json` 这个旧文件名：改名会让已有键位配置失联，也会多一处上游同步
+冲突。上游有更新时在 `~/dev/pi-ask` 里 `git fetch upstream && git rebase upstream/main`，
+再升版本发布到 npm，新机器就装到新版。
+
 ### 项目级：仓库根的 `.pi/`
 
 仓库根的 `.pi/` 是 pi 的**项目级**配置，只在把本仓库当工作目录时加载，不进家目录，
