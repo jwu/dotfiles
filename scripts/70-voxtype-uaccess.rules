@@ -1,0 +1,8 @@
+# Voxtype's evdev hotkey listener reads the keyboards directly, so it needs
+# read access to /dev/input/event*. uaccess grants that to the logged-in
+# session only, which is narrower than adding the user to the input group.
+#
+# Device names are hardware-specific; find the current ones with:
+#   udevadm info --attribute-walk --name=/dev/input/eventN | grep name
+SUBSYSTEM=="input", ENV{ID_INPUT_KEYBOARD}=="1", ATTRS{name}=="ASUSTeK ROG OMNI RECEIVER Keyboard", TAG+="uaccess"
+SUBSYSTEM=="input", ENV{ID_INPUT_KEYBOARD}=="1", ATTRS{name}=="MOSART Semi. wireless dongle", TAG+="uaccess"

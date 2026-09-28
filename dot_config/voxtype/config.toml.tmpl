@@ -1,0 +1,49 @@
+# voxtype: hold-to-talk dictation for Wayland. See docs/voxtype.md.
+#
+# `voxtype config set` rewrites this file in place, which would make the
+# deployed copy drift from the source: edit here and re-apply instead.
+
+state_file = "auto"
+
+# Paraformer: best Chinese accuracy of the four engines tested, and ~10x faster
+# than Cohere. Its English output has no spaces, which [output.post_process]
+# repairs. See docs/voxtype.md for the measurements.
+engine = "paraformer"
+
+[hotkey]
+# niri has no key-release events, so push-to-talk can only come from voxtype's
+# own evdev listener. Keyboard read access comes from the uaccess tag installed
+# by bootstrap/arch.sh, not from the input group.
+enabled = true
+key = "F9"
+mode = "push_to_talk"
+
+[audio]
+device = "default"
+sample_rate = 16000
+max_duration_secs = 60
+pause_media = true
+
+[paraformer]
+model = "paraformer-zh"
+
+[output]
+# paste rather than type: fcitx5 intercepts synthetic keystrokes and re-encodes
+# them as input. ctrl+shift+v is ghostty's paste binding; ctrl+v is the GUI one.
+mode = "paste"
+paste_keys = "ctrl+shift+v"
+restore_clipboard = true
+fallback_to_clipboard = true
+type_delay_ms = 1
+
+[output.notification]
+on_recording_start = false
+on_recording_stop = false
+on_transcription = false
+
+[output.post_process]
+# Re-spaces concatenated English. wordseg-rs is its own project, published on
+# crates.io and installed by bootstrap/arch.sh; this points at the binary it
+# produces. See docs/voxtype.md.
+command = "{{ .chezmoi.homeDir }}/.local/bin/wordseg-rs"
+timeout_ms = 5000

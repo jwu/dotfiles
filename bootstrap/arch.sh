@@ -61,6 +61,7 @@ PACKAGES=(
   "pkgconf"
   "gtk3"
   "git"
+  "rustup"
 )
 
 XWS_PKG="xwayland-satellite"
@@ -340,6 +341,71 @@ enable_mihomo() {
   sudo systemctl enable --now mihomo
 }
 
+# voxtype: hold-to-talk dictation driven by the keyboard's evdev events. The AUR
+# package ships every binary variant and points /usr/bin/voxtype at the
+# Whisper-only one; SenseVoice and Paraformer need the ONNX build. See
+# docs/voxtype.md.
+install_voxtype() {
+  if ! command -v yay &> /dev/null; then
+    echo "    yay is required for voxtype-bin; skipping (dictation stays unavailable)." >&2
+    return 1
+  fi
+  yay -S --needed --noconfirm voxtype-bin || return 1
+  # Writes /usr/bin/voxtype, hence root. It is idempotent.
+  sudo voxtype setup onnx --enable || return 1
+}
+
+# The evdev listener opens /dev/input/event* directly. uaccess is the narrow
+# grant: it follows the logged-in session instead of permanent group membership.
+# Names are hardware-specific, so this file lists this machine's keyboards and
+# needs a new line for a different one.
+install_voxtype_udev() {
+  sudo install -m 0644 "$SRC_DIR/scripts/70-voxtype-uaccess.rules" \
+    /etc/udev/rules.d/70-voxtype-uaccess.rules || return 1
+  sudo udevadm control --reload-rules
+  sudo udevadm trigger --action=add --subsystem-match=input
+  sudo udevadm settle
+}
+
+# paraformer-zh is what the deployed config selects. The other engines' models
+# (Cohere 1.5 GB, SenseVoice 239 MB) download on demand instead.
+install_voxtype_models() {
+  if ! command -v voxtype &> /dev/null; then
+    echo "    voxtype is not installed; skipping the model download" >&2
+    return 1
+  fi
+  voxtype setup --download --model paraformer-zh || return 1
+}
+
+# User-level service, so no root: it writes ~/.config/systemd/user/ and enables
+# it through the caller's own user manager. Runs after `chezmoi init --apply` so
+# the daemon starts on the config this repo deploys.
+install_voxtype_service() {
+  if ! command -v voxtype &> /dev/null; then
+    echo "    voxtype is not installed; skipping the user service" >&2
+    return 1
+  fi
+  voxtype setup systemd
+}
+
+# wordseg-rs re-spaces the concatenated English that Paraformer emits; voxtype
+# calls it through [output.post_process]. It is its own project, published to
+# crates.io, so this repo only pins the dependency rather than carrying the
+# source. The AUR route would be more Arch-native, but its registration is
+# closed (2026-09), and `cargo install` works on every platform this repo
+# targets.
+install_wordseg() {
+  if ! command -v cargo &> /dev/null; then
+    if ! command -v rustup &> /dev/null; then
+      echo "    neither cargo nor rustup is available; skipping wordseg-rs (voxtype keeps working, but English stays unspaced)." >&2
+      return 1
+    fi
+    # rustup ships without a toolchain: cargo does not exist until one is picked.
+    rustup default stable || return 1
+  fi
+  cargo install --locked --root "$HOME/.local" wordseg-rs
+}
+
 # ==========================================
 # Run
 # ==========================================
@@ -369,8 +435,15 @@ step "passwordless sudo window for unattended tooling" install_sudo_window
 step "mihomo (kernel + geodata)" install_mihomo
 step "mihomo service overrides" install_mihomo_overlay
 step "enable mihomo" enable_mihomo
+step "voxtype (AUR) + ONNX backend" install_voxtype
+step "voxtype udev rule for keyboard access" install_voxtype_udev
+step "voxtype model (paraformer-zh)" install_voxtype_models
 
 step_required "chezmoi init --apply" chezmoi init --apply
+# wordseg-rs has to exist before the daemon starts, otherwise the first
+# transcription runs without the re-spacing filter.
+step "wordseg-rs (English re-spacing filter)" install_wordseg
+step "voxtype user service" install_voxtype_service
 
 summary
 echo ""
