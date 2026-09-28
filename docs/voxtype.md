@@ -131,19 +131,49 @@ evdev 监听要读 `/dev/input/event*`。加进 `input` 组是最常见的做法
 
 用系统默认源（`device = "default"`）。
 
-这台机器上**唯一的麦克风是 AirPods**（台式机内建声卡的 `front-mic` / `rear-mic` 都是
-`not available`）。曾经为了绕开"默认源漂到离线蓝牙设备"的问题，用 `~/.asoundrc` 固定
-到内建声卡——结果录到的是没有麦克风的设备，只有静音。教训：**先确认麦克风真实存在，
-再谈设备固定**。
+默认源由 `priority.session` 决定，候选有两个：
 
-WirePlumber 会把默认源指向优先级更高的蓝牙设备（AirPods 2010 > 内建 2009），即使耳机
-离线。目前无害（离线时本来也没有麦可用），但其他录音应用会受影响。
+| 源 | `priority.session` | 说明 |
+| --- | --- | --- |
+| 内建声卡 `alsa_input.pci-*` | 2200 | 本仓库抬高（见下）；ALSA `Internal Mic` jack on，实测可录 |
+| 蓝牙 `bluez_input.*` | 2010 | WirePlumber 硬编码；A2DP 播放时是**静音回环占位源**，不是麦克风 |
+
+曾经为了绕开"默认源漂到离线蓝牙设备"，用 `~/.asoundrc` 固定到内建声卡——结果录到的是
+没有麦克风的设备，只有静音。教训仍然成立：**先确认麦克风真实存在，再谈设备固定**。
+（后来实测 `Internal Mic` 是好的；当年失败的是 `front-mic` / `rear-mic` 那两条 route。）
+
+### 蓝牙 A2DP 的"假麦克风"会抢走默认源
+
+WirePlumber 0.5 的 `bluetooth.autoswitch-to-headset-profile` 默认开启（"always show
+microphone for Bluetooth headsets"）。**设备即使跑在 A2DP（无麦克风），它也会造一个
+loopback 源**（`scripts/monitors/bluez/create-loopback-node.lua`），`priority.session`
+硬编码 2010，刚好压过内建麦原始的 2009，于是成为默认源。
+
+实测（K13 音箱连着）：
+
+| 录 3 秒默认源 | 结果 |
+| --- | --- |
+| 蓝牙 loopback | peak 0，全零静音 |
+| 内建声卡 | peak 32767，正常 |
+
+voxtype 用 `device = "default"` 跟着默认源走，于是按 F9 只录到静音，日志出现
+`Recording error: No audio was captured`，或把静音识别成"没有没有"。
+
+修法：用 `monitor.alsa.rules` 把内建麦抬到 **2200**，压过蓝牙的 2010。**没有**关
+`autoswitch-to-headset-profile`——蓝牙设备真的切到 HFP（有麦克风）时仍会暴露真实采集
+源，应用显式选它时照样优先。规则见 `dot_config/wireplumber/`。
+
+> 别用通用 `node.rules`：WirePlumber 0.5 已删掉这个顶层键，写了会被静默忽略；可用的是
+> `monitor.alsa.rules` / `monitor.bluez.rules`。而 `monitor.bluez.rules` 走 `name-node`
+> hook，管不到 `create-loopback-node.lua` 直接建的 loopback 节点，所以降权 loopback 走
+> 不通，只能反过来抬内建麦。
 
 ## 文件与归属
 
 | 内容 | 位置 | 由谁部署 |
 | --- | --- | --- |
 | voxtype 配置 | `~/.config/voxtype/config.toml` | chezmoi（`dot_config/voxtype/config.toml.tmpl`） |
+| WirePlumber 默认源规则 | `~/.config/wireplumber/wireplumber.conf.d/50-bluetooth-loopback-priority.conf` | chezmoi（`dot_config/wireplumber/`） |
 | 分词过滤器 | `~/.local/bin/wordseg-rs` | 独立项目（源码不在本机），已发布到 crates.io；`bootstrap/arch.sh` 用 `cargo install` 装 |
 | 键盘 udev 规则 | `/etc/udev/rules.d/70-voxtype-uaccess.rules` | `bootstrap/arch.sh` 的 `install_voxtype_udev` |
 | 程序本体 | `voxtype-bin`（AUR，当前 1.1.0） | `bootstrap/arch.sh`，必要时 `yay -S voxtype-bin` |
@@ -162,6 +192,7 @@ journalctl --user -u voxtype -f   # 实时日志：Recording → Transcribed →
 voxtype config                    # 打印解析后的最终配置（只列部分段）
 voxtype config schema             # 每个可设置键的类型与当前值
 voxtype setup check               # 依赖、驱动链、模型的体检
+pactl get-default-source          # 默认录音源；连着蓝牙音箱时应是内建声卡，而不是 bluez_input.*
 ```
 
 `voxtype config` 和 `config schema` 都不完整：前者不打印 `[paraformer]` 与
@@ -174,7 +205,7 @@ voxtype setup check               # 依赖、驱动链、模型的体检
 | 现象 | 通常是什么 |
 | --- | --- |
 | 按 F9 没反应、日志无记录 | udev 规则没生效，或键盘设备名变了 |
-| 有日志但识别成"没有没有" | 麦克风采到静音：设备选错，或耳机没连 |
+| 有日志但识别成"没有没有"、或 `No audio was captured` | 默认源被蓝牙 A2DP 假麦抢走（`pactl get-default-source` 是 `bluez_input.*`），或耳机没连 |
 | 英文连写没分开 | `[output.post_process]` 命令失败（cargo 没编译？），看日志的 `Post-processed` |
 | 文字没进输入框 | 粘贴键与目标应用不匹配，换 `paste_keys` |
 | `voxtype setup check` 报不在 `input` 组 | 忽略：权限走 uaccess，本来就不需要那个组 |
