@@ -8,6 +8,7 @@
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
   // theme and icon_theme below come from one-dark-pro and material-icon-theme.
+  "text_rendering_mode": "platform_default",
   "auto_install_extensions": {
     "gdscript": true,
     "html": true,
@@ -42,7 +43,8 @@
     "dock": "left"
   },
   "soft_wrap": "prefer_line",
-  "ui_font_family": "Inter",
+  "ui_font_family": "FiraMono Nerd Font",
+  "ui_font_weight": 500,
   "ensure_final_newline_on_save": false,
   "format_on_save": "off",
   "buffer_line_height": "standard",
@@ -50,17 +52,24 @@
   "vim_mode": true,
   // The monospace entries cover macOS, Windows and Linux; the CJK entries keep
   // each platform from silently substituting a non-monospace face for CJK glyphs.
+  // SemiBold mirrors ghostty's font-codepoint-map; see docs/fontconfig.md.
   "buffer_font_fallbacks": [
     "Menlo",
     "Monaco",
     "Consolas",
-    "Sarasa Mono SC",
+    "Sarasa Mono SC SemiBold",
     "Noto Sans Mono CJK SC",
     "Microsoft YaHei",
     "Courier New",
     "monospace",
   ],
   "buffer_font_family": "FiraMono Nerd Font",
+  // Ghostty renders FiraMono at its Medium face (font-style = Medium).
+  "buffer_font_weight": 500,
+  // Fira Mono ships no ligatures, but it does have a slashed zero.
+  "buffer_font_features": {
+    "zero": true,
+  },
   "show_whitespaces": "none",
   "base_keymap": "VSCode",
   "icon_theme": {
@@ -70,6 +79,10 @@
   },
   "ui_font_size": 16,
   "buffer_font_size": 16.0,
+  // Match Ghostty's font size so the embedded terminal reads the same.
+  "terminal": {
+    "font_size": 13.5,
+  },
   "theme": {
     "mode": "dark",
     "light": "One Light",
