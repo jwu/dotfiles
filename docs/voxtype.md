@@ -40,7 +40,7 @@ systemctl --user restart voxtype
 voxtype 自身不提供英文分词，只提供 `[output.post_process]`：把识别结果经 stdin 喂给
 一条命令，取 stdout 作为最终文本。
 
-过滤器来自 `voice-input` 那套逻辑（`english_spacing.py` + vendored wordninja 2.0.0）：
+过滤器来自已归档的 `voice-input` 那套逻辑（`english_spacing.py` + vendored wordninja 2.0.0）：
 只处理 **7 个以上连续 ASCII 字母**，用词频动态规划切成词，中文原样透传。为了去掉
 Python 解释器与伴随文件，把它重写成 Rust（独立项目 `~/dev/wordseg-rs`，词表在
 编译期由 `build.rs` 解压烘焙进二进制，因此没有运行时依赖）。
