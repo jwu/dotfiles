@@ -8,6 +8,7 @@
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
   // theme and icon_theme below come from one-dark-pro and material-icon-theme.
+  "text_rendering_mode": "platform_default",
   "auto_install_extensions": {
     "gdscript": true,
     "html": true,
