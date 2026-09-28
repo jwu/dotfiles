@@ -45,23 +45,75 @@ reload_fcitx5() {
   return 0
 }
 
-RIME_ICE_MIRROR="https://mirror.nju.edu.cn/github-release/iDvel/rime-ice/LatestRelease/full.zip"
 RIME_ICE_UPSTREAM="https://github.com/iDvel/rime-ice/releases/latest/download/full.zip"
+# The NJU mirror is a cache that can lag weeks behind upstream, so it is only a
+# fallback, and both sources are checked against the official digest below.
+RIME_ICE_MIRROR="https://mirror.nju.edu.cn/github-release/iDvel/rime-ice/LatestRelease/full.zip"
+RIME_ICE_API_PATH="repos/iDvel/rime-ice/releases/latest"
+
+# Echo the official sha256 of full.zip, or nothing when it cannot be read. gh
+# carries a 5000/h token, anonymous curl only 60/h. See docs/rime/rime-config.md.
+rime_ice_digest() {
+  local via_gh
+  if command -v gh &> /dev/null; then
+    via_gh="$(timeout 20 gh api "$RIME_ICE_API_PATH" \
+      --jq '.assets[] | select(.name == "full.zip") | .digest' 2> /dev/null)" || true
+    if [ -n "$via_gh" ]; then
+      printf '%s\n' "${via_gh#sha256:}"
+      return 0
+    fi
+  fi
+  command -v python3 &> /dev/null || return 1
+  local json
+  json="$(curl -fsSL --max-time 15 "https://api.github.com/$RIME_ICE_API_PATH" 2> /dev/null)" || return 1
+  printf '%s' "$json" | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+for asset in data.get("assets", []):
+    if asset.get("name") == "full.zip":
+        print(asset.get("digest", "").replace("sha256:", ""))
+        break
+' 2> /dev/null
+}
 
 install_rime_ice() {
   if [ -f "$RIME_DIR/rime_ice.schema.yaml" ]; then
     echo "    Rime Ice dictionaries already present."
     return 0
   fi
-  local tmp
+  local tmp digest url actual got
   tmp="$(mktemp -d)" || return 1
-  echo "    Downloading Rime Ice dictionaries (~16 MB)..."
-  if ! curl -fL --retry 2 -o "$tmp/full.zip" "$RIME_ICE_MIRROR"; then
-    if ! curl -fL --retry 2 -o "$tmp/full.zip" "$RIME_ICE_UPSTREAM"; then
-      rm -rf "$tmp"
-      return 1
-    fi
+  digest="$(rime_ice_digest || true)"
+  if [ -n "$digest" ]; then
+    echo "    official sha256: $digest"
+  else
+    echo "    warning: could not read the official digest; installing unverified." >&2
   fi
+
+  got=0
+  for url in "$RIME_ICE_UPSTREAM" "$RIME_ICE_MIRROR"; do
+    echo "    Downloading Rime Ice dictionaries (~16 MB) from $url"
+    if ! curl -fL --retry 2 --connect-timeout 10 -o "$tmp/full.zip" "$url"; then
+      echo "    Source unavailable: $url" >&2
+      continue
+    fi
+    if [ -n "$digest" ]; then
+      actual="$(sha256sum "$tmp/full.zip" | cut -d' ' -f1)"
+      if [ "$actual" != "$digest" ]; then
+        echo "    checksum mismatch (expected $digest, got $actual)" >&2
+        continue
+      fi
+      echo "    sha256 verified: $actual"
+    fi
+    got=1
+    break
+  done
+  if [ "$got" -ne 1 ]; then
+    echo "    Error: no usable download source." >&2
+    rm -rf "$tmp"
+    return 1
+  fi
+
   if command -v bsdtar &> /dev/null; then
     bsdtar -xf "$tmp/full.zip" -C "$RIME_DIR" || { rm -rf "$tmp"; return 1; }
   elif command -v unzip &> /dev/null; then

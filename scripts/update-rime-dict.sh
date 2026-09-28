@@ -10,6 +10,11 @@ ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
 RIME_DIR="$HOME/.local/share/fcitx5/rime"
 
+# full.zip carries its own copies of these two patches, so the extraction below
+# always overwrites them. See docs/rime/rime-config.md.
+PATCH_SRC="$ROOT_DIR/dot_local/share/fcitx5/rime"
+PATCHES=(default.custom.yaml rime_ice.custom.yaml)
+
 # Rime Ice is not vendored here; pull the rolling "latest" release.
 #
 # GitHub is tried first. The NJU mirror is only a fallback: it is a cache that
@@ -45,8 +50,18 @@ download() {
   curl -fL --retry 2 --connect-timeout 10 -o "$out" "$url"
 }
 
-# Echo the official sha256 (hex) of full.zip, or nothing if unreachable.
+# Echo the official sha256 (hex) of full.zip, or nothing if unreachable. gh
+# carries a 5000/h token, anonymous curl only 60/h. See docs/rime/rime-config.md.
 official_digest() {
+  if command -v gh &> /dev/null; then
+    local via_gh
+    via_gh="$(timeout 20 gh api "${RIME_ICE_API#https://api.github.com/}" \
+      --jq '.assets[] | select(.name == "full.zip") | .digest' 2> /dev/null)" || true
+    if [ -n "$via_gh" ]; then
+      printf '%s\n' "${via_gh#sha256:}"
+      return 0
+    fi
+  fi
   command -v python3 &> /dev/null || return 1
   local json
   json="$(curl -fsSL --max-time 15 "$RIME_ICE_API" 2>/dev/null)" || return 1
@@ -78,6 +93,35 @@ try_source() {
   if [ -n "$EXPECTED" ]; then
     verify_sha256 "$out" "$EXPECTED" || return 1
   fi
+  return 0
+}
+
+apply_patches() {
+  local name
+  for name in "${PATCHES[@]}"; do
+    cp "$PATCH_SRC/$name" "$RIME_DIR/$name"
+  done
+  echo ">>> Patches re-applied: ${PATCHES[*]}"
+}
+
+# Rime keeps the compiled dictionaries in memory, so reloading fcitx5's config is
+# not always enough to pick up a newly built one. Prefer a full restart, and fall
+# back to fcitx5-remote -r when the DBus call is unavailable.
+reload_fcitx5() {
+  if command -v gdbus &> /dev/null; then
+    if gdbus call --session --dest org.fcitx.Fcitx5 --object-path /controller \
+      --method org.fcitx.Fcitx.Controller1.Restart &> /dev/null; then
+      echo ">>> Restarted fcitx5 to load the new Rime build."
+      return 0
+    fi
+  fi
+  if command -v fcitx5-remote &> /dev/null; then
+    if fcitx5-remote -r 2> /dev/null; then
+      echo ">>> Reloaded fcitx5 config (restart fcitx5 if Rime still shows old words)."
+      return 0
+    fi
+  fi
+  echo ">>> Warning: could not restart fcitx5; restart it manually." >&2
   return 0
 }
 
@@ -113,6 +157,15 @@ else
   echo "Error: neither bsdtar nor unzip is available; install unzip." >&2
   exit 1
 fi
+
+# Fail before touching the user directory: a run that cannot put the patches
+# back must not start at all.
+for name in "${PATCHES[@]}"; do
+  if [ ! -f "$PATCH_SRC/$name" ]; then
+    echo "Error: $PATCH_SRC/$name is missing; run this from the dotfiles repo." >&2
+    exit 1
+  fi
+done
 
 mkdir -p "$RIME_DIR"
 
@@ -191,12 +244,20 @@ fi
 # Re-apply Patches / Rebuild
 # ==========================================
 
+apply_patches
+
 if [ "$DEPLOY" -eq 1 ]; then
-  "$SCRIPT_DIR/install-linux.sh"
+  if command -v rime_deployer &> /dev/null && [ -f /usr/share/rime-data/default.yaml ]; then
+    echo ">>> Rebuilding (tencent.dict.yaml makes this take a few minutes)..."
+    rime_deployer --build "$RIME_DIR" /usr/share/rime-data "$RIME_DIR/build" \
+      || echo ">>> Warning: the rebuild failed; fcitx5 retries on its next start." >&2
+  else
+    echo ">>> rime_deployer or /usr/share/rime-data is missing; the rebuild was skipped." >&2
+    echo "    Deploy from the fcitx5 menu before relying on the new words." >&2
+  fi
+  reload_fcitx5
 else
-  cp "$ROOT_DIR/rime/default.custom.yaml" "$RIME_DIR/default.custom.yaml"
-  cp "$ROOT_DIR/rime/rime_ice.custom.yaml" "$RIME_DIR/rime_ice.custom.yaml"
-  echo ">>> Patches re-applied; deploy skipped (--no-deploy)."
+  echo ">>> Deploy skipped (--no-deploy)."
 fi
 
 echo ">>> Rime dictionaries updated."

@@ -35,8 +35,9 @@ cd ../fcitx5
 ### 2. 安装雾凇拼音
 
 **Linux**：通常不用手动安装。`chezmoi apply` 跑到的
-`run_onchange_after_40-fcitx5.sh.tmpl` 会在词库缺失时下载 `full.zip` 解压到
-`~/.local/share/fcitx5/rime/`。下载失败时可手动补：
+`run_onchange_after_40-fcitx5.sh.tmpl` 会在词库缺失时下载 `full.zip`（官方 release 优先，
+南大镜像兜底，两者都用官方 sha256 校验）解压到 `~/.local/share/fcitx5/rime/`。
+下载失败时可手动补：
 
 ```bash
 curl -fL -o /tmp/full.zip https://github.com/iDvel/rime-ice/releases/latest/download/full.zip
@@ -91,12 +92,16 @@ Rime 配置目录：`~/Library/Rime/`
 ```
 
 脚本会下载最新的 `full.zip` 并覆盖解压到用户目录，先把用户目录里的 `*.custom.yaml`
-备份为 `.bak.$TIMESTAMP`，再调用 `install-linux.sh` 重新应用本仓库补丁并按需重建部署。
+备份为 `.bak.$TIMESTAMP`，再把本仓库的两个补丁（`dot_local/share/fcitx5/rime/` 下的
+`default.custom.yaml` 与 `rime_ice.custom.yaml`）复制回用户目录，然后按需重建部署。
 脚本最后会重启 fcitx5，确保 Rime 引擎重新加载新词库（只跑 `fcitx5-remote -r` 不保证生效）。
 
 ### 下载源与校验
 
-- 默认**优先 GitHub 官方 release**，失败才回退南大镜像
+- 默认**优先 GitHub 官方 release**，失败才回退南大镜像（首次安装的
+  `run_onchange_after_40-fcitx5.sh.tmpl` 用的是同一个顺序与同一套校验）
+- 取官方 `digest` 时**优先用 `gh api`**：已登录的 token 有 5000 次/小时，而匿名 `curl`
+  只有 60 次/小时，撞满就退化成不校验。机器上没有 `gh` 或未登录时自动回落到匿名 `curl`
 - 无论哪个源，都用 GitHub release 的官方 `digest`（sha256）校验下载内容，镜像滞后会直接
   被拒绝并自动回退官方源
 - ⚠️ 南大镜像是缓存，**可能滞后数周**：实测镜像停在 2026-06-30，而上游已到 2026-09-25。
@@ -104,12 +109,12 @@ Rime 配置目录：`~/Library/Rime/`
 - 无法访问 `api.github.com` 时跳过校验（此时官方源仍可信，镜像源则可能装到旧版）
 
 ⚠️ `full.zip` 自带 `default.custom.yaml` / `rime_ice.custom.yaml`，会覆盖本仓库的补丁，
-这正是必须由 `install-linux.sh` 重新复制补丁的原因，因此不要手动解压后就结束。
+这正是脚本必须把两个补丁复制回去的原因，因此不要手动解压后就结束。
 
 其他说明：
 
-- 只想更新词库与补丁、不重建：`./update-rime-dict.sh --no-deploy`
-- 优先镜像（GitHub 不可达时）：`./update-rime-dict.sh --mirror`
+- 只想更新词库与补丁、不重建：`./scripts/update-rime-dict.sh --no-deploy`
+- 优先镜像（GitHub 不可达时）：`./scripts/update-rime-dict.sh --mirror`
 - `tencent.dict.yaml` 是大词库，重建 `prism.bin` 可能需要几分钟
 - `build/`、`*.userdb/`（用户词频）和 `sync/` 不受影响；上游 release 是滚动的
   `nightly` tag，没有可比对的版本号，直接拉最新即可
