@@ -97,6 +97,10 @@ sourceDir = "/Users/<user>/bin/dotfiles"
 | `~/.config/user-dirs.dirs`、`user-dirs.locale` | `xdg-user-dirs-update` 生成 |
 | `~/.config/nvim/lazy-lock.json` | lazy.nvim 生成 |
 | `~/.local/share/applications/mimeapps.list` | 桌面环境运行时生成 |
+| `~/.config/fcitx5/config` | fcitx5 自己写；同目录只有 `profile` 与 `conf/classicui.conf` 是纳管的补丁 |
+| `~/.config/Thunar/uca.xml` | 还是 Thunar 自带的示例动作，且它会写回 |
+| `~/.config/godot/editor_settings-*.tres` | 编辑器设置，含窗口布局 |
+| `~/.config/warp-terminal/user_preferences.json` | Warp 自行重写 |
 
 `~/.config/chezmoi/chezmoi.toml` 也在这里：由 `bootstrap/<platform>` 写，见上一节。
 
@@ -109,6 +113,7 @@ sourceDir = "/Users/<user>/bin/dotfiles"
 | `~/.config/chezmoi/chezmoistate.boltdb` | chezmoi 记账库 |
 | `~/.config/{fcitx,ibus}/**` | dbus / socket 句柄 |
 | `~/.config/{btop,go,nautilus,systemd,yay}/` | 空目录，工具首次运行才填 |
+| `~/.config/comfy-cli/**` | `recent_workspace` 之类由 comfy-cli 写回，且含本机路径 |
 
 ### 构建产物 / 下载物
 
@@ -116,7 +121,10 @@ sourceDir = "/Users/<user>/bin/dotfiles"
 | --- | --- |
 | `~/.config/waybar/waybar-niri-windows.so{,.version}` | `scripts/` 里源码的编译产物 |
 | `~/.local/bin/gpu-watch` | `scripts/gpu-watch.c` 的编译产物 |
-| `~/.local/bin/gh` | 下载的独立二进制 |
+| `~/.local/bin/gh`、`~/.local/bin/bluetuith` | 下载的独立二进制 |
+| `~/.local/bin/steam-progress` | 一次性调试脚本（无 shebang，绑 Steam 的日志格式） |
+| `~/.local/share/applications/*.desktop` | Steam 等游戏启动器生成 |
+| `*.bak.2026*` | 旧 `configs` 仓库的 `install.sh` 留下的备份（`~/.config/**` 与 `~/.local/bin/` 里各有几十个） |
 
 ### 凭据 / 机器身份
 
@@ -125,6 +133,7 @@ sourceDir = "/Users/<user>/bin/dotfiles"
 | `~/.pi/agent/auth.json` | 凭据 |
 | `~/.gitconfig` | 个人层（邮箱、姓名），每台机器手工维护 |
 | `~/.config/Moonlight Game Streaming Project/Moonlight.conf` | 含客户端私钥、内网与公网地址、MAC、对端主机名；且 Moonlight 会写回 |
+| `~/.config/mcp/mcp.json` | pi-mcp-adapter 的用户全局共享层；里面列的是本机 venv 里的 comfy-mcp 绝对路径 |
 
 清单是**判据的实例**，不是穷举。新装一个软件、位置对不上的，按同样两条判据判断：会被
 工具重写的不进，带机器身份的不进。
