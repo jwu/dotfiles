@@ -344,9 +344,11 @@ shell 知道自己在哪个窗口里 —— 终端显示的标题就是这个窗
 pid 写进标题，模块从标题里读出来，就得到「窗口 ↔ 这棵子树」的精确对应，不需要猜。
 
 协议在 `module/marker.go`：标题末尾追加 `U+E0001` + 十进制 pid 的 TAG DIGIT + `U+E007F`。
-全是 Unicode 的 format 字符（default-ignorable），没有任何渲染器会画出来；实测用
-`pango-view` 分别渲染带标记和不带标记的标题，两张 PNG 逐字节相同。模块只认完整形态
-（开 + 至少一位数字 + 闭），所以 emoji 的 tag 序列（旗帜末尾也是 `U+E007F`）不会被误读。
+全是 Unicode 的 format 字符（default-ignorable），GTK/Pango 会把它们丢掉：实测用
+`pango-view` 分别渲染带标记和不带标记的标题，两张 PNG 逐字节相同。**macOS 的 AppKit 标题栏
+是例外**：它把这些字符画成 .notdef 方框，6 位 pid 就是 6 个「框里带问号」。所以标记只在
+本机写，见下面「只在本地会话宣告」。模块只认完整形态（开 + 至少一位数字 + 闭），所以 emoji
+的 tag 序列（旗帜末尾也是 `U+E007F`）不会被误读。
 
 shell 侧是 `dot_config/waybar/zsh-announce.zsh`（chezmoi 部署到
 `~/.config/waybar/zsh-announce.zsh`，`dot_zshrc.tmpl` 末尾 source 它），只做一件事：注册一个
@@ -355,6 +357,10 @@ shell 侧是 `dot_config/waybar/zsh-announce.zsh`（chezmoi 部署到
 ghostty 那套截断工作目录。实测和 oh-my-zsh 自己写的那串剥掉标记后**逐字节相同**，所以窗口
 名字不变。几条刻意的取舍：
 
+- **只在本地会话宣告**：`SSH_CONNECTION` / `SSH_TTY` 存在时脚本直接 return。ssh 会话的标题
+  属于另一端那台终端里的窗口，它的 waybar 用不上这个 pid（后代校验也过不了），而 macOS
+  的标题栏会把 TAG DIGIT 画成方框。副作用是「本地 niri 终端里 ssh 出去」的窗口退回应用
+  pid，与改前一致（改前那个远端 pid 本来也过不了校验）。
 - 只在 `precmd` 写，不碰命令行标题（`preexec`）；命令运行期间标题里没有标记，模块用上一次
   提示符学到的 pid。
 - 如果以后有别的插件也写标题、且注册得比我们晚，它会盖掉我们：那个窗口退化成下面的回退

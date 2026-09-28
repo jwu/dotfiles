@@ -1,10 +1,16 @@
 # Announce this shell to waybar's niri-windows module, so that it measures this
 # window instead of the whole terminal process: the shell writes its pid into the
-# window title, in characters nothing renders. Source it last in ~/.zshrc, after
+# window title, in tag characters GTK drops. Source it last in ~/.zshrc, after
 # anything else that sets the title. See docs/waybar.md.
 
-# Unicode tag characters: default-ignorable, so no renderer shows them. The
-# module's grammar takes a decimal pid between U+E0001 and U+E007F.
+# Only a local shell should announce: inside ssh the title belongs to the terminal
+# on the other side, whose waybar cannot use this pid, and macOS titlebars draw the
+# tag digits as missing-glyph boxes (GTK/Pango drops them). See docs/waybar.md.
+[[ -n ${SSH_CONNECTION:-} || -n ${SSH_TTY:-} ]] && return 0
+
+# Unicode tag characters: default-ignorable, so GTK/Pango drops them (macOS
+# titlebars draw them). The module's grammar takes a decimal pid between U+E0001
+# and U+E007F.
 typeset -ga _wnw_tag_digit=(
   $'\U000E0030' $'\U000E0031' $'\U000E0032' $'\U000E0033' $'\U000E0034'
   $'\U000E0035' $'\U000E0036' $'\U000E0037' $'\U000E0038' $'\U000E0039'
