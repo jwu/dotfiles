@@ -442,7 +442,7 @@ step "default shell (zsh)" set_default_shell
 step "TTY font (vconsole)" set_tty_font
 step "drivetemp module" load_drivetemp
 step "passwordless sudo window for unattended tooling" install_sudo_window
-step "Alpine Ridge S3 wakeup fix (T1 MacBook Pro)" install_apple_suspend_fix
+step "Alpine Ridge fix + lid lock (T1 MacBook Pro)" install_apple_suspend_fix
 step "mihomo (kernel + geodata)" install_mihomo
 step "mihomo service overrides" install_mihomo_overlay
 step "enable mihomo" enable_mihomo

@@ -1,6 +1,7 @@
 #!/bin/bash
-# Install the Alpine Ridge S3 resume fix on 2016-2017 T1 MacBook Pros. Stops the
-# resume hang, not the ~45s hardware wakeup. Root only, idempotent: bootstrap/arch.sh
+# Install the Alpine Ridge S3 resume fix on 2016-2017 T1 MacBook Pros: stops the
+# resume hang (but not the ~45s hardware wakeup) and takes the lid switch away
+# from logind so niri can lock on it instead. Root only, idempotent: bootstrap/arch.sh
 # calls it during provisioning, and it can be re-run on a provisioned machine.
 # See docs/suspend.md.
 set -euo pipefail
@@ -31,6 +32,18 @@ cat > /etc/udev/rules.d/99-apple-alpine-ridge-wakeup.rules << 'EOF'
 # PME every ~45s and pull the machine out of deep sleep with the lid still shut.
 ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x8086", ATTR{device}=="0x15d2", ATTR{power/wakeup}="disabled"
 ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x8086", ATTR{device}=="0x15d4", ATTR{power/wakeup}="disabled"
+EOF
+
+# niri locks the session on lid-close (see dot_config/niri/config.kdl); logind has
+# to keep its hands off the same switch, or the two race and the machine lands in
+# the S3 loop this script exists to avoid. Takes effect on the next boot, since
+# logind reads this at startup only and restarting it would end the session.
+mkdir -p /etc/systemd/logind.conf.d
+cat > /etc/systemd/logind.conf.d/10-lid-lock.conf << 'EOF'
+# The lid only locks the session; see docs/suspend.md.
+[Login]
+HandleLidSwitch=ignore
+HandleLidSwitchExternalPower=ignore
 EOF
 
 cat > /etc/systemd/system/apple-alpine-ridge-wakeup.service << 'EOF'

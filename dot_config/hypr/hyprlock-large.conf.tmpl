@@ -110,14 +110,16 @@ input-field {
     valign = center
 }
 
-# Suspend (bottom row, 160px apart)
+# Sleep (bottom row, 160px apart). The MacBook hibernates instead of suspending:
+# its S3 is pulled back out of sleep by a Thunderbolt PME every ~45s, while S4
+# powers off for real. See docs/suspend.md.
 label {
     monitor =
     text = 󰤄
     color = rgba(255, 255, 255, 0.6)
     font_size = 50
     font_family = FiraMono Nerd Font Propo
-    onclick = systemctl suspend
+    onclick = {{ if eq .chezmoi.hostname "archlinux-macbook" }}systemctl hibernate{{ else }}systemctl suspend{{ end }}
     position = -160, 100
     halign = center
     valign = bottom

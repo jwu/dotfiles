@@ -222,3 +222,11 @@ binds {
 
     Mod+Shift+Slash { show-hotkey-overlay; }
 }
+
+// The lid locks rather than suspends on this machine: its deep S3 is pulled back
+// out of sleep by a Thunderbolt PME every ~45s, and logind is told to ignore the
+// switch so it cannot race us here. Nothing has to happen on lid-open.
+// See docs/suspend.md.
+switch-events {
+    lid-close { spawn "sh" "-c" "$HOME/.local/bin/niri-lock"; }
+}
