@@ -29,6 +29,10 @@ terminal = true
 launch = ["google-chrome-stable", "--restore-last-session"]
 spawn = "once"
 
+[apps."chromium"]
+launch = ["chromium", "--restore-last-session"]
+spawn = "once"
+
 [apps."dev.zed.Zed"]
 launch = ["zed"]
 spawn = "per_window"
@@ -37,7 +41,7 @@ spawn = "per_window"
 launch = ["obsidian"]
 spawn = "per_window"
 
-[apps."org.godotengine.Editor"]
+[apps."Godot"]
 launch = ["godot", "--editor", "--path", "{project}"]
 spawn = "per_window"
 

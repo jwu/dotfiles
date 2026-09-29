@@ -229,39 +229,58 @@ def load_config() -> Config:
 # --- save --------------------------------------------------------------------
 
 
-def godot_project_path(pid: int | None) -> str | None:
-    """Find the Godot project passed to its editor process, if any."""
-    if not isinstance(pid, int):
-        return None
-    process = PROC / str(pid)
-    try:
-        args = [arg.decode(errors="replace") for arg in (process / "cmdline").read_bytes().split(b"\0") if arg]
-        cwd = (process / "cwd").resolve()
-    except OSError:
-        return None
-
-    candidates: list[Path] = []
-    for index, arg in enumerate(args):
-        if arg == "--path" and index + 1 < len(args):
-            candidates.append(Path(args[index + 1]))
-        elif arg.startswith("--path="):
-            candidates.append(Path(arg.partition("=")[2]))
-        elif not arg.startswith("-") and index > 0:
-            candidates.append(Path(arg))
-    candidates.append(cwd)
-
-    for candidate in candidates:
-        if not candidate.is_absolute():
-            candidate = cwd / candidate
+def godot_project_path(window: dict) -> str | None:
+    """Find the Godot editor process project matching a window's title."""
+    title = (window.get("title") or "").casefold()
+    projects: dict[str, str] = {}
+    for process in PROC.iterdir():
+        if not process.name.isdecimal():
+            continue
         try:
-            candidate = candidate.resolve()
-            if candidate.is_file() and candidate.name == "project.godot":
-                candidate = candidate.parent
-            if (candidate / "project.godot").is_file():
-                return str(candidate)
+            args = [arg.decode(errors="replace") for arg in (process / "cmdline").read_bytes().split(b"\0") if arg]
+            if not args or Path(args[0]).name not in {"godot", "godot-mono"}:
+                continue
+            cwd = (process / "cwd").resolve()
         except OSError:
             continue
-    return None
+
+        candidates: list[Path] = []
+        for index, arg in enumerate(args):
+            if arg == "--path" and index + 1 < len(args):
+                candidates.append(Path(args[index + 1]))
+            elif arg.startswith("--path="):
+                candidates.append(Path(arg.partition("=")[2]))
+            elif not arg.startswith("-") and index > 0:
+                candidates.append(Path(arg))
+        candidates.append(cwd)
+
+        for candidate in candidates:
+            if not candidate.is_absolute():
+                candidate = cwd / candidate
+            try:
+                candidate = candidate.resolve()
+                if candidate.is_file() and candidate.name == "project.godot":
+                    candidate = candidate.parent
+                project_file = candidate / "project.godot"
+                if not project_file.is_file():
+                    continue
+                name = candidate.name.casefold()
+                for line in project_file.read_text(errors="replace").splitlines():
+                    if line.startswith("config/name="):
+                        try:
+                            name = str(json.loads(line.partition("=")[2])).casefold()
+                        except json.JSONDecodeError:
+                            pass
+                        break
+                projects[str(candidate)] = name
+                break
+            except OSError:
+                continue
+
+    if len(projects) == 1:
+        return next(iter(projects))
+    matches = [path for path, name in projects.items() if name and name in title]
+    return matches[0] if len(matches) == 1 else None
 
 
 def cmd_save(path: Path) -> None:
@@ -305,8 +324,8 @@ def cmd_save(path: Path) -> None:
                 "focused": bool(window.get("is_focused")),
                 "cwd": cwd,
                 "foreground": foreground,
-                "project": godot_project_path(window.get("pid"))
-                if app_id == "org.godotengine.Editor"
+                "project": godot_project_path(window)
+                if app_id == "Godot"
                 else None,
             }
         )
