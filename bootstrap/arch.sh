@@ -29,6 +29,7 @@ PACKAGES=(
   "fd"
   "bat"
   "git-delta"
+  "jq"
   "unzip"
   "terminus-font"
   "otf-firamono-nerd"

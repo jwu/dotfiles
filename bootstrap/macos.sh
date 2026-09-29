@@ -34,6 +34,7 @@ PACKAGES=(
   "fd"
   "bat"
   "git-delta"
+  "jq"
   "yazi"
   "gitui"
   "glow"
