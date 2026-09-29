@@ -125,7 +125,7 @@ evdev 监听要读 `/dev/input/event*`。加进 `input` 组是最常见的做法
 `~/dev/voice-input`，以及 `/etc/udev/rules.d/` 下它装的两条规则。腾出约 3.6 GB。
 
 同批退役的还有 `pi-voice-input` / `pi-funasr-server` / `pi-whisper-server` 三个 user 服务
-（F12 + FunASR / Whisper）。它们不在本仓库里，是手装的，删掉不影响 chezmoi 对账。
+（F12 + FunASR / Whisper）。它们不在本仓库里，是手装的，删掉不影响 chezmoi 比对。
 
 ## 音频设备
 

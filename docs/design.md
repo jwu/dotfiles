@@ -89,12 +89,12 @@ zsh-autosuggestions 在两侧都留在 `run_once_before_10`、而不进 bootstra
 实测退出码 0。
 
 `bootstrap/` 和 `docs/`、`scripts/` 一样必须在 `.chezmoiignore` 里排除——否则 chezmoi 会在
-家目录创建 `~/bootstrap/arch.sh`。
+home 目录创建 `~/bootstrap/arch.sh`。
 
 ## 源布局与来源映射
 
 chezmoi 命名规则：`dot_` = 前置点，`executable_` = 可执行位，`private_` = 0600，
-`.tmpl` = 模板。「来自」列是迁移期的对账依据，这些文件迁完后原仓库即删除。
+`.tmpl` = 模板。「来自」列是迁移期的比对依据，这些文件迁完后原仓库即删除。
 
 ```
 dot_zshrc.tmpl                         ← configs: linux/.zshrc + mac/.zshrc 合并
@@ -189,7 +189,7 @@ chezmoi 依据权限位给源文件加前缀，所以**源路径与目标路径�
 | `dot_local/bin/executable_niri-open-terminal-below` | `~/.local/bin/niri-open-terminal-below` | 755 |
 
 后加的三个 `private_` 来自 macOS 接入，它们不是风格选择：git **完全不记录目录权限**，文件也
-只记录可执行位，所以家目录上的 `0700` / `0600` 除了写进源文件名没有别处可以表达。chezmoi 的
+只记录可执行位，所以 home 目录上的 `0700` / `0600` 除了写进源文件名没有别处可以表达。chezmoi 的
 默认值是目录 `0755`、文件 `0644`，而 `~/.pi` 里躺着 `auth.json`、`~/Library` 是 macOS 的私有
 目录，两者都不该被放宽成「本机其他用户可浏览」。代价是同一份源在 Linux 上也会收敛到相同的
 权限位——这正是想要的，Linux 侧没有理由比 macOS 更宽松。
@@ -225,12 +225,12 @@ waybar 的 `module_path` 和 swaylock 都不展开 `~`（见 `docs/waybar.md`、
 `sed` 这一步。
 
 **已完成**：阶段 1 导入时，`waybar/modules.json` 与 `swaylock/config` 存的是**已替换的绝对
-路径**（`/home/jwu/...`），因为它们是从家目录读的。两者已加 `.tmpl` 后缀并替换成
+路径**（`/home/jwu/...`），因为它们是从 home 目录读的。两者已加 `.tmpl` 后缀并替换成
 `.chezmoi.homeDir`，是等价变换（`diff` 保持为空）。
 
 ### `~/.config/git/config` 与 gh 抢写
 
-实测家目录版本比 `common/.gitconfig` 多出 `gh auth login` 自动写入的段：
+实测 home 目录版本比 `common/.gitconfig` 多出 `gh auth login` 自动写入的段：
 
 ```
 [credential "https://github.com"]
@@ -281,7 +281,7 @@ git 先读 XDG 那份、再读 `~/.gitconfig`，后者覆盖前者，所以个�
 **个人层不进仓库是刻意的。** 它含邮箱、人名（macOS 这边是 `~/.gitconfig` 加它 `includeIf` 引用
 的 `~/.gitconfig-<身份>`）以及 `~/dev/<雇主>/` 这样的工作目录结构，那是本机配置，不是可以
 公开的源。曾经把这一层做成 `dot_gitconfig.tmpl` 纳管过，后来用 `chezmoi forget` 摘掉了：它删除
-源条目但保留家目录文件，所以那几份文件原样留在家里，只是不再由 chezmoi 过问。新机器上要手工
+源条目但保留 home 目录文件，所以那几份文件原样留在家里，只是不再由 chezmoi 过问。新机器上要手工
 配一次身份。
 
 `gh` 回填 credential 段时走的是 git 的 global 写入路径：`~/.gitconfig` 存在就写它，不存在
@@ -331,23 +331,24 @@ git 先读 XDG 那份、再读 `~/.gitconfig`，后者覆盖前者，所以个�
 
 ### 项目级：仓库根的 `.pi/`
 
-仓库根的 `.pi/` 是 pi 的**项目级**配置，只在把本仓库当工作目录时加载，不进家目录，
+仓库根的 `.pi/` 是 pi 的**项目级**配置，只在把本仓库当工作目录时加载，不进 home 目录，
 与上面那份 `~/.pi/agent/` 是两套互不相干的东西。它放两个方向相反的命令：
 
-- `prompts/apply.md` —— `/apply`，源 → 家目录：先把本地源同步到 `origin`，再把会话改动
-  落源，`diff` → 等确认 → `apply`，跑两次验证 no-op
-- `prompts/collect.md` —— `/collect`，家目录 → 源：把家目录侧的改动回收进仓库
+- `prompts/apply.md` —— `/apply`，源 → home 目录：先把本地源同步到 `origin`，`diff` 比对 →
+  等确认 → `apply`，跑两次验证 no-op
+- `prompts/collect.md` —— `/collect`，home 目录 → 源：把 home 目录侧的改动回收进仓库
 
-`/apply` 落源前先 `git fetch --prune origin` 并同步：这仓库同时驱动多台机器，落在过期基线
+`/apply` 比对前先 `git fetch --prune origin` 并同步：这仓库同时驱动多台机器，落在过期基线
 上的提交会变成分叉。能快进走 `--ff-only`，分叉走 `--rebase`，任何冲突都**中止整个命令**，
 要求先把 git 解决干净——不带着冲突去 `apply`。`/collect` 不参与这一步。两个命令都刻意不含
-提交动作，提交仍由人显式跑 `/commit`。
+提交动作，提交仍由人显式跑 `/commit`；它们也都不负责**入库**（把会话谈定的改动写进源），
+入库仍然是在会话里直接编辑源文件。
 
-`/collect` 的判据是 `chezmoi status` 的**第一列**——它表示家目录相对 chezmoi 上次写入的
-差异，所以第一列非空即家目录侧漂移（`/apply` 的活），第一列为空、第二列为 `M` 才是源侧
+`/collect` 的判据是 `chezmoi status` 的**第一列**——它表示 home 目录相对 chezmoi 上次写入的
+差异，所以第一列非空即 home 目录侧漂移（`/apply` 的活），第一列为空、第二列为 `M` 才是源侧
 改动。回收靠 `chezmoi re-add`，它自己会跳过模板，`create_` 文件连 `status` 都不显示，
 构建产物（`~/.local/bin` 下那类）也不是受管目标，因此手工要做的只剩两件：把模板漂移
-**语义合并**回模板（而不是把渲染结果整份写进去），以及判断家目录里未被管理的新配置
+**语义合并**回模板（而不是把渲染结果整份写进去），以及判断 home 目录里未被管理的新配置
 要不要纳入。
 
 它不需要在 `.chezmoiignore` 里排除：chezmoi 本来就忽略源目录里以点开头的条目。反过来，
@@ -432,7 +433,7 @@ call "%MY_CONFIGS%\cmds\aliases.cmd"
 取代，`init.bat` 由终端的 `session.cmd` + `AppData/Local/clink/session.lua` 取代，
 `aliases.cmd`/`timer.cmd` 随之成了孤儿。见 [`docs/windows-shell.md`](windows-shell.md)。
 
-chezmoi 在 Windows 上以 `%USERPROFILE%` 为家目录，`%APPDATA%` 即 `AppData/Roaming`。
+chezmoi 在 Windows 上以 `%USERPROFILE%` 为 home 目录，`%APPDATA%` 即 `AppData/Roaming`。
 
 ### Windows 接入时补的三处
 
@@ -471,7 +472,7 @@ Linux / macOS 的渲染逐字节不变（已逐个比对）。
 | `run_after_` | 与文件部署的相对顺序（在所有文件落盘后执行） | | |
 
 前缀可组合，如 `run_once_after_foo.sh`、`run_onchange_after_bar.sh`。**没有合法前缀的
-`.sh` 文件会被当成目标文件在家目录创建**（实测：`badprefix_test-c.sh` 被创建成
+`.sh` 文件会被当成目标文件在 home 目录创建**（实测：`badprefix_test-c.sh` 被创建成
 `~/badprefix_test-c.sh`），所以所有动作脚本必须带前缀。
 
 从两个退役仓库迁入的动作：
@@ -547,7 +548,7 @@ Windows 上由 `bootstrap/windows.bat` 的 `:ENSURE_PI_CONFIG` 步骤 clone 到 
 | `pi-config` | 删除 `agents/`、`prompts/`、`skills/`、`themes/`、`extensions-settings/`、`settings.json`、`mcp.json`、`APPEND_SYSTEM.md`、`keybindings.json`、`install.sh`；**保留仓库** |
 | `install-arch` | 演化为 `bootstrap/arch.sh`，**删除仓库** |
 | `configs/linux/config.sh:299` | 现在靠 `$ROOT_DIR/../desktop-settings` 定位 fcitx5 脚本，迁入后改为直接引用本仓库的 `run_onchange_after_40-fcitx5.sh.tmpl` |
-| 家目录 96 个 `*.bak.*` | `backup_file()` 机制随两个仓库退役，一次性清理 |
+| home 目录 96 个 `*.bak.*` | `backup_file()` 机制随两个仓库退役，一次性清理 |
 
 顺带修一处 bug：`desktop-settings/AGENTS.md` 提到 `obsidian/template-vault/`，该目录不存在。
 
@@ -560,7 +561,7 @@ Windows 上由 `bootstrap/windows.bat` 的 `:ENSURE_PI_CONFIG` 步骤 clone 到 
 - chezmoi `v2.72.2`（pacman，`extra` 仓库）已装
 - 源目录 `~/bin/dotfiles` 已 `init`；`.chezmoiignore` 拦住了 `README.md` / `docs` /
   `bootstrap` / `scripts`
-- **67 个 Linux 配置从家目录导入**（66 个首批 + 对账补入的 `niri/config.kdl`）
+- **67 个 Linux 配置从 home 目录导入**（66 个首批 + 比对时补入的 `niri/config.kdl`）
 - 基线 commit `1aabe1e` → <https://github.com/jwu/dotfiles>（public）
 
 **阶段 3 模板化（5/5 完成，全部是等价变换）**
@@ -583,29 +584,29 @@ Windows 上由 `bootstrap/windows.bat` 的 `:ENSURE_PI_CONFIG` 步骤 clone 到 
 
 四处关键做法：
 
-- 导入用「从家目录读取」而非「从仓库读取」，所以首次 `apply` 是空操作，**不存在覆盖
+- 导入用「从 home 目录读取」而非「从仓库读取」，所以首次 `apply` 是空操作，**不存在覆盖
   风险**。
 - 模板化用渲染比对验证：Linux 侧看 `chezmoi diff` 为空，macOS 侧用 Go 的 `text/template`
   渲染后与 `configs/mac/` 原件 `diff`（因为 `chezmoi execute-template` 无法覆盖
   `.chezmoi.os`）。
 - `dot_zshrc.tmpl` 的空白是精确调过的：`{{ if }}` / `{{ end }}` 独占一行时自身贡献一个
   换行（充当空行），而 `-}}` 会吃掉**所有**连续空白而非一个换行，用错就会丢空行。
-- 对账用脚本把 `configs` 里所有 `$HOME/*` 写入目标与 `chezmoi managed` 逐条比对，而非
+- 用一个脚本把 `configs` 里所有 `$HOME/*` 写入目标与 `chezmoi managed` 逐条比对，而非
   人工读脚本——`niri/config.kdl` 的遗漏就是这样发现并补上的。
 
-### 已完成：阶段 2 对账
+### 已完成：阶段 2 比对
 
-对 `configs`、`desktop-settings`、`pi-config` 的每个配置源文件与家目录对应文件逐对 `diff`，
-结论：**没有「仓库有而家目录没有」的反向漂移**，两个退役仓库的配置可以安全删除。
+对 `configs`、`desktop-settings`、`pi-config` 的每个配置源文件与 home 目录对应文件逐对 `diff`，
+结论：**没有「仓库有而 home 目录没有」的反向漂移**，两个退役仓库的配置可以安全删除。
 
-全部 4 处差异都是预期内的，且方向都是「家目录 ⊇ 仓库」或语义等价：
+全部 4 处差异都是预期内的，且方向都是「home 目录 ⊇ 仓库」或语义等价：
 
 | 文件 | 差异性质 |
 | --- | --- |
-| `configs/common/.gitconfig` | 家目录是超集：多出 `gh` 写入的 2 个 credential 段与 `[http]` 代理段；另有缩进风格差异（git 自己重写为 tab）。**无内容丢失** |
-| `configs/linux/.config/waybar/modules.json` | 仓库是 `__WAYBAR_MODULE_DIR__` 占位符，家目录是渲染后的绝对路径——语义等价，且该语义已由 `modules.json.tmpl` 继承 |
+| `configs/common/.gitconfig` | home 目录是超集：多出 `gh` 写入的 2 个 credential 段与 `[http]` 代理段；另有缩进风格差异（git 自己重写为 tab）。**无内容丢失** |
+| `configs/linux/.config/waybar/modules.json` | 仓库是 `__WAYBAR_MODULE_DIR__` 占位符，home 目录是渲染后的绝对路径——语义等价，且该语义已由 `modules.json.tmpl` 继承 |
 | `configs/linux/.config/swaylock/config` | 同上（`__SWAYLOCK_BACKGROUND_DIR__`） |
-| `pi-config/settings.json` | 家目录多出 `lastChangelogVersion` / `defaultProvider` / `defaultModel` 三个**本机状态**字段；`packages` 插件列表两边都有。已决定整体排除 |
+| `pi-config/settings.json` | home 目录多出 `lastChangelogVersion` / `defaultProvider` / `defaultModel` 三个**本机状态**字段；`packages` 插件列表两边都有。已决定整体排除 |
 
 `desktop-settings` 的全部 6 个配置与 `pi-config` 的静态资源（`agents` / `prompts` / `skills` /
 `themes`）逐字节一致。
@@ -638,7 +639,7 @@ Windows 上由 `bootstrap/windows.bat` 的 `:ENSURE_PI_CONFIG` 步骤 clone 到 
   哈希，所以「源变则重编」不需要任何额外的状态文件。
 - 脚本用 `.tmpl` 后缀拿 `{{ .chezmoi.sourceDir }}`，因为辅助文件
   （`scripts/gpu-watch.c`、`scripts/waybar-niri-windows.sh`）放在被 `.chezmoiignore` 排除的
-  `scripts/` 里；不这做它们会被部署到家目录。
+  `scripts/` 里；不这做它们会被部署到 home 目录。
 - `run_once_after_50-pi-config.sh.tmpl` **不调用** `pi-config/install.sh`：它复制的东西
   （先是 `agents/` / `skills/` / `prompts/` / `themes/`，后来是 `settings.json` / `mcp.json`）
   全部归 chezmoi，两边会争同一份文件。脚本只负责 clone，npm 插件由 pi 自己按
@@ -729,11 +730,11 @@ Defaults timestamp_timeout=15
 **它由 `bootstrap/arch.sh` 的 `install_sudo_window` 安装，而不是 chezmoi 的文件层。** 三层原因：
 chezmoi 根本没有 `absolute_` 这类属性（官方 attributes 表里只有 `after_`…`symlink_` 那十几个，
 源里的路径一律相对 home）；普通 `chezmoi apply` 写不了 `/etc`，会 fail-fast 拖停整个 apply，
-而 `sudo chezmoi apply` 会把家目录文件的 owner 变成 root；同时 `chezmoi diff` 会永远非空，
-破坏「diff 必须为空」这条对账判据。官方 FAQ 对 home 之外的文件的立场也是「可行但强烈不建议」，
+而 `sudo chezmoi apply` 会把 home 目录文件的 owner 变成 root；同时 `chezmoi diff` 会永远非空，
+破坏「diff 必须为空」这条比对判据。官方 FAQ 对 home 之外的文件的立场也是「可行但强烈不建议」，
 推荐做法就是 `run_` 脚本 + sudo。
 
-代价是它只在新机器 bootstrap 时落地：已经对账的机器（本机）要手工装一次，之后源里改了
+代价是它只在新机器 bootstrap 时落地：已经比对的机器（本机）要手工装一次，之后源里改了
 也不会自动同步。脚本本身幂等，内容一致时直接跳过。
 
 一个坑：`sudo tee` 写出来的 `sudoers.d` 文件默认是 `0644`，**运行时 sudo 会接受，但
@@ -785,7 +786,7 @@ install.sh 因此不再被调用，见「pi 的 settings/mcp 纳入 `create_`」
 ### 已完成：macOS 接入（2026-09-26）
 
 macOS 机器（Apple Silicon，macOS 27.0）按 `docs/onboarding-a-machine.md` 执行完毕，共 7 个提交
-`ac55046`..`e489f45`。对账出 12 处差异，方向都不是「源是对的」：
+`ac55046`..`e489f45`。比对出 12 处差异，方向都不是「源是对的」：
 
 | 类别 | 处理 |
 | --- | --- |
@@ -810,11 +811,11 @@ chezmoi 的 fail-fast 会让一个注定失败的脚本永久拖住 apply）。
 ### Windows 接入（2026-09-26）
 
 Windows 这台（Windows 11 10.0.26200）此前**从未接过 chezmoi**：scoop 装了 binary，但没有
-`%USERPROFILE%\.config\chezmoi\chezmoi.toml`、没有 state，家目录一直跑在旧 `~/bin/configs` 上
+`%USERPROFILE%\.config\chezmoi\chezmoi.toml`、没有 state，home 目录一直跑在旧 `~/bin/configs` 上
 （`~/.wezterm.lua`、`%APPDATA%\alacritty\alacritty.toml`、`%APPDATA%\neovide\config.toml`
 都是 `config.bat` 生成的指针，clink 由 `init.bat` 注入）。
 
-对账结论：10 个 Windows 目标**都是源更新**，没有任何一份 home 配置更新。其中最旧的是
+比对结论：10 个 Windows 目标**都是源更新**，没有任何一份 home 配置更新。其中最旧的是
 `AppData/Local/nvim/init.lua`（1645 行，早于仓库的 1718 行：缺 `is_win` 分支、explorer
 reveal、render-markdown、gdscript LSP）和 `.pi/agent/themes/one-dark.json`（5 月版）。
 
@@ -855,7 +856,7 @@ Zed 的 Windows settings 与 Unix 侧那份已经对齐（补齐 `project_panel`
 
 接入时曾把 git 个人层做成 `dot_gitconfig.tmpl` 纳管，随后判定它不该在仓库里——它含邮箱、
 人名与 `~/dev/<雇主>/` 这样的工作目录结构。用 `chezmoi forget` 摘出：它删除源条目但保留
-家目录文件，所以那几份文件原样留在家中，只是不再由 chezmoi 过问。个人层现在手工维护在
+home 目录文件，所以那几份文件原样留在家中，只是不再由 chezmoi 过问。个人层现在手工维护在
 `~/.gitconfig`，分层见「公共层与个人层」。
 
 因为仓库是 public，又用 `git filter-repo` 把那三条路径连同雇主名从全部历史里抹掉，所以
@@ -920,7 +921,7 @@ macOS 那台在 `505a4fa` 之后一直没再 apply，累积了一批源改动：
 
 - **zellij 整体移除。** 唯一的源文件 `dot_config/zellij/config.kdl` 是 Linux 专用
   （`default_shell "/usr/bin/zsh"`、`copy_command "wl-copy"`），却因为 `.chezmoiignore`
-  只在 Windows 侧排除而会落到 macOS 家目录，而 macOS 从来没装过 zellij。它也不再被
+  只在 Windows 侧排除而会落到 macOS home 目录，而 macOS 从来没装过 zellij。它也不再被
   使用，所以直接删源，并同步 README 的工具列表与 `.chezmoiignore` 的排除项。
   **Linux 那台的 `~/.config/zellij/config.kdl` 是 chezmoi 早先放下的，删源条目不会回收
   它**，要手工删。

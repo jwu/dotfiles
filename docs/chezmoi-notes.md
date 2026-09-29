@@ -4,7 +4,7 @@
 
 ## `.chezmoiignore` 匹配的是**目标**路径
 
-不是源路径。所以里面写 `README.md` 指的是家目录下的 `~/README.md`——不加这一行，
+不是源路径。所以里面写 `README.md` 指的是 home 目录下的 `~/README.md`——不加这一行，
 `chezmoi apply` 会真的在 `~` 下创建 `README.md`。
 
 ## 源里以点开头的条目不算目标
@@ -13,13 +13,13 @@ chezmoi 忽略源目录中名字以 `.` 开头的条目（`.chezmoi*` 系列除�
 `.pi/` 这类目录既不会被部署，也不会出现在 `chezmoi managed` 里。
 
 推论：**不要**为了「排除」它而往 `.chezmoiignore` 里写 `.pi`。那一行匹配的是目标路径，
-排除掉的是家目录的 `~/.pi`（那份真源在 `private_dot_pi/`），等于凭空卸掉一整套 pi 配置。
+排除掉的是 home 目录的 `~/.pi`（那份真源在 `private_dot_pi/`），等于凭空卸掉一整套 pi 配置。
 
 ## 排除要双向做
 
 只写「非 Linux 时排除 macOS / Windows 目标」是不够的，反过来同样需要。否则在 macOS
 上整套 Linux 目标仍然是 managed 状态，`apply` 会把 hyprland / niri / waybar /
-swaylock / fcitx5 一整套铺进家目录。
+swaylock / fcitx5 一整套铺进 home 目录。
 
 ## 排除整棵子树，而不是逐个文件
 
@@ -58,7 +58,7 @@ chezmoi 依据权限位给源文件加前缀，所以源路径与目标路径不
 
 ## git 不记录目录权限
 
-所以家目录上的 `0700` / `0600` 除了写进源文件名（`private_` 前缀）没有别处可以
+所以 home 目录上的 `0700` / `0600` 除了写进源文件名（`private_` 前缀）没有别处可以
 表达。chezmoi 的默认值是目录 `0755`、文件 `0644`——`~/.pi` 里躺着 `auth.json`，
 `~/Library` 是 macOS 的私有目录，两者都不该被放宽。
 
@@ -91,9 +91,9 @@ sourceDir = "/Users/<user>/bin/dotfiles"
 
 它是 chezmoi 自己的配置（鸡生蛋：chezmoi 不可能管自己的源在哪），不由本仓库管理。
 
-## 家目录里不纳入源的清单
+## home 目录里不纳入源的清单
 
-`/collect` 会扫出「家目录有、源没管」的文件。递归全扫撞上的几千个运行时数据不必逐个
+`/collect` 会扫出「home 目录有、源没管」的文件。递归全扫撞上的几千个运行时数据不必逐个
 判断：命中下表的一律跳过。判据只有两类——**它不是配置**，或者**它是这台机器的身份**。
 
 ### 工具自己生成 / 重写

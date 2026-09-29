@@ -28,7 +28,7 @@
 1. **[`docs/design.md`](design.md)** —— 仓库的完整设计。至少读「仓库边界」「源布局与来源映射」「模板化的文件」
    「属性前缀会进源路径」「脚本层：`run_` 前缀」几节。
 2. **本文第 2 节的铁律** —— 违反它会造成不可逆的数据丢失。
-3. **你所在平台的现状** —— 那台机器上的家目录配置，很可能和你将要 apply 的源**不一致**。
+3. **你所在平台的现状** —— 那台机器上的 home 目录配置，很可能和你将要 apply 的源**不一致**。
 
 ---
 
@@ -47,11 +47,11 @@
 | 运行时动作 | 6 个 `run_*` 脚本，按内容 hash 记账 | 否 |
 
 **关键**：源里 macOS / Windows 的那 13 个配置，是在 Linux 机器上**从旧仓库的副本复制进来的**，
-不是从你那台机器的家目录导入的。所以它们**可能比你的家目录旧**。
+不是从你那台机器的 home 目录导入的。所以它们**可能比你的 home 目录旧**。
 
 ---
 
-## 2. 铁律：对账之前不要 `apply`
+## 2. 铁律：比对之前不要 `apply`
 
 ```bash
 # 错的顺序（会覆盖机器上更新的配置）
@@ -62,7 +62,7 @@ chezmoi init
 chezmoi diff --include=files      # 先看会改什么
 ```
 
-原因：`apply` 是「让家目录匹配源」。如果源里的那一份比你家目录旧，apply 就会用旧内容**覆盖**
+原因：`apply` 是「让 home 目录匹配源」。如果源里的那一份比你 home 目录旧，apply 就会用旧内容**覆盖**
 你机器上更新的配置。Linux 那边已经证实过这种漂移真实存在——`~/.config/git/config` 比仓库版本
 多出 `gh auth login` 写入的 credential 段。
 
@@ -73,7 +73,7 @@ chezmoi diff --include=files      # 先看会改什么
 ## 3. 步骤
 
 > **捷径**：全新机器不用照下面手工来，直接跑 `bootstrap/arch.sh` / `bootstrap/macos.sh` /
-> `bootstrap/windows.bat`。它们已经把 §3.1–3.3 与装包做完了。但**§3.4 的对账与 §3.6 的验证
+> `bootstrap/windows.bat`。它们已经把 §3.1–3.3 与装包做完了。但**§3.4 的比对与 §3.6 的验证
 > 仍要自己做**——那才是这个任务的核心，bootstrap 不替你做。下面保留手工步骤，用于排查
 > bootstrap 到底干了什么，或者它的步骤不适合这台机器时。
 
@@ -127,7 +127,7 @@ sourceDir = "C:/Users/<你的用户名>/bin/dotfiles"
 
 验证：`chezmoi source-path` 应输出你刚写的路径。
 
-### 3.4 对账（这一步是本次任务的核心）
+### 3.4 比对（这一步是本次任务的核心）
 
 ```bash
 chezmoi diff --include=files
@@ -138,10 +138,10 @@ chezmoi managed --include=files      # 源认为它管着哪些文件
 
 | 情况 | 判据 | 处理 |
 | --- | --- | --- |
-| 家目录版本更新 | 家目录的 mtime 更晚，或内容里含本机特有的东西（路径、凭据、hostname） | **`chezmoi add <文件>`** 收进源，把家目录版本变成真源 |
-| 源版本更新 | 源里的内容确实是你想要的、家目录那份是旧的残留 | 保留源版本，稍后 `apply` 覆盖 |
-| 只在家目录存在 | `chezmoi managed` 里没有，但文件确实是你维护的配置 | `chezmoi add` 纳入（注意先读 §4 的排除清单） |
-| 只在源里存在 | 文件在家目录不存在 | 正常（平台专有文件，如 macOS 的 `dot_aerospace.toml`） |
+| home 目录版本更新 | home 目录的 mtime 更晚，或内容里含本机特有的东西（路径、凭据、hostname） | **`chezmoi add <文件>`** 收进源，把 home 目录版本变成真源 |
+| 源版本更新 | 源里的内容确实是你想要的、home 目录那份是旧的残留 | 保留源版本，稍后 `apply` 覆盖 |
+| 只在 home 目录存在 | `chezmoi managed` 里没有，但文件确实是你维护的配置 | `chezmoi add` 纳入（注意先读 §4 的排除清单） |
+| 只在源里存在 | 文件在 home 目录不存在 | 正常（平台专有文件，如 macOS 的 `dot_aerospace.toml`） |
 
 **把你判断出的漂移清单连同证据（mtime、diff 摘要）报告给用户**，`chezmoi add` 之前请用户确认。
 不要自己替用户决定哪一份是他想要的。
@@ -178,7 +178,7 @@ chezmoi apply -v                    # 再跑一次，应输出 0 行（彻底 no
 
 ### 3.7 把改动回写到仓库
 
-你在对账时可能 `chezmoi add` 了新文件、修了脚本。这些改动**属于仓库**，要提交：
+你在比对时可能 `chezmoi add` 了新文件、修了脚本。这些改动**属于仓库**，要提交：
 
 ```bash
 cd ~/bin/dotfiles
@@ -247,7 +247,7 @@ git push
 
 **(a) `.chezmoiignore` 只做了单向排除。** 它把 macOS / Windows 目标在 Linux 上排除了，但没有
 反过来排除 Linux 目标，所以在 darwin 上整套 hyprland / niri / waybar / swaylock / fcitx5 /
-GTK 标题栏 CSS / `niri-*` 脚本（约 50 个文件）仍然是 managed 状态，`apply` 会在 macOS 家目录里
+GTK 标题栏 CSS / `niri-*` 脚本（约 50 个文件）仍然是 managed 状态，`apply` 会在 macOS home 目录里
 把它们铺开。已加反向排除块。
 
 注意 `~/.local` 是**整棵子树**排除的：只忽略里面的文件仍然会让 chezmoi 创建
@@ -326,10 +326,10 @@ macOS 15.x / Windows 11（写明版本）
 ## 执行到哪一步
 3.1 … 3.7 中的哪一步完成/卡住
 
-## 对账结果
+## 比对结果
 | 文件 | 方向 | 依据（mtime / 内容摘要） | 处理 |
 | --- | --- | --- | --- |
-| ~/.zshrc | 家目录更新 | 家目录 09-27，源 09-25 | chezmoi add |
+| ~/.zshrc | home 目录更新 | home 目录 09-27，源 09-25 | chezmoi add |
 | …      |            |                        |          |
 
 ## 我改动的仓库内容
@@ -352,5 +352,5 @@ macOS 15.x / Windows 11（写明版本）
 
 ## 8. 一句话总结
 
-**先 `diff` 对账，再 `apply`；判断方向，不要默认源是对的；需要 root 的动作用 bootstrap；
+**先 `diff` 比对，再 `apply`；判断方向，不要默认源是对的；需要 root 的动作用 bootstrap；
 `run_*` 脚本失败后要清 `scriptState` 才能重试；改完推回仓库。**

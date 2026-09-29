@@ -35,7 +35,7 @@
 
 读 `linux/config.sh`（316 行）后，它的动作可以干净地切成两类。
 
-### 进 chezmoi（纯家目录文件写入，约占 95%）
+### 进 chezmoi（纯 home 目录文件写入，约占 95%）
 
 - `~/.config/` 下：`nvim/init.lua`、`neovide/config.toml`、`git/config`、
   `starship.toml`、`zellij/config.kdl`、`yazi/{yazi.toml,theme.toml}`、
@@ -61,7 +61,7 @@
 | `bash desktop-settings/fcitx5/install-linux.sh` | 末尾 | 保留（跨仓库调用） |
 | pacman 装包、`gcc -O2 -o gpu-watch`、装工具链 | `linux/install.sh` | 完全不动 |
 
-chezmoi 的设计目标是家目录里的**文件**，它不接管 root 拥有的路径，也不装包。所以
+chezmoi 的设计目标是 home 目录里的**文件**，它不接管 root 拥有的路径，也不装包。所以
 `install.sh`（装机、装包、编译）和 `install-arch` 仓库与本方案无关。
 
 ## 目标源布局
@@ -160,7 +160,7 @@ Linux 是 `config.ghostty`，macOS 是 `config`。两个办法：
 
 ## 与 gh 抢 `~/.config/git/config`
 
-实测家目录的 `~/.config/git/config` 和仓库的 `common/.gitconfig` **已经漂移**，家目录
+实测 home 目录的 `~/.config/git/config` 和仓库的 `common/.gitconfig` **已经漂移**，home 目录
 多出一段由 `gh auth login` 自动写入的内容：
 
 ```
@@ -198,9 +198,9 @@ Linux 是 `config.ghostty`，macOS 是 `config`。两个办法：
 sudo pacman -S chezmoi
 ```
 
-### 阶段 1：从**家目录**导入，而不是从仓库导入
+### 阶段 1：从**home 目录**导入，而不是从仓库导入
 
-这是整个方案最关键的一步。导入源用家目录的当前状态，那么首次 `diff` / `apply` 必然是
+这是整个方案最关键的一步。导入源用 home 目录的当前状态，那么首次 `diff` / `apply` 必然是
 空操作，**不存在覆盖风险**：
 
 ```bash
@@ -209,7 +209,7 @@ chezmoi --source ~/bin/dotfiles add ~/.zshrc ~/.config/starship.toml ...
 chezmoi --source ~/bin/dotfiles diff      # 必须零输出 = 源即现状
 ```
 
-### 阶段 2：与仓库对账，产出漂移清单
+### 阶段 2：与仓库比对，产出漂移清单
 
 逐个比对源文件与 `linux/`、`mac/`、`common/` 中的副本：
 
@@ -218,7 +218,7 @@ diff ~/bin/dotfiles/dot_zshrc ~/bin/configs/linux/.zshrc
 ```
 
 已知至少 1 处漂移（`~/.config/git/config` 对 `common/.gitconfig`）。这一步的价值在于找出
-所有「手改过家目录但没回写仓库」的文件——**这些文件里可能有仓库版本没有的内容，直接以
+所有「手改过 home 目录但没回写仓库」的文件——**这些文件里可能有仓库版本没有的内容，直接以
 仓库为准会丢东西**。
 
 ### 阶段 3：模板化，用渲染结果做等价性验证
@@ -240,7 +240,7 @@ chezmoi --source ~/bin/dotfiles execute-template < dot_zshrc.tmpl | diff - ~/.zs
 
 ## 风险
 
-1. **首次 `apply` 的删除语义**。chezmoi 会移除源中不存在的受管文件。阶段 1 从家目录
+1. **首次 `apply` 的删除语义**。chezmoi 会移除源中不存在的受管文件。阶段 1 从 home 目录
    导入能规避这一点，但如果改成从仓库方向导入，必须先 `chezmoi -n -v apply` 干跑。
 2. **`gh` 与 `~/.config/git/config` 的写入冲突**，见上节，必须先解决再纳入。
 3. **`command -v X` 条件部署的行为变化**。`config.sh` 里大量 `if command -v

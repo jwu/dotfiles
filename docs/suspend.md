@@ -198,7 +198,7 @@ hibernate 恢复会**把系统时间还原**成休眠前的值，所以「命令
 非 MacBook 的机器上安装器直接 `exit 0`（DMI 不匹配），所以 mac mini 跑同一份
 bootstrap 不会受影响。
 
-已经接入对账的机器不需要重跑 bootstrap，手工执行同一条命令即可：
+已经接入比对的机器不需要重跑 bootstrap，手工执行同一条命令即可：
 
 ```bash
 sudo ~/bin/dotfiles/scripts/apple-macbook-suspend-fix.sh

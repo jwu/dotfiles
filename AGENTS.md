@@ -12,7 +12,7 @@
 - `docs/onboarding-a-machine.md` —— 新机器接入说明，给那台机器上运行的 agent 读
 - `bootstrap/arch.sh`、`bootstrap/macos.sh`、`bootstrap/windows.bat` —— 装机入口，唯一需要 root 或终端的一层（Windows 那份两者都不需要）
 - `run_*.sh` —— chezmoi 在 apply 期间执行的动作脚本
-- `.chezmoiignore` —— 决定哪些源文件**不**落到家目录
+- `.chezmoiignore` —— 决定哪些源文件**不**落到 home 目录
 
 ### 常用命令
 
@@ -43,7 +43,7 @@ dotfiles/
   │   ├── macos.sh
   │   └── windows.bat
   ├── run_*.sh                # chezmoi 动作脚本，按前缀决定触发时机
-  ├── scripts/                # run_* 的辅助文件与被编译的源码，不部署到家目录
+  ├── scripts/                # run_* 的辅助文件与被编译的源码，不部署到 home 目录
   ├── dot_*/                  # chezmoi 源（dot_ = 目标名前置一个点）
   ├── private_*/              # 0700 / 0600 的目标（git 不记录目录权限，只能写进文件名）
   ├── AppData/                # Windows 专有目标
@@ -90,7 +90,7 @@ dotfiles/
   `.tmpl` 模板。
 - **属性前缀会进源路径**，所以源路径与目标路径不一定逐字对应；`include` 之类必须写源路径
   （`docs/chezmoi-notes.md` 里有踩过的例子）。
-- 动作脚本必须带 `run_` 前缀。没有合法前缀的 `*.sh` 会被当成目标文件，在家目录里创建出来。
+- 动作脚本必须带 `run_` 前缀。没有合法前缀的 `*.sh` 会被当成目标文件，在 home 目录里创建出来。
 - 新的推导写 `docs/<主题>.md`，不要再开一层文档目录。
 
 ### 搜索
@@ -127,9 +127,9 @@ dotfiles/
 
 - 严禁让仓库里的脚本引用、clone 或依赖已退役的 `configs` / `desktop-settings`（已删除）。
   `pi-config` 是唯一允许 clone 的外部仓库。
-- 严禁把 `bootstrap/`、`docs/`、`scripts/` 从 `.chezmoiignore` 里去掉——那会在家目录
+- 严禁把 `bootstrap/`、`docs/`、`scripts/` 从 `.chezmoiignore` 里去掉——那会在 home 目录
   里造出 `~/bootstrap/arch.sh` 这类文件。
-- 严禁跳过对账直接 `apply` 到一台尚未接入的机器：`apply` 会让家目录匹配源，源里那份可能更旧。
+- 严禁跳过比对直接 `apply` 到一台尚未接入的机器：`apply` 会让 home 目录匹配源，源里那份可能更旧。
 - 严禁把个人身份写进仓库：邮箱、姓名、工作目录。git 的个人层在 `~/.gitconfig`，每台机器手工维护。
 - 严禁为了「整齐」去翻译用户可见的字符串：`dot_config/waybar/**` 的 `format` /
   `tooltip-format`、`gpu-watch.c` 的 `emit_off()` 消息、`update-rime-dict.sh` 的 `--help`、
@@ -139,7 +139,7 @@ dotfiles/
 
 ### 以下操作必须先征求用户同意
 
-- 对一台**尚未对账**的机器执行 `chezmoi apply`。
+- 对一台**尚未比对**的机器执行 `chezmoi apply`。
 - 大规模移动或重命名源文件。
 - 删除文件、`chezmoi forget`、`git filter-repo`、force push。
 - `git commit` 与 `git push`。

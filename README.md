@@ -78,8 +78,8 @@ chezmoi diff --include=files    # 先看会改什么
 chezmoi apply -v
 ```
 
-> **别跳过 `diff`。** `apply` 的语义是「让家目录匹配源」，所以源里那份若是旧的，它会用旧内容
-> 覆盖你家目录里的新内容。一台尚未对账过的机器，完整流程见
+> **别跳过 `diff`。** `apply` 的语义是「让 home 目录匹配源」，所以源里那份若是旧的，它会用旧内容
+> 覆盖你 home 目录里的新内容。一台尚未比对过的机器，完整流程见
 > [`docs/onboarding-a-machine.md`](docs/onboarding-a-machine.md)。
 
 ## 日常
@@ -112,10 +112,10 @@ chezmoi state delete-bucket --bucket=scriptState
 
 ```
 dotfiles/
-  ├── .chezmoiignore     # 决定哪些源文件不落到家目录（本身是模板）
+  ├── .chezmoiignore     # 决定哪些源文件不落到 home 目录（本身是模板）
   ├── bootstrap/         # 装机入口：唯一需要 root / 终端的层
   ├── run_*.sh           # chezmoi 在 apply 期间执行的动作
-  ├── scripts/           # run_* 的辅助文件与被编译的源码，不部署到家目录
+  ├── scripts/           # run_* 的辅助文件与被编译的源码，不部署到 home 目录
   ├── dot_*/             # chezmoi 源：dot_ = 目标名前置一个点
   ├── private_*/         # 0700 / 0600 的目标
   ├── AppData/           # Windows 专有目标
@@ -141,7 +141,7 @@ chezmoi 的源路径与目标路径不一定逐字对应：`dot_` 加前置点�
 
 - [`docs/design.md`](docs/design.md) — 仓库的设计推导与实施记录。遇到结构性问题先读它。
 - [`docs/onboarding-a-machine.md`](docs/onboarding-a-machine.md) — 在一台新机器上接入的完整流程，给那台机器上的 agent 读。
-- [`docs/chezmoi-notes.md`](docs/chezmoi-notes.md) — chezmoi 的坑：目标路径匹配、双向排除、空父目录、目录权限、脚本记账，以及**家目录里不纳入源的清单**。
+- [`docs/chezmoi-notes.md`](docs/chezmoi-notes.md) — chezmoi 的坑：目标路径匹配、双向排除、空父目录、目录权限、脚本记账，以及**home 目录里不纳入源的清单**。
 - [`docs/chezmoi-migration.md`](docs/chezmoi-migration.md) — chezmoi 方案成型之前的评估记录：边界划分、源目录布局、四处模板化。
 - [`docs/alacritty.md`](docs/alacritty.md) — Alacritty 与 Ghostty 的逐项对齐，以及 Wayland 下的窗口装饰。
 - [`docs/shell.md`](docs/shell.md) — zsh 配置里的两个坑：nvm 的两种装法与 Apple Silicon 的 MPS 变量。
