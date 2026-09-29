@@ -1,21 +1,21 @@
 ---
-description: 把本次会话的改动落到 dotfiles 源，对账并 apply
+description: 比对 dotfiles 源与 home 目录，应用并验证
 argument-hint: "[焦点]"
 ---
 
-把本次会话谈定的改动落到本仓库（chezmoi 源），然后对账、应用、验证。
+把本仓库（chezmoi 源）与 home 目录比对，然后应用、验证。
 本命令只作用于本仓库。
 
 ## 本次焦点
 
-${@:-（未指定，处理本次会话中所有已谈定的改动）}
+${@:-（未指定，比对本仓库当前的全部差异）}
 
 ## 0. 前置检查
 
 ### 0.1 先把本地源同步到 origin
 
-改动必须落在一个最新的基线上：本仓库同时驱动多台机器，落在过期基线上的提交会变成
-分叉。先同步：
+比对必须基于最新的源：本仓库同时驱动多台机器，落在过期基线上的结论会和别处不一致。
+先同步：
 
 ```bash
 git fetch --prune origin
@@ -29,35 +29,21 @@ git status -sb | head -1     # ## main...origin/main [ahead N, behind M]
 - 已是最新：跳过
 
 任何一步失败——无网络、未提交改动挡住 rebase、rebase 冲突——都**立即中止 `/apply`**，
-不要落源、不要 apply。把 `git status` 和冲突文件报告给我，说明仓库正卡在 rebase 中间态
+不要 apply。把 `git status` 和冲突文件报告给我，说明仓库正卡在 rebase 中间态
 （`git rebase --continue` 继续 / `git rebase --abort` 放弃），等我把 git 冲突解决干净再重跑。
 
 ### 0.2 其余检查
 
-- `git status --short` 看源里已有哪些未提交改动，避免和本次改动混淆
-- 如果家目录与源的差异远超本次改动（像是这台机器尚未对账），停下报告，不要 apply
+- `git status --short` 看源里已有哪些未提交改动，避免和本次比对的差异混淆
+- 如果 home 目录与源的差异远超预期（像是这台机器尚未比对过），停下报告，不要 apply
 
-## 1. 落源
-
-把本次会话谈定的改动写进源文件，遵守仓库规则：
-
-- 源文件命名：`dot_`（前置点）、`private_`（0600/0700）、`executable_`（755）、`.tmpl`（模板）
-- 注释用简洁英文，只留代码说不出的东西：一个非显然的约束，或一个指向
-- 繁琐信息写进 `docs/<主题>.md`，注释里指向它；不要再开一层文档目录
-- 结构性改动先看 `docs/design.md` 有无对应章节需要同步
-- 模板改完必须单独渲染比对，不要凭想象：
-
-  ```bash
-  chezmoi execute-template < 源模板 | diff - ~/对应目标
-  ```
-
-## 2. 对账
+## 1. 比对
 
 - 跑 `chezmoi diff --include=files`，看清配置层会改什么
 - 把摘要展示给我：哪些目标 A/M/D、关键 hunk 的含义
-- **等我说确认之后再 apply**。如果 diff 为空，说明源已生效，直接跳到第 4 步
+- **等我说确认之后再 apply**。如果 diff 为空，说明源已生效，直接跳到第 3 步
 
-## 3. 应用
+## 2. 应用
 
 - 跑 `chezmoi apply -v`
 - 如果 `run_*` 脚本失败：chezmoi 是 fail-fast，失败的脚本会被记进 `scriptState`
@@ -68,9 +54,9 @@ git status -sb | head -1     # ## main...origin/main [ahead N, behind M]
   ```
 
 - 平台不适用的 `run_*` 脚本必须 `exit 0`，不能让它在别的 OS 上失败
-- 严禁为了让 diff 干净而放宽源内容去迁就当前家目录——源是真源
+- 严禁为了让 diff 干净而放宽源内容去迁就当前 home 目录——源是真源
 
-## 4. 验证
+## 3. 验证
 
 ```bash
 chezmoi apply -v                 # 必须零输出
@@ -79,9 +65,9 @@ chezmoi diff --include=files     # 必须为空
 
 两步任一不满足，回到第 1 步继续查。
 
-## 5. 汇报
+## 4. 汇报
 
-- 列出本次落源的文件，各自改了什么
+- 列出本次比对的差异：哪些目标 A/M/D、各自的关键 hunk 含义
 - 给出两步验证的结果
 - 需要提交时提醒我显式跑 `/commit`，**不要自行 commit 或 push**
 
