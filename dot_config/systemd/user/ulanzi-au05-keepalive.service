@@ -1,0 +1,14 @@
+[Unit]
+Description=Keep the Ulanzi Vibe Key (AU05) HID interfaces open
+# The AU05 firmware reboots its USB transceiver after ~4 s without a process
+# holding one of its HID interfaces, which churns the input event node and makes
+# the microphone drop out every few seconds. See docs/ulanzi-au05.md.
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/ulanzi-au05-keepalive
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target

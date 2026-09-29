@@ -1,0 +1,13 @@
+# Ulanzi Vibe Key AU05 (fff1:00dd). Two separate grants are needed:
+#
+#   input  - voxtype's evdev listener reads the keyboard event node to see the
+#            F9 that the mic key emits. Matched by USB id, because the sysfs
+#            name ("AU05 AU05 Keyboard") is no more unique than the generic
+#            "USB Keyboard" on other keyboards.
+#   hidraw - the keepalive daemon holds both HID interfaces open, without which
+#            the firmware reboots its USB transceiver every ~4 s.
+#
+# uaccess only applies to the logged-in session, and it survives the device
+# re-enumerating. See docs/ulanzi-au05.md.
+SUBSYSTEM=="input", ENV{ID_INPUT_KEYBOARD}=="1", ATTRS{idVendor}=="fff1", ATTRS{idProduct}=="00dd", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="fff1", ATTRS{idProduct}=="00dd", TAG+="uaccess"

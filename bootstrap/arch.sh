@@ -378,6 +378,17 @@ install_voxtype_udev() {
   sudo udevadm settle
 }
 
+# The AU05 (Vibe Key) needs the grant above for voxtype's evdev listener, plus
+# hidraw for the keepalive that stops its firmware rebooting every ~4 s. See
+# docs/ulanzi-au05.md.
+install_ulanzi_au05_udev() {
+  sudo install -m 0644 "$SRC_DIR/scripts/71-ulanzi-au05.rules" \
+    /etc/udev/rules.d/71-ulanzi-au05.rules || return 1
+  sudo udevadm control --reload-rules
+  sudo udevadm trigger --action=add --subsystem-match=input --subsystem-match=hidraw
+  sudo udevadm settle
+}
+
 # paraformer-zh is what the deployed config selects. The other engines' models
 # (Cohere 1.5 GB, SenseVoice 239 MB) download on demand instead.
 install_voxtype_models() {
@@ -449,6 +460,7 @@ step "mihomo service overrides" install_mihomo_overlay
 step "enable mihomo" enable_mihomo
 step "voxtype (AUR) + ONNX backend" install_voxtype
 step "voxtype udev rule for keyboard access" install_voxtype_udev
+step "uaccess for the Ulanzi AU05 (Vibe Key)" install_ulanzi_au05_udev
 step "voxtype model (paraformer-zh)" install_voxtype_models
 
 step_required "chezmoi init --apply" chezmoi init --apply

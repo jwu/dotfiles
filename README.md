@@ -159,6 +159,7 @@ chezmoi 的源路径与目标路径不一定逐字对应：`dot_` 加前置点�
 - [`docs/fontconfig.md`](docs/fontconfig.md) — 字体渲染参数与中文回退：对齐 Ghostty 的 FreeType 默认、`hintstyle` 的取舍、为什么只能用 family 名改字体。
 - [`docs/bluetooth.md`](docs/bluetooth.md) — BlueZ OBEX agent 单槽位与冲突诊断。
 - [`docs/audio.md`](docs/audio.md) — MacBook CS8409 内置音频：主线只支持 Dell，靠 AUR 的 DKMS 补丁出声。
+- [`docs/ulanzi-au05.md`](docs/ulanzi-au05.md) — Ulanzi Vibe Key (AU05)：原始报文实测、固件 4 秒断连与 keepalive、语音键（F9）接 voxtype、麦克风优先级。
 - [`docs/xwayland-satellite.md`](docs/xwayland-satellite.md) — X11 弹窗焦点、Steam 顶栏菜单闪退、AUR `-git` 包的取舍。
 - [`docs/ime-icons.md`](docs/ime-icons.md) — Fcitx5 托盘图标的覆盖规则与状态对应。
 - [`docs/rime/rime-config.md`](docs/rime/rime-config.md) — Rime 词库、补丁写法、`__patch` 的坑。

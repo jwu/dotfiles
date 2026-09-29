@@ -146,10 +146,11 @@ INFO Listening for KEY_F9 (with modifiers: {}) on 1 device(s)
 
 用系统默认源（`device = "default"`）。
 
-默认源由 `priority.session` 决定，候选有两个：
+默认源由 `priority.session` 决定，候选有三个：
 
 | 源 | `priority.session` | 说明 |
 | --- | --- | --- |
+| AU05 内置麦 `alsa_input.usb-AU05.*` | 2300 | 插着时优先；见 `docs/ulanzi-au05.md` |
 | 内建声卡 `alsa_input.pci-*` | 2200 | 本仓库抬高（见下）；ALSA `Internal Mic` jack on，实测可录 |
 | 蓝牙 `bluez_input.*` | 2010 | WirePlumber 硬编码；A2DP 播放时是**静音回环占位源**，不是麦克风 |
 
@@ -191,6 +192,7 @@ voxtype 用 `device = "default"` 跟着默认源走，于是按 F9 只录到静�
 | WirePlumber 默认源规则 | `~/.config/wireplumber/wireplumber.conf.d/50-bluetooth-loopback-priority.conf` | chezmoi（`dot_config/wireplumber/`） |
 | 分词过滤器 | `~/.local/bin/wordseg-rs` | 独立项目（源码不在本机），已发布到 crates.io；`bootstrap/arch.sh` 用 `cargo install` 装 |
 | 键盘 udev 规则 | `/etc/udev/rules.d/70-voxtype-uaccess.rules` | `bootstrap/arch.sh` 的 `install_voxtype_udev` |
+| AU05（Vibe Key）的按键与麦克风 | `scripts/ulanzi-au05-keepalive.c`、`scripts/71-ulanzi-au05.rules`、`dot_config/systemd/user/` | chezmoi 与 `bootstrap/arch.sh`；见 `docs/ulanzi-au05.md` |
 | 程序本体 | `voxtype-bin`（AUR，当前 1.1.0） | `bootstrap/arch.sh`，必要时 `yay -S voxtype-bin` |
 | 用户服务 | `~/.config/systemd/user/voxtype.service` | `voxtype setup systemd`（**不**由 chezmoi 管） |
 | 模型 | `~/.local/share/voxtype/models/` | `voxtype setup --download --model <名字>` |

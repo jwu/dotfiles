@@ -60,6 +60,7 @@ Library
 # voxtype are Linux-shaped as well: the first is loaded by /etc/fonts/fonts.conf
 # and read by the chrome wrapper, the second by niri's evdev hotkey path.
 # wireplumber is PipeWire's session manager and has no counterpart elsewhere.
+# systemd user units are Linux-only by definition.
 # See docs/ghostty-titlebar.md, docs/fontconfig.md and docs/voxtype.md.
 {{ if ne .chezmoi.os "linux" }}
 .config/autostart
@@ -79,6 +80,7 @@ Library
 .config/niri-session-mng
 .config/sunshine
 .config/swaylock
+.config/systemd
 .config/voxtype
 .config/waybar
 .config/wireplumber

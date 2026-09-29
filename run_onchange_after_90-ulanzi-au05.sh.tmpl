@@ -1,0 +1,42 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/bin/bash
+# Builds the AU05 keepalive and (re)starts its user service. Holding one HID
+# interface open stops the firmware's ~4 s idle reboot, which otherwise churns
+# the input event node and drops the USB microphone. See docs/ulanzi-au05.md.
+#
+# The source hash makes `run_onchange_` rebuild only when the C file changes;
+# the unit hash restarts the service when the unit does.
+#
+# source hash: {{ include "scripts/ulanzi-au05-keepalive.c" | sha256sum }}
+# unit hash:   {{ include "dot_config/systemd/user/ulanzi-au05-keepalive.service" | sha256sum }}
+set -uo pipefail
+
+SRC="{{ .chezmoi.sourceDir }}"
+
+if ! command -v gcc &> /dev/null; then
+  echo "gcc is missing; skipping the AU05 keepalive build (the device will keep reconnecting)." >&2
+  exit 1
+fi
+
+mkdir -p "$HOME/.local/bin"
+gcc -O2 -Wall -Wextra -o "$HOME/.local/bin/ulanzi-au05-keepalive" \
+  "$SRC/scripts/ulanzi-au05-keepalive.c" || exit 1
+
+if ! command -v systemctl &> /dev/null; then
+  echo "systemctl is missing; run ~/.local/bin/ulanzi-au05-keepalive manually." >&2
+  exit 0
+fi
+
+systemctl --user daemon-reload
+if ! systemctl --user enable ulanzi-au05-keepalive.service; then
+  echo "could not enable ulanzi-au05-keepalive.service; check 'systemctl --user status ulanzi-au05-keepalive'." >&2
+  exit 0
+fi
+# restart, not just start: it picks up a rebuilt binary and a changed unit.
+if systemctl --user restart ulanzi-au05-keepalive.service; then
+  echo "ulanzi-au05-keepalive service is running"
+else
+  echo "could not start ulanzi-au05-keepalive.service; check 'systemctl --user status ulanzi-au05-keepalive'." >&2
+  exit 0
+fi
+{{ end -}}
