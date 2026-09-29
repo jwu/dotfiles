@@ -36,6 +36,7 @@ light = true,     // "most common setting in GTK apps and therefore Ghostty's de
    后来统一回了 `hintslight`，理由见「hinting：全局也对齐 Ghostty」。
 2. 中文回退改指 Sarasa：`Noto Sans CJK SC → Sarasa Gothic SC`、
    `Noto Sans Mono CJK SC → Sarasa Mono SC`，让网页中文与终端的字体选择一致。
+3. 三条 `<alias>` 给泛型族补简体 CJK face——见「泛型族的中文回退」。
 
 **为什么用 family 名而不是 `lang=zh`**：实测 `lang` 规则对 Chrome 的改动量是 **0**——
 Chrome 的字体回退请求不经过带 lang 的 pattern 规则，而 family 名重定向能被接住
@@ -264,6 +265,53 @@ family 别名（`Sarasa Mono SC SemiBold`），Regular 没有：`fc-match 'Saras
 代价和 Chrome 那边一样：候选项不再跟 zed / ghostty 的 CJK 字重对齐（它们仍是 Medium +
 SemiBold），见「字重：最终回到 Regular」。
 
+### 泛型族的中文回退：KR 排到了 SC 前面
+
+上面那两条 redirect 只认**显式**写出来的 family 名。程序请求泛型名时（`Sans`、
+`serif`、`Monospace`——GTK 应用不设字体时的默认值），fontconfig 得自己拼候选链，
+而它把简体排在了韩文**之后**：
+
+| `fc-match -s` | 第一位 | 第二位 |
+| --- | --- | --- |
+| `sans-serif` | Noto Sans | **Noto Sans CJK KR** |
+| `serif` | Noto Serif | **Noto Serif CJK KR** |
+| `monospace` | Noto Sans Mono | **Noto Sans Mono CJK KR** |
+
+于是泛型请求里的中文是韩文字形变体。这和「未决」那节 Chrome 空 profile 落到
+`Noto Sans CJK KR` 是同一个病，只是入口不同：那条走 Chrome 的 prefs，这条走
+fontconfig 自己的排序。
+
+修法是 `fonts.conf` 末尾补三条 `<alias>`，把简体 face 提到拉丁之后：
+
+```xml
+<alias>
+  <family>sans-serif</family>
+  <prefer><family>Noto Sans</family><family>Noto Sans CJK SC</family></prefer>
+</alias>
+```
+
+两个必须知道的点：
+
+- **拉丁名要写在前面**。`<prefer>` 是 **prepend**，新名字插到候选链最前。只写
+  `Noto Sans CJK SC` 一条的话它会直接排到 `Noto Sans Mono` 前面——泛型的**拉丁**也变成
+  CJK 字体。带上拉丁名，fontconfig 把整段合并到既有链最前，顺序是
+  `Noto Sans Mono, Noto Sans Mono CJK SC, ...`，拉丁不动。
+- **这三条必须在文件末尾，而且不能挪进 `conf.d/`**。`conf.d` 由 `50-user.conf` 先加载，
+  上面那两条 redirect 后执行，会把刚 prepend 进来的 `Noto Sans CJK SC` **就地改写成**
+  `Sarasa Gothic SC`——名字换了、位置还留在最前，结果泛型 `monospace` 请求全落到 Sarasa，
+  拉丁一起变。实测：
+
+  | 加载位置 | `monospace` 候选链开头 |
+  | --- | --- |
+  | `fonts.conf` 末尾 | `Noto Sans Mono` → `Noto Sans Mono CJK SC` |
+  | `conf.d/` | `Sarasa Mono SC` |
+
+  `binding="strong"` 与不写 `binding` 实测结果完全一致，所以没写。
+
+Chrome 侧不受影响（`chrome-fonts.conf` 自己的 `binding="strong"` alias 在 include 展开后
+执行，仍压在 `FiraMono Nerd Font` / `Noto Sans`）。这次只验证到 `fc-match` 这一层
+（GTK / Pango 类消费者），Chrome 空 profile 那条路径没有复测。
+
 ### 被拒绝的替代方案
 
 - **嵌进全局 `fonts.conf`**：简单，但 zed、GTK 应用、其它终端会一起变。
@@ -276,7 +324,8 @@ SemiBold），见「字重：最终回到 Regular」。
 
 ### 未决：全新 profile 下中文会落到 Noto Sans CJK KR
 
-上面的规则只动西文 family 和 Sarasa。在**没有** Chrome 字体设置的新 profile 里，
+上面的规则只动西文 family 和 Sarasa。（`fonts.conf` 末尾那三条泛型 alias 修的是同一类问题的
+另一条入口——fontconfig 自己的排序，见「泛型族的中文回退」；这条 Chrome prefs 路径没被它覆盖。）在**没有** Chrome 字体设置的新 profile 里，
 中文字形回退不经过这些名字，仍走 Chrome 自己的 CJK fallback，落在 **Noto Sans CJK KR**上——
 中文会用韩文字形变体渲染。本机 profile 把 Standard 设成了 `Noto Sans CJK SC`，走不到那条
 路径；但只要那几个设置被清空就会暴露。要兜住它得连 `Noto Sans CJK JP/KR/TC/HK`
@@ -284,6 +333,13 @@ SemiBold），见「字重：最终回到 Regular」。
 
 ## 被拒绝的方案
 
+- **开 `rgba=rgb` + `lcdfilter=lcddefault`（LCD 子像素渲染）**：网上那份常见清单里
+  `antialias` / `hinting` / `hintstyle` 本机早就有——`antialias` 来自系统的
+  `/etc/fonts/conf.d/10-yes-antialias.conf`，`fc-match -v` 读得到 `antialias: True(w)`；
+  `hinting` / `hintstyle` 在本仓库的 `fonts.conf` 里。真正的增量只有 `rgba`。不要，
+  两条理由：Ghostty 不读 fontconfig 的 `rgba`，开了之后读 fontconfig 的应用变子像素、
+  Ghostty 仍是灰度，两边反而更不一致；`11-lcdfilter-default.conf` 那个 `lcddefault` 在
+  `rgba` 为 none 时本来就不生效（FreeType 只在 `FT_RENDER_MODE_LCD` 下用 LCD filter）。
 - **`--disable-font-subpixel-positioning`**：确实有效（1.40%），但整行字距会被按整数像素
   重排，中文混排行内的疏密肉眼可见地不匀。最终没要。
 - **复刻 `font-codepoint-map`**：做不到。真实网页的中文走字形回退，而这条路径既不吃
@@ -302,6 +358,11 @@ SemiBold），见「字重：最终回到 Regular」。
 fc-match -v "Noto Sans CJK SC" | rg -n 'hintstyle|autohint|family'
 # 回退层：应返回 Sarasa 而不是 Noto
 fc-match "Noto Sans CJK SC"
+# 泛型层：拉丁应停在 Noto Sans / Noto Serif / Noto Sans Mono，中文应是 CJK SC 而非 KR
+for q in sans-serif serif monospace; do
+  fc-match -f "$q latin=%{family[0]}\n" "$q"
+  fc-match -f "$q cjk=%{family[0]}\n" "$q:charset=4e2d"
+done
 # Chrome 共用同一份参数（它靠 FONTCONFIG_FILE 指到只多几条 alias 的文件），值应当一致
 FONTCONFIG_FILE=~/.config/fontconfig/chrome-fonts.conf fc-match -f '%{hintstyle}\n' 'FiraMono Nerd Font'
 # Ghostty 侧：字体发现能读到 face，hinting 来自它自己的 load flags
@@ -362,7 +423,8 @@ uv run --with pillow --with numpy python analyze.py report/check shots/fs-base.p
 ## 怎么回滚
 
 删掉 `dot_config/fontconfig/fonts.conf`（源与目标两侧）再 `chezmoi apply`，
-或只把 `hintstyle` 改成 `hintfull` / 整段 match 注释掉。回滚同样要重启应用。
+或只把 `hintstyle` 改成 `hintfull` / 整段 match 注释掉；末尾那三条泛型 alias 也可以单独删掉，
+删完泛型中文会退回韩文字形。回滚同样要重启应用。
 
 第二轮那套单独回滚：删掉 `dot_config/fontconfig/chrome-fonts.conf`、
 `dot_local/bin/executable_google-chrome-stable`、
