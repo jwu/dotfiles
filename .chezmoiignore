@@ -58,8 +58,9 @@ Library
 # applies to the GTK build of ghostty, the *-flags.conf files are read by the
 # Arch chrome / chromium wrappers, and mimeapps.list is XDG. fontconfig and
 # voxtype are Linux-shaped as well: the first is loaded by /etc/fonts/fonts.conf
-# and read by the chrome wrapper, the second by niri's evdev hotkey path. See
-# docs/ghostty-titlebar.md, docs/fontconfig.md and docs/voxtype.md.
+# and read by the chrome wrapper, the second by niri's evdev hotkey path.
+# wireplumber is PipeWire's session manager and has no counterpart elsewhere.
+# See docs/ghostty-titlebar.md, docs/fontconfig.md and docs/voxtype.md.
 {{ if ne .chezmoi.os "linux" }}
 .config/autostart
 .config/chrome-flags.conf
@@ -79,6 +80,7 @@ Library
 .config/swaylock
 .config/voxtype
 .config/waybar
+.config/wireplumber
 # Whole subtree: ignoring the files alone still makes chezmoi create the empty
 # parent directories. See docs/chezmoi-notes.md.
 .local
