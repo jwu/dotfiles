@@ -117,6 +117,21 @@ evdev 监听要读 `/dev/input/event*`。加进 `input` 组是最常见的做法
 用户名硬编码。删掉那两条旧规则、只留本文件后重新 `trigger`，`getfacl /dev/input/event5`
 仍有 `user:jwu:rw-`，说明 uaccess 确实接住了。
 
+### 通用名的键盘会漏掉按名匹配
+
+后来一把外接键盘（USB `060b:7a03`）按 F9 完全没反应：它在 sysfs 里的名字是笼统的
+`USB Keyboard`，既不是 ROG 也不是 MOSART，两条 `ATTRS{name}` 规则都落空，`event4` /
+`event8` 因此没有 `uaccess` ACL。voxtype 打不开键盘时**不报错、直接跳过**，日志里只剩：
+
+```
+INFO Opened keyboard: "/dev/input/event9" ("Apple SPI Keyboard")
+INFO Listening for KEY_F9 (with modifiers: {}) on 1 device(s)
+```
+
+`on N device(s)` 就是判据——键盘实际不止一把而这里只列出一把，说明有键盘没被授权。
+这类只用通用名的键盘改按 **USB id** 匹配（`ATTRS{idVendor}` + `ATTRS{idProduct}`）；它的
+物理接口 `event4` / `event8` 都带 `ID_INPUT_KEYBOARD=1`，一条规则同时覆盖两者。
+
 ## voice-input 已卸载
 
 听写最初由本地项目 `voice-input`（Python + FunASR）承担。逐条能力被 voxtype + wordseg-rs
@@ -204,7 +219,7 @@ pactl get-default-source          # 默认录音源；连着蓝牙音箱时应�
 
 | 现象 | 通常是什么 |
 | --- | --- |
-| 按 F9 没反应、日志无记录 | udev 规则没生效，或键盘设备名变了 |
+| 按 F9 没反应、日志无记录 | udev 规则没生效，或键盘设备名变了；`on N device(s)` 少于实际键盘数就是权限漏了 |
 | 有日志但识别成"没有没有"、或 `No audio was captured` | 默认源被蓝牙 A2DP 假麦抢走（`pactl get-default-source` 是 `bluez_input.*`），或耳机没连 |
 | 英文连写没分开 | `[output.post_process]` 命令失败（cargo 没编译？），看日志的 `Post-processed` |
 | 文字没进输入框 | 粘贴键与目标应用不匹配，换 `paste_keys` |

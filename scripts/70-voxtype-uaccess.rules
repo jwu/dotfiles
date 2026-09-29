@@ -6,6 +6,10 @@
 #   udevadm info --attribute-walk --name=/dev/input/eventN | grep name
 SUBSYSTEM=="input", ENV{ID_INPUT_KEYBOARD}=="1", ATTRS{name}=="ASUSTeK ROG OMNI RECEIVER Keyboard", TAG+="uaccess"
 SUBSYSTEM=="input", ENV{ID_INPUT_KEYBOARD}=="1", ATTRS{name}=="MOSART Semi. wireless dongle", TAG+="uaccess"
+# This keyboard reports the generic sysfs name "USB Keyboard", which tells the
+# keyboards apart from nothing, so it is matched by USB id instead. Read them
+# with: udevadm info --query=property --name=/dev/input/eventN | grep -E 'ID_VENDOR_ID|ID_MODEL_ID'
+SUBSYSTEM=="input", ENV{ID_INPUT_KEYBOARD}=="1", ATTRS{idVendor}=="060b", ATTRS{idProduct}=="7a03", TAG+="uaccess"
 # MacBook built-in keyboard. The retired voice-input granted this one with a
 # setfacl RUN rule; uaccess covers it without pinning a username.
 SUBSYSTEM=="input", ENV{ID_INPUT_KEYBOARD}=="1", ATTRS{name}=="Apple SPI Keyboard", TAG+="uaccess"
