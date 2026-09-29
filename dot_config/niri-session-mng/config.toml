@@ -4,7 +4,8 @@
 
 # `launch` is the argv used to start the app; `{cwd}` is replaced with the
 # working directory of the window's shell when one is known (terminals only),
-# and the whole argument is dropped when it is not.
+# and the whole argument is dropped when it is not. `{project}` expands to a
+# captured Godot project path; without one Godot opens the project manager.
 #
 # `spawn` says how many windows one launch produces:
 #   "per_window" -- one window per launch, so every captured window is spawned
@@ -34,6 +35,14 @@ spawn = "per_window"
 
 [apps."md.obsidian.Obsidian"]
 launch = ["obsidian"]
+spawn = "per_window"
+
+[apps."org.godotengine.Editor"]
+launch = ["godot", "--editor", "--path", "{project}"]
+spawn = "per_window"
+
+[apps."blender"]
+launch = ["blender"]
 spawn = "per_window"
 
 # Foreground commands and how to bring them back. The key is the command line

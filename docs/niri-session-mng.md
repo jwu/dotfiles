@@ -14,7 +14,7 @@ niri-session-mng restore             # 按快照重建
 最多只有一个 Ghostty 窗口；超过一个会警告并拒绝。`restore --dry-run` 不受此限制。
 
 只处理 `~/.config/niri-session-mng/config.toml` 白名单里的 app（ghostty / chrome / zed /
-obsidian）。命令不绑键位，按需手动跑。
+obsidian / Godot / Blender）。命令不绑键位，按需手动跑。
 
 ## 每个 app 恢复什么
 
@@ -25,6 +25,8 @@ obsidian）。命令不绑键位，按需手动跑。
 | google-chrome | 位置；窗口与 tab | Chrome 的 `--restore-last-session` |
 | zed | 位置；项目 | Zed 的 autorestore |
 | obsidian | 位置；vault | Obsidian 自己 |
+| Godot Editor | 位置；项目 | 从进程参数 / cwd 采集项目目录，以 `--editor --path` 重开；没识别到则进项目管理器 |
+| Blender | 位置 | 启动 Blender 默认场景；不恢复当前 `.blend` 文件 |
 
 `[rerun]` 是「当时跑的命令 → 恢复时怎么跑」的表。默认两条：
 

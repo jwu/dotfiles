@@ -229,6 +229,41 @@ def load_config() -> Config:
 # --- save --------------------------------------------------------------------
 
 
+def godot_project_path(pid: int | None) -> str | None:
+    """Find the Godot project passed to its editor process, if any."""
+    if not isinstance(pid, int):
+        return None
+    process = PROC / str(pid)
+    try:
+        args = [arg.decode(errors="replace") for arg in (process / "cmdline").read_bytes().split(b"\0") if arg]
+        cwd = (process / "cwd").resolve()
+    except OSError:
+        return None
+
+    candidates: list[Path] = []
+    for index, arg in enumerate(args):
+        if arg == "--path" and index + 1 < len(args):
+            candidates.append(Path(args[index + 1]))
+        elif arg.startswith("--path="):
+            candidates.append(Path(arg.partition("=")[2]))
+        elif not arg.startswith("-") and index > 0:
+            candidates.append(Path(arg))
+    candidates.append(cwd)
+
+    for candidate in candidates:
+        if not candidate.is_absolute():
+            candidate = cwd / candidate
+        try:
+            candidate = candidate.resolve()
+            if candidate.is_file() and candidate.name == "project.godot":
+                candidate = candidate.parent
+            if (candidate / "project.godot").is_file():
+                return str(candidate)
+        except OSError:
+            continue
+    return None
+
+
 def cmd_save(path: Path) -> None:
     config = load_config()
     outputs = niri_json("outputs")
@@ -270,6 +305,9 @@ def cmd_save(path: Path) -> None:
                 "focused": bool(window.get("is_focused")),
                 "cwd": cwd,
                 "foreground": foreground,
+                "project": godot_project_path(window.get("pid"))
+                if app_id == "org.godotengine.Editor"
+                else None,
             }
         )
 
@@ -373,6 +411,10 @@ def build_launch(entry: dict, recipe: Recipe) -> list[str]:
             if not entry.get("cwd"):
                 continue  # drop the whole argument, not just the placeholder
             part = part.replace("{cwd}", entry["cwd"])
+        if "{project}" in part:
+            if not entry.get("project"):
+                return [recipe.launch[0], "--project-manager"]
+            part = part.replace("{project}", entry["project"])
         argv.append(part)
     return argv
 
