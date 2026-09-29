@@ -652,14 +652,18 @@ def place(entry: dict, window: dict, snapshot: dict, outputs: dict[str, int]) ->
         action("set-column-width", str(width), check=False)
 
 
-def ensure_at_most_one_ghostty(windows: list[dict]) -> None:
-    """Refuse restore when existing Ghostty windows make the session unsafe."""
-    ghostty = [window for window in windows if window.get("app_id") == "com.mitchellh.ghostty"]
-    if len(ghostty) > 1:
-        ids = ", ".join(f"win{window['id']}" for window in ghostty)
+def ensure_blank_session(windows: list[dict]) -> None:
+    """Refuse restore unless the session is nearly empty.
+
+    Restore rebuilds a session from scratch, so it must not run on top of an
+    existing one: a single window -- the terminal restore is launched from -- is
+    tolerated, anything more is not. Counting every window, not just ghostty, is
+    what keeps other apps from being duplicated or displaced.
+    """
+    if len(windows) > 1:
         sys.exit(
-            f"niri-session-mng: refusing restore: found {len(ghostty)} Ghostty windows ({ids}); "
-            "close all but one before restoring"
+            f"niri-session-mng: refusing restore: {len(windows)} windows are open; "
+            "restore needs an almost empty session, so close all but one"
         )
 
 
@@ -695,7 +699,7 @@ def cmd_restore(path: Path, dry_run: bool) -> None:
         return
 
     current_windows = niri_json("windows")
-    ensure_at_most_one_ghostty(current_windows)
+    ensure_blank_session(current_windows)
     terminal_spawns = [spawn for spawn in spawns if spawn.inject is not None]
     other_spawns = [spawn for spawn in spawns if spawn.inject is None]
     before = {window["id"] for window in current_windows}

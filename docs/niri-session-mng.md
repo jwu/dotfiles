@@ -10,8 +10,9 @@ niri-session-mng restore             # 按快照重建
 ```
 
 实际恢复按阶段执行：先启动所有 Ghostty 窗口并完成 cwd / 前台命令注入，再启动其他应用，
-最后统一整理所有窗口的位置与宽度。为避免误操作破坏现有工作区，真正执行 restore 前要求桌面上
-最多只有一个 Ghostty 窗口；超过一个会警告并拒绝。`restore --dry-run` 不受此限制。
+最后统一整理所有窗口的位置与宽度。为避免误操作破坏现有工作区，真正执行 restore 前要求**当前桌面
+最多只有一个窗口**（即跑 restore 的那个终端）；超过一个会直接拒绝，无论是什么 app ——
+不只看 Ghostty。`restore --dry-run` 不受此限制。
 
 只处理 `~/.config/niri-session-mng/config.toml` 白名单里的 app（ghostty / Chrome / Chromium /
 zed / obsidian / Godot / Blender）。命令不绑键位，按需手动跑。
