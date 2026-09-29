@@ -39,7 +39,7 @@ spawn = "per_window"
 
 [apps."md.obsidian.Obsidian"]
 launch = ["obsidian"]
-spawn = "per_window"
+spawn = "once"
 
 [apps."Godot"]
 launch = ["godot", "--editor", "--path", "{project}"]

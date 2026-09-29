@@ -533,9 +533,18 @@ def type_command(window_id: int, command: str) -> None:
     """
     action("focus-window", "--id", str(window_id), check=False)
     time.sleep(0.3)
-    result = subprocess.run(["wtype", "-d", "15", f" {command}\n"], text=True, capture_output=True)
-    if result.returncode != 0:
-        print(f"niri-session-mng: warning: wtype failed: {result.stderr.strip()}", file=sys.stderr)
+    # Send shell control operators in separate invocations so modifier-key
+    # transitions (notably Shift+7 for `&`) are not lost between keystrokes.
+    parts = command.split(" && ")
+    texts = [f" {parts[0]}"]
+    for part in parts[1:]:
+        texts.extend([" && ", part])
+    texts[-1] += "\n"
+    for text in texts:
+        result = subprocess.run(["wtype", "-d", "15", text], text=True, capture_output=True)
+        if result.returncode != 0:
+            print(f"niri-session-mng: warning: wtype failed: {result.stderr.strip()}", file=sys.stderr)
+            return
 
 
 def focus_target(entry: dict, outputs: set[str]) -> None:

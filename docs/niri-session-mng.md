@@ -26,7 +26,7 @@ zed / obsidian / Godot / Blender）。命令不绑键位，按需手动跑。
 | google-chrome | 位置；窗口与 tab | Chrome 的 `--restore-last-session` |
 | chromium | 位置；窗口与 tab | Chromium 的 `--restore-last-session` |
 | zed | 位置；项目 | Zed 的 autorestore |
-| obsidian | 位置；vault | Obsidian 自己 |
+| obsidian | 位置；vault | Obsidian 自己；只启动一次恢复全部 vault 窗口，再按窗口标题配对位置 |
 | Godot Editor | 位置；项目 | 从运行中的 Godot 进程参数 / cwd 采集项目目录，并按窗口标题匹配；以 `--editor --path` 重开，没识别到则进项目管理器 |
 | Blender | 位置 | 启动 Blender 默认场景；不恢复当前 `.blend` 文件 |
 
@@ -102,9 +102,9 @@ workspace 的会话里 `focus-workspace 9`，niri 只新建**一个** workspace�
    `ydotool type -d 30` 也能完整输入，但需要额外运行 `ydotoold`，当前没有证据表明值得切换。
    这些测试尚未复测真正的「第一个恢复窗口」启动竞态。
 
-2. **Chrome 窗口配对**：`--restore-last-session` 一次恢复多个窗口时，Chrome 决定它们的创建顺序，
-   不能仅按窗口 id 配对。现在会先刷新新窗口标题并按快照中的 title 一对一匹配，剩余未匹配的
-   再按快照顺序与窗口 id 升序兜底。标题重复或 Chrome 改了标题时，兜底配对仍可能不准确。
+2. **多窗口配对**：Chrome 和 Obsidian 都由应用一次性恢复自己的多个窗口，窗口创建顺序不保证与快照一致。
+   现在会先刷新新窗口标题并按快照中的 title 一对一匹配，剩余未匹配的再按快照顺序与窗口 id 升序兜底。
+   标题重复或应用改了标题时，兜底配对仍可能不准确；Obsidian 的标题包含 vault 名时，不同 vault 可据此区分。
 
 **尚未处理 / 待确认**：
 
