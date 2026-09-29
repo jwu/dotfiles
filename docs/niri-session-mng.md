@@ -78,6 +78,27 @@ workspace 的会话里 `focus-workspace 9`，niri 只新建**一个** workspace�
 
 所以快照记的是 **rank**（该 output 的第几个 workspace），恢复时按 rank 重建。
 
+不过 rank 在两条命令里的解析基准**不一样**，这是踩过的坑：
+
+- `focus-workspace <index>` 的 index 相对**当前活跃 monitor** —— `switch_workspace` 走
+  `active_monitor()`，所以它前面那句 `focus-monitor` 是有用的。
+- `move-window-to-workspace --window-id <id> <index>` 的 index 相对**窗口自己所在的
+  output** —— `find_output_and_workspace_index()` 对 `Index` 直接返回 `(None, index)`，
+  `layout.move_to_workspace()` 再按窗口所在 monitor 去取。先 `focus-monitor` 对它**毫无作用**。
+
+要跨屏就得用 `move-window-to-monitor --id <win> <output>`。
+
+## spawn 的落点不可信
+
+窗口 map 时落在**当时焦点所在的 workspace**。而 `restore` 是先把所有其他 app 的 spawn 一次性
+发出去、再统一收窗口的：慢启动的 app 会在后面那个 app 的 `focus_target` 已经把焦点挪走之后才
+map。实测冷启动的 Zed 要好几秒，正好落在紧随其后、指向 eDP-1 的 Chrome 之后，于是 Zed 出现在
+eDP-1 而不是快照里的 DP-2。ghostty 没中招纯属侥幸——它的 `focus_target` 始终指向同一个 output。
+
+所以 `place()` 不能沿用 spawn 时的位置，必须先用
+`move-window-to-monitor --id <win> <output>` 把窗口搬回快照记的 output，
+再 `move-window-to-workspace --window-id <win> <rank>` 落到正确的 workspace。
+
 ## 现状（2026-09-29，交接点）
 
 **已经做完并 apply 的**：

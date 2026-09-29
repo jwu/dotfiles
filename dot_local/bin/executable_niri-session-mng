@@ -637,16 +637,21 @@ def target_width(entry: dict, snapshot: dict, outputs: dict[str, int]) -> int:
 
 
 def place(entry: dict, window: dict, snapshot: dict, outputs: dict[str, int]) -> None:
-    """Put one window back: its workspace, its column and its width."""
+    """Put one window back: its output, its workspace, its column and its width."""
     window_id = str(window["id"])
     if entry.get("floating"):
         # Floating geometry is not captured; leave the window where it opened.
         print(f"niri-session-mng: note: {entry['app_id']}: floating window left unplaced", file=sys.stderr)
 
-    # niri numbers workspaces per output, so select the output first for the
-    # index to mean the right workspace.
-    if entry.get("output") in outputs:
-        action("focus-monitor", entry["output"], check=False)
+    # A window lands on whatever workspace holds the focus when it maps, and a
+    # slow app can map only after a later spawn has moved the focus to another
+    # output. So move the window onto its captured output by id rather than
+    # trusting where it opened. This cannot be done with focus-monitor:
+    # move-window-to-workspace resolves an index against the window's *own*
+    # output, not the focused one. See docs/niri-session-mng.md.
+    output = entry.get("output")
+    if output in outputs:
+        action("move-window-to-monitor", "--id", window_id, output, check=False)
     action("focus-window", "--id", window_id, check=False)
     if target_workspace(entry):
         action("move-window-to-workspace", "--window-id", window_id, str(target_workspace(entry)), check=False)
