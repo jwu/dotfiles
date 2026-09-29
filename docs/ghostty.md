@@ -73,6 +73,10 @@ niri 下想要「随手开一个终端」，用 niri 自己的绑定（`config.k
 
 后者是脚本而不是 Ghostty 特性：它先用 `niri msg --json event-stream` 等新窗口出现，再
 对那个 window id 执行 `consume-or-expel-window-left`，所以不依赖固定 `sleep`、顺序稳定。
+实现是 bash + jq（jq 在 `bootstrap/arch.sh` 与 `bootstrap/macos.sh` 的 `PACKAGES` 里），
+有两处是踩出来的：事件流必须在 `spawn` **之前**订阅——niri 只报变化、不重放已有窗口，
+接晚了这次就永远等不到；jq 过滤器末尾必须 `halt`——吐出 id 后不主动退出的话，`niri msg`
+会挂在事件流上直到兜底超时收走（实测残留一个 `timeout 15 niri msg` 进程）。
 
 macOS 不涉及这条：`dot_config/ghostty/config` 里保留了 `global:ctrl+backquote`，那边
 的全局快捷键不走 XDG 门户。
