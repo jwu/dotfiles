@@ -1,0 +1,47 @@
+# App whitelist for niri-session-mng. Only windows whose app_id is listed here
+# are captured by `niri-session-mng save` and rebuilt by `niri-session-mng restore`.
+# See docs/niri-session-mng.md.
+
+# `launch` is the argv used to start the app; `{cwd}` is replaced with the
+# working directory of the window's shell when one is known (terminals only),
+# and the whole argument is dropped when it is not.
+#
+# `spawn` says how many windows one launch produces:
+#   "per_window" -- one window per launch, so every captured window is spawned
+#                   separately and lands in the right place in the column order
+#   "once"       -- one launch brings back all of that app's windows (the app
+#                   keeps its own session); the windows are matched afterwards
+#
+# `terminal = true` marks a terminal emulator. One window is launched *without
+# arguments* (so it joins the single running instance) from a wrapper shell that
+# has already changed into the captured directory; the captured foreground
+# command is then typed into the fresh shell with the virtual keyboard. That is
+# what keeps ghostty single-instance while still restoring `pi --continue`.
+# The launch argv must not carry a window-directory flag of its own in this mode.
+
+[apps."com.mitchellh.ghostty"]
+launch = ["ghostty"]
+spawn = "per_window"
+terminal = true
+
+[apps."google-chrome"]
+launch = ["google-chrome-stable", "--restore-last-session"]
+spawn = "once"
+
+[apps."dev.zed.Zed"]
+launch = ["zed"]
+spawn = "per_window"
+
+[apps."md.obsidian.Obsidian"]
+launch = ["obsidian"]
+spawn = "per_window"
+
+# Foreground commands and how to bring them back. The key is the command line
+# seen at save time (argv joined by spaces) and the value is the argv to run.
+# A foreground command that is not listed here comes back as a plain shell in
+# the same directory.
+[rerun]
+"pi" = ["pi", "--continue"]
+"bun run dev" = ["bun", "run", "dev"]
+"npm run dev" = ["npm", "run", "dev"]
+"pnpm run dev" = ["pnpm", "run", "dev"]

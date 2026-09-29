@@ -76,6 +76,7 @@ Library
 .config/hypr
 .config/mimeapps.list
 .config/niri
+.config/niri-session-mng
 .config/sunshine
 .config/swaylock
 .config/voxtype

@@ -1,0 +1,739 @@
+#!/usr/bin/env python3
+"""Snapshot a niri session and rebuild it in a fresh one.
+
+    niri-session-mng save    [--file PATH]
+    niri-session-mng restore [--dry-run] [--file PATH]
+    niri-session-mng show    [--file PATH]
+
+Only the apps listed in ~/.config/niri-session-mng/config.toml are captured. What a
+window gets back depends on its app: terminals get their working directory (and
+a foreground command from [rerun]), everything else is relaunched and put back
+where it was. See docs/niri-session-mng.md for the design and the limits.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import selectors
+import shlex
+import shutil
+import subprocess
+import sys
+import time
+import tomllib
+from collections import defaultdict
+from dataclasses import dataclass, field
+from pathlib import Path
+
+VERSION = 1
+PROC = Path("/proc")
+# How far up the parent chain the announced pid is vouched for; also stops a
+# pid that is being recycled from matching.
+DESCENDANT_LIMIT = 64
+# How long to wait for launched windows to show up in the event stream. Chrome
+# restoring several windows is the slow case.
+WAIT_TIMEOUT = 30.0
+
+
+# How long to wait for a fresh shell to report a prompt before giving up on
+# typing the captured command into it.
+PROMPT_TIMEOUT = 15.0
+# How long to let a fresh shell finish its startup files before typing into it.
+# There is no dependable "at a prompt" signal from outside the process.
+PROMPT_SETTLE = 1.5
+
+
+class NiriError(RuntimeError):
+    pass
+
+
+def xdg_dir(variable: str, fallback: str) -> Path:
+    value = os.environ.get(variable)
+    return Path(value) if value else Path.home() / fallback
+
+
+CONFIG_PATH = xdg_dir("XDG_CONFIG_HOME", ".config") / "niri-session-mng/config.toml"
+SESSION_PATH = xdg_dir("XDG_STATE_HOME", ".local/state") / "niri-session-mng/session.json"
+# Written by waybar's niri-windows module; see docs/waybar.md.
+ANNOUNCED_PATH = xdg_dir("XDG_CACHE_HOME", ".cache") / "waybar-niri-windows/announced.json"
+
+
+def niri(*args: str, check: bool = True) -> str:
+    proc = subprocess.run(["niri", "msg", *args], text=True, capture_output=True)
+    if check and proc.returncode != 0:
+        raise NiriError(f"niri msg {' '.join(args)}: {proc.stderr.strip() or proc.returncode}")
+    return proc.stdout
+
+
+def niri_json(*args: str):
+    return json.loads(niri("-j", *args))
+
+
+def action(*args: str, check: bool = True) -> None:
+    niri("action", *args, check=check)
+
+
+# --- /proc -------------------------------------------------------------------
+
+
+def proc_stat(pid: int) -> tuple[int, int, int, int] | None:
+    """(ppid, pgrp, session, tpgid) for pid, or None when it is gone."""
+    try:
+        raw = (PROC / str(pid) / "stat").read_text()
+    except OSError:
+        return None
+    # The comm field is parenthesised and may itself contain spaces or ')'.
+    tail = raw[raw.rfind(")") + 2 :].split()
+    if len(tail) < 5:
+        return None
+    # tail[0] is the state, so ppid sits at index 1 and tpgid at index 5.
+    # tty_nr, at index 4, is easy to mistake for tpgid.
+    return int(tail[1]), int(tail[2]), int(tail[3]), int(tail[5])
+
+
+def is_descendant(pid: int, ancestor: int) -> bool:
+    for _ in range(DESCENDANT_LIMIT):
+        if pid == ancestor:
+            return True
+        if pid <= 1:
+            return False
+        stat = proc_stat(pid)
+        if stat is None:
+            return False
+        pid = stat[0]
+    return False
+
+
+def read_cwd(pid: int) -> str | None:
+    try:
+        return os.readlink(PROC / str(pid) / "cwd")
+    except OSError:
+        return None
+
+
+def read_cmdline(pid: int) -> list[str]:
+    try:
+        raw = (PROC / str(pid) / "cmdline").read_bytes()
+    except OSError:
+        return []
+    return [part.decode(errors="replace") for part in raw.split(b"\0") if part]
+
+
+def foreground_argv(shell_pid: int) -> list[str]:
+    """The command line of the job holding the terminal, if there is one.
+
+    A shell puts a foreground job in its own process group, and the kernel
+    reports that group as tpgid in /proc/<pid>/stat. When tpgid differs from the
+    shell's own process group, the leader of tpgid is the running command.
+    """
+    stat = proc_stat(shell_pid)
+    if stat is None:
+        return []
+    _, pgrp, _, tpgid = stat
+    if tpgid <= 0 or tpgid == pgrp:
+        return []
+    return read_cmdline(tpgid)
+
+
+# --- the window -> shell mapping ---------------------------------------------
+
+
+@dataclass(frozen=True)
+class Announced:
+    app_pid: int
+    shell_pid: int
+
+
+def load_announced() -> dict[int, Announced]:
+    """window id -> announced shell, as cached by waybar's niri-windows module.
+
+    The cache is what makes a terminal's shell recoverable even when a TUI (pi,
+    vim) has taken the title over and dropped the invisible pid marker.
+    """
+    try:
+        data = json.loads(ANNOUNCED_PATH.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    out: dict[int, Announced] = {}
+    for key, entry in (data.get("windows") or {}).items():
+        app_pid = entry.get("app")
+        shell_pid = entry.get("pid")
+        if not isinstance(app_pid, int) or not isinstance(shell_pid, int):
+            continue
+        try:
+            window_id = int(key)
+        except ValueError:
+            continue
+        out[window_id] = Announced(app_pid, shell_pid)
+    return out
+
+
+def shell_of(window: dict, announced: dict[int, Announced]) -> int | None:
+    """The shell pid for a window, if the cache vouches for it."""
+    entry = announced.get(window["id"])
+    app_pid = window.get("pid")
+    if entry is None or app_pid is None or entry.app_pid != app_pid:
+        return None
+    if not is_descendant(entry.shell_pid, app_pid):
+        return None
+    return entry.shell_pid
+
+
+# --- configuration -----------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Recipe:
+    launch: list[str]
+    spawn: str = "per_window"
+    terminal: bool = False
+
+
+@dataclass(frozen=True)
+class Config:
+    apps: dict[str, Recipe] = field(default_factory=dict)
+    rerun: dict[str, list[str]] = field(default_factory=dict)
+
+
+def load_config() -> Config:
+    try:
+        raw = tomllib.loads(CONFIG_PATH.read_text())
+    except OSError as exc:
+        sys.exit(f"niri-session-mng: cannot read {CONFIG_PATH}: {exc}")
+    except tomllib.TOMLDecodeError as exc:
+        sys.exit(f"niri-session-mng: {CONFIG_PATH}: {exc}")
+
+    apps: dict[str, Recipe] = {}
+    for app_id, table in (raw.get("apps") or {}).items():
+        launch = table.get("launch")
+        if not isinstance(launch, list) or not launch:
+            sys.exit(f'niri-session-mng: {CONFIG_PATH}: [apps."{app_id}"] needs a launch argv')
+        spawn = table.get("spawn", "per_window")
+        if spawn not in ("per_window", "once"):
+            sys.exit(f'niri-session-mng: {CONFIG_PATH}: [apps."{app_id}"] spawn must be "per_window" or "once"')
+        apps[app_id] = Recipe([str(part) for part in launch], spawn, bool(table.get("terminal", False)))
+
+    rerun: dict[str, list[str]] = {}
+    for command, argv in (raw.get("rerun") or {}).items():
+        if not isinstance(argv, list) or not argv:
+            sys.exit(f'niri-session-mng: {CONFIG_PATH}: the [rerun] entry "{command}" needs an argv')
+        rerun[command] = [str(part) for part in argv]
+
+    if not apps:
+        sys.exit(f"niri-session-mng: {CONFIG_PATH}: no apps whitelisted")
+    return Config(apps, rerun)
+
+
+# --- save --------------------------------------------------------------------
+
+
+def cmd_save(path: Path) -> None:
+    config = load_config()
+    outputs = niri_json("outputs")
+    workspaces = {ws["id"]: ws for ws in niri_json("workspaces")}
+    announced = load_announced()
+
+    entries = []
+    skipped = 0
+    for window in niri_json("windows"):
+        app_id = window.get("app_id") or ""
+        if app_id not in config.apps:
+            skipped += 1
+            continue
+        workspace = workspaces.get(window["workspace_id"])
+        if workspace is None:
+            continue
+        layout = window.get("layout") or {}
+        size = layout.get("window_size") or [0, 0]
+        column, row = layout.get("pos_in_scrolling_layout") or (0, 0)
+
+        cwd = None
+        foreground: list[str] = []
+        shell_pid = shell_of(window, announced)
+        if shell_pid is not None:
+            cwd = read_cwd(shell_pid)
+            foreground = foreground_argv(shell_pid)
+
+        entries.append(
+            {
+                "app_id": app_id,
+                "title": window.get("title") or "",
+                "output": workspace.get("output"),
+                "workspace_idx": workspace.get("idx"),
+                "column": column,
+                "row": row,
+                "floating": bool(window.get("is_floating")),
+                "width": size[0],
+                "height": size[1],
+                "focused": bool(window.get("is_focused")),
+                "cwd": cwd,
+                "foreground": foreground,
+            }
+        )
+
+    entries.sort(key=lambda e: (e["output"] or "", e["workspace_idx"] or 0, e["column"], e["row"]))
+
+    # niri renumbers workspaces as empty ones disappear, so a saved index is not
+    # a stable coordinate. The rank (nth workspace of its output) is what the
+    # session gets rebuilt to. See docs/niri-session-mng.md.
+    ranks: dict[tuple[str, int], int] = {}
+    counters: dict[str, int] = defaultdict(int)
+    for entry in entries:
+        output = entry["output"] or ""
+        key = (output, entry["workspace_idx"] or 0)
+        if key not in ranks:
+            counters[output] += 1
+            ranks[key] = counters[output]
+        entry["workspace_rank"] = ranks[key]
+
+    snapshot = {
+        "version": VERSION,
+        "saved_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "outputs": {
+            name: {
+                "width": out["logical"]["width"],
+                "height": out["logical"]["height"],
+                "scale": out["logical"]["scale"],
+            }
+            for name, out in outputs.items()
+        },
+        "windows": entries,
+    }
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(snapshot, indent=2) + "\n")
+    print(
+        f"niri-session-mng: saved {len(entries)} window(s) to {path}"
+        f" ({skipped} outside the whitelist)",
+        file=sys.stderr,
+    )
+
+
+# --- restore -----------------------------------------------------------------
+
+
+@dataclass
+class Spawn:
+    app_id: str
+    command: list[str]
+    entries: list[dict]
+    # For terminals: what to type into the fresh shell once it is up. The cwd has
+    # to travel this way -- handing it to the emulator does not work -- and the
+    # captured foreground command is appended when there is one.
+    inject: str | None = None
+
+
+class EventStream:
+    """Reads niri's event stream so fresh windows can be picked up as they map."""
+
+    def __init__(self) -> None:
+        self.proc = subprocess.Popen(
+            ["niri", "msg", "-j", "event-stream"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            bufsize=1,
+        )
+        self.selector = selectors.DefaultSelector()
+        self.selector.register(self.proc.stdout, selectors.EVENT_READ)
+
+    def windows(self, timeout: float):
+        """Yield window objects from window events for at most `timeout` seconds."""
+        deadline = time.monotonic() + timeout
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not self.selector.select(remaining):
+                return
+            line = self.proc.stdout.readline()
+            if not line:
+                return
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            changed = event.get("WindowOpenedOrChanged")
+            if changed and changed.get("window"):
+                yield changed["window"]
+
+    def close(self) -> None:
+        self.proc.terminate()
+        try:
+            self.proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            self.proc.kill()
+            self.proc.wait(timeout=2)
+
+
+def build_launch(entry: dict, recipe: Recipe) -> list[str]:
+    argv: list[str] = []
+    for part in recipe.launch:
+        if "{cwd}" in part:
+            if not entry.get("cwd"):
+                continue  # drop the whole argument, not just the placeholder
+            part = part.replace("{cwd}", entry["cwd"])
+        argv.append(part)
+    return argv
+
+
+def rerun_command(entry: dict, config: Config) -> str | None:
+    """The captured foreground command to type back in, if there is one.
+
+    It only comes back when the directory is known: both pi and a dev server
+    need the directory they were started in. The whole command line wins over
+    the program name, so `pi --flag` still finds the "pi" entry.
+    """
+    foreground = entry.get("foreground") or []
+    rerun = config.rerun.get(" ".join(foreground))
+    if rerun is None and foreground:
+        rerun = config.rerun.get(foreground[0])
+    if not rerun or not entry.get("cwd"):
+        return None
+    return " ".join(shlex.quote(part) for part in rerun)
+
+
+def terminal_command(entry: dict, config: Config) -> str:
+    """What to type into a fresh terminal: change directory, then the job.
+
+    The directory cannot be handed to the emulator instead: any CLI argument
+    makes ghostty drop single-instance mode, and a launcher-style spawn (what
+    niri does) makes it ignore the inherited cwd in favour of home. Typing the
+    `cd` into the shell is the only route that keeps both. See
+    docs/niri-session-mng.md.
+    """
+    cwd = entry.get("cwd") or str(Path.home())
+    command = f"cd {shlex.quote(cwd)}"
+    rerun = rerun_command(entry, config)
+    if rerun:
+        command += f" && {rerun}"
+    return command
+
+
+def build_terminal(entry: dict, recipe: Recipe, config: Config) -> Spawn:
+    """A terminal window: started bare, then filled in by the keyboard.
+
+    The emulator is started with no arguments so it joins the single running
+    instance; directory and job are typed in afterwards.
+    """
+    return Spawn(entry["app_id"], list(recipe.launch), [entry], inject=terminal_command(entry, config))
+
+
+def build_spawns(entries: list[dict], config: Config) -> list[Spawn]:
+    spawns: list[Spawn] = []
+    for app_id in dict.fromkeys(entry["app_id"] for entry in entries):
+        recipe = config.apps[app_id]
+        group = [entry for entry in entries if entry["app_id"] == app_id]
+        if recipe.terminal:
+            spawns.extend(build_terminal(entry, recipe, config) for entry in group)
+        elif recipe.spawn == "once":
+            spawns.append(Spawn(app_id, build_launch(group[0], recipe), group))
+        else:
+            for entry in group:
+                spawns.append(Spawn(app_id, build_launch(entry, recipe), [entry]))
+    return spawns
+
+
+def target_workspace(entry: dict) -> int | None:
+    """The workspace an entry should end up in, by rank rather than by index."""
+    return entry.get("workspace_rank") or entry.get("workspace_idx")
+
+
+def window_title(window_id: int) -> str:
+    for window in niri_json("windows"):
+        if window["id"] == window_id:
+            return window["title"] or ""
+    return ""
+
+
+def wait_for_prompt(window_id: int, timeout: float) -> bool:
+    """Give a fresh shell time to finish its startup files.
+
+    There is no dependable "the shell is at a prompt" signal from outside: the
+    emulator titles a new window itself and the shell replaces that title once
+    its startup files are done, but by the time the window is mapped here that
+    may already have happened. So wait for a title to exist, then settle.
+    """
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if window_title(window_id):
+            time.sleep(PROMPT_SETTLE)
+            return True
+        time.sleep(0.1)
+    return False
+
+
+def type_command(window_id: int, command: str) -> None:
+    """Type a command into a window through the virtual keyboard.
+
+    Include the newline in the text because wtype's `-k Return` never reaches
+    niri. The leading space absorbs the first character dropped on connect;
+    a 10ms inter-key delay prevents longer text from losing characters.
+    """
+    action("focus-window", "--id", str(window_id), check=False)
+    time.sleep(0.3)
+    result = subprocess.run(["wtype", "-d", "10", f" {command}\n"], text=True, capture_output=True)
+    if result.returncode != 0:
+        print(f"niri-session-mng: warning: wtype failed: {result.stderr.strip()}", file=sys.stderr)
+
+
+def focus_target(entry: dict, outputs: set[str]) -> None:
+    """Make the entry's workspace the current one, so a spawn lands there.
+
+    niri numbers workspaces per output, so the output has to be selected first
+    for the rank to mean the right workspace. An output that is gone (a laptop
+    without its dock) is skipped and the window lands on the current one.
+    """
+    if entry.get("output") in outputs:
+        action("focus-monitor", entry["output"], check=False)
+    if target_workspace(entry):
+        action("focus-workspace", str(target_workspace(entry)), check=False)
+
+
+def collect_windows(events: EventStream, spawns: list[Spawn], before: set[int]) -> dict[str, list[dict]]:
+    """Wait until every app has produced the windows it is expected to."""
+    want: dict[str, int] = defaultdict(int)
+    for spawn in spawns:
+        want[spawn.app_id] += len(spawn.entries)
+
+    found: dict[str, list[dict]] = defaultdict(list)
+    deadline = time.monotonic() + WAIT_TIMEOUT
+    outstanding = lambda: sum(max(0, want[a] - len(found[a])) for a in want)
+
+    while outstanding() and time.monotonic() < deadline:
+        window_timeout = min(1.0, max(0.0, deadline - time.monotonic()))
+        for window in events.windows(window_timeout):
+            app_id = window.get("app_id") or ""
+            if app_id not in want or window["id"] in before:
+                continue
+            if any(seen["id"] == window["id"] for seen in found[app_id]):
+                continue
+            if len(found[app_id]) < want[app_id]:
+                found[app_id].append(window)
+
+    for app_id, count in want.items():
+        if len(found[app_id]) < count:
+            print(
+                f"niri-session-mng: warning: {app_id}: expected {count} window(s), saw {len(found[app_id])}",
+                file=sys.stderr,
+            )
+    return found
+
+
+def pair_produced(entries: list[dict], produced: dict[str, list[dict]]) -> list[tuple[dict, dict]]:
+    """Pair newly produced windows with snapshot entries, preferring current titles."""
+    current = {window["id"]: window for window in niri_json("windows")}
+    pairings: list[tuple[dict, dict]] = []
+    for app_id, windows in produced.items():
+        group = [entry for entry in entries if entry["app_id"] == app_id]
+        windows = [current.get(window["id"], window) for window in windows]
+        pairings.extend(pair_windows(group, windows))
+    return pairings
+
+
+def pair_windows(entries: list[dict], windows: list[dict]) -> list[tuple[dict, dict]]:
+    """Pair windows by title first, then use snapshot/window order as fallback."""
+    unmatched_entries = list(entries)
+    unmatched_windows = sorted(windows, key=lambda window: window["id"])
+    pairings: list[tuple[dict, dict]] = []
+
+    for window in list(unmatched_windows):
+        title = window.get("title") or ""
+        if not title:
+            continue
+        entry = next((item for item in unmatched_entries if item.get("title") == title), None)
+        if entry is None:
+            continue
+        pairings.append((entry, window))
+        unmatched_entries.remove(entry)
+        unmatched_windows.remove(window)
+
+    pairings.extend(zip(unmatched_entries, unmatched_windows))
+    return pairings
+
+
+def target_width(entry: dict, snapshot: dict, outputs: dict[str, int]) -> int:
+    """The column width in logical pixels, rescaled if the output changed size."""
+    width = int(entry.get("width") or 0)
+    if width <= 0:
+        return 0
+    output = entry.get("output") or ""
+    saved = (snapshot.get("outputs") or {}).get(output) or {}
+    saved_width = saved.get("width")
+    current = outputs.get(output)
+    if saved_width and current and current != saved_width:
+        return round(width * current / saved_width)
+    return width
+
+
+def place(entry: dict, window: dict, snapshot: dict, outputs: dict[str, int]) -> None:
+    """Put one window back: its workspace, its column and its width."""
+    window_id = str(window["id"])
+    if entry.get("floating"):
+        # Floating geometry is not captured; leave the window where it opened.
+        print(f"niri-session-mng: note: {entry['app_id']}: floating window left unplaced", file=sys.stderr)
+
+    # niri numbers workspaces per output, so select the output first for the
+    # index to mean the right workspace.
+    if entry.get("output") in outputs:
+        action("focus-monitor", entry["output"], check=False)
+    action("focus-window", "--id", window_id, check=False)
+    if target_workspace(entry):
+        action("move-window-to-workspace", "--window-id", window_id, str(target_workspace(entry)), check=False)
+    if entry.get("column"):
+        action("focus-window", "--id", window_id, check=False)
+        action("move-column-to-index", str(entry["column"]), check=False)
+    width = target_width(entry, snapshot, outputs)
+    if width:
+        action("focus-window", "--id", window_id, check=False)
+        # SizeChange parses plain integers as logical pixels; "800px" is a
+        # parse error, and a percent sign means a proportion instead.
+        action("set-column-width", str(width), check=False)
+
+
+def ensure_at_most_one_ghostty(windows: list[dict]) -> None:
+    """Refuse restore when existing Ghostty windows make the session unsafe."""
+    ghostty = [window for window in windows if window.get("app_id") == "com.mitchellh.ghostty"]
+    if len(ghostty) > 1:
+        ids = ", ".join(f"win{window['id']}" for window in ghostty)
+        sys.exit(
+            f"niri-session-mng: refusing restore: found {len(ghostty)} Ghostty windows ({ids}); "
+            "close all but one before restoring"
+        )
+
+
+def cmd_restore(path: Path, dry_run: bool) -> None:
+    config = load_config()
+    try:
+        snapshot = json.loads(path.read_text())
+    except OSError as exc:
+        sys.exit(f"niri-session-mng: cannot read {path}: {exc}")
+    except json.JSONDecodeError as exc:
+        sys.exit(f"niri-session-mng: {path}: {exc}")
+
+    entries = [entry for entry in snapshot.get("windows", []) if entry.get("app_id") in config.apps]
+    if not entries:
+        sys.exit("niri-session-mng: nothing in the snapshot is on the whitelist")
+
+    outputs = {name: out["logical"]["width"] for name, out in niri_json("outputs").items()}
+    spawns = build_spawns(entries, config)
+
+    if dry_run:
+        ordered_spawns = [spawn for spawn in spawns if spawn.inject is not None]
+        ordered_spawns.extend(spawn for spawn in spawns if spawn.inject is None)
+        for spawn in ordered_spawns:
+            print(f"spawn: {' '.join(spawn.command)}")
+            for entry in spawn.entries:
+                print(
+                    f"    ws{target_workspace(entry)} col{entry['column']}"
+                    f" width{entry['width']} {entry['app_id']} {entry['title']!r}"
+                )
+            if spawn.inject:
+                print(f"    type: {spawn.inject}")
+        print(f"{len(entries)} window(s) in {len(spawns)} launch(es)")
+        return
+
+    current_windows = niri_json("windows")
+    ensure_at_most_one_ghostty(current_windows)
+    terminal_spawns = [spawn for spawn in spawns if spawn.inject is not None]
+    other_spawns = [spawn for spawn in spawns if spawn.inject is None]
+    before = {window["id"] for window in current_windows}
+    events = EventStream()
+    try:
+        for spawn in terminal_spawns:
+            focus_target(spawn.entries[0], set(outputs))
+            print(f"niri-session-mng: launching {' '.join(spawn.command)}", file=sys.stderr)
+            action("spawn", "--", *spawn.command)
+        terminal_produced = collect_windows(events, terminal_spawns, before)
+        pairings = pair_produced(entries, terminal_produced)
+
+        # Finish terminal injection before launching any other applications.
+        if shutil.which("wtype"):
+            for entry, window in pairings:
+                command = terminal_command(entry, config)
+                if wait_for_prompt(window["id"], PROMPT_TIMEOUT):
+                    print(f"niri-session-mng: typing into win{window['id']}: {command}", file=sys.stderr)
+                    type_command(window["id"], command)
+                else:
+                    print(
+                        f"niri-session-mng: warning: win{window['id']}: no prompt yet, skipped {command!r}",
+                        file=sys.stderr,
+                    )
+        elif terminal_spawns:
+            print("niri-session-mng: warning: wtype missing; terminals keep the default directory", file=sys.stderr)
+
+        for spawn in other_spawns:
+            focus_target(spawn.entries[0], set(outputs))
+            print(f"niri-session-mng: launching {' '.join(spawn.command)}", file=sys.stderr)
+            action("spawn", "--", *spawn.command)
+        other_produced = collect_windows(events, other_spawns, before)
+        pairings.extend(pair_produced(entries, other_produced))
+    finally:
+        events.close()
+
+    # Place the columns left to right so move-column-to-index settles on target.
+    pairings.sort(
+        key=lambda pair: (
+            pair[0].get("output") or "",
+            target_workspace(pair[0]) or 0,
+            pair[0]["column"],
+            pair[0]["row"],
+        )
+    )
+
+    print(f"niri-session-mng: placing {len(pairings)} window(s)", file=sys.stderr)
+    for entry, window in pairings:
+        place(entry, window, snapshot, outputs)
+
+
+# --- show --------------------------------------------------------------------
+
+
+def cmd_show(path: Path) -> None:
+    try:
+        snapshot = json.loads(path.read_text())
+    except OSError as exc:
+        sys.exit(f"niri-session-mng: cannot read {path}: {exc}")
+    except json.JSONDecodeError as exc:
+        sys.exit(f"niri-session-mng: {path}: {exc}")
+
+    print(f"saved at {snapshot.get('saved_at', '?')}")
+    for entry in snapshot.get("windows", []):
+        foreground = " ".join(entry.get("foreground") or []) or "-"
+        rank = entry.get("workspace_rank") or entry.get("workspace_idx")
+        index = entry["workspace_idx"]
+        workspace = f"ws{rank}" if rank == index else f"ws{rank}(was {index})"
+        print(
+            f"  {entry['app_id']:24} {entry.get('output')} {workspace}"
+            f" col{entry['column']} row{entry['row']} {entry['width']}x{entry['height']}"
+            f" {'float ' if entry.get('floating') else ''}"
+            f"cwd={entry.get('cwd') or '-'} fg={foreground}"
+        )
+
+
+def main(argv: list[str]) -> None:
+    parser = argparse.ArgumentParser(
+        prog="niri-session-mng",
+        description="Snapshot a niri session and rebuild it in a fresh one.",
+    )
+    parser.add_argument("--file", type=Path, default=SESSION_PATH, help=f"snapshot path (default: {SESSION_PATH})")
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("save", help="capture the current session")
+    restore = sub.add_parser("restore", help="rebuild the captured session")
+    restore.add_argument("--dry-run", action="store_true", help="print the plan and stop")
+    sub.add_parser("show", help="print the captured session")
+    args = parser.parse_args(argv)
+
+    if args.command == "save":
+        cmd_save(args.file)
+    elif args.command == "restore":
+        cmd_restore(args.file, args.dry_run)
+    else:
+        cmd_show(args.file)
+
+
+if __name__ == "__main__":
+    try:
+        main(sys.argv[1:])
+    except NiriError as exc:
+        sys.exit(f"niri-session-mng: {exc}")

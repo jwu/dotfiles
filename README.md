@@ -150,6 +150,7 @@ chezmoi 的源路径与目标路径不一定逐字对应：`dot_` 加前置点�
 - [`docs/lockscreen.md`](docs/lockscreen.md) — hyprlock / swaylock、熄屏计时、按屏幕尺寸挑样式。
 - [`docs/suspend.md`](docs/suspend.md) — MacBookPro14,2 合盖休眠：S3 被 45 秒硬件唤醒无解，改用 hibernate；resume 挂死的修法与合盖锁屏。
 - [`docs/niri.md`](docs/niri.md) — focus-follows-mouse、`warp-mouse-to-focus`、光标隐藏。
+- [`docs/niri-session-mng.md`](docs/niri-session-mng.md) — 会话快照与重建：白名单 app、窗口 ↔ shell 靠 waybar 的 pid 缓存、workspace 按序号恢复。
 - [`docs/wayland-attach.md`](docs/wayland-attach.md) — 从 ssh / tty 附加到 niri 会话：`wattach` / `wdetach` / `wstat`、变量来源与存活校验。
 - [`docs/ghostty.md`](docs/ghostty.md) — quick terminal 的 `global:` 绑定、`bold-is-bright` 的迁移。
 - [`docs/ghostty-titlebar.md`](docs/ghostty-titlebar.md) — GTK 标题栏几何、undershoot 线、配色预设。
