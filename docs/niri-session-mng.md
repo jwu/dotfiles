@@ -95,8 +95,9 @@ workspace 的会话里 `focus-workspace 9`，niri 只新建**一个** workspace�
    **放大的因素**：`&` 在 US 布局是 Shift+7 的组合键，最容易掉。
 
    本机 `wtype 0.4-2` 已支持 `-d <ms>`，所以先不换工具、不改命令拆分：`type_command()` 用
-   `wtype -d 10`。对照测试中，默认 0ms 的 wtype 曾把 `WTYPE_OK` 截成 `WTYPE_`；加 `-d 10`
+   `wtype -d 15`。对照测试中，默认 0ms 的 wtype 曾把 `WTYPE_OK` 截成 `WTYPE_`；加 `-d 10`
    后，在新建 Ghostty 窗口里完整输入了含 `&&` 的 `cd /home/jwu/dev/ai-canvas && bun run dev`。
+   但实际恢复时 `-d 10` 仍偶发丢字符，故上移到 15ms（同样的变量：`&` 这类 Shift 组合键最容易掉）。
    `ydotool type -d 30` 也能完整输入，但需要额外运行 `ydotoold`，当前没有证据表明值得切换。
    这些测试尚未复测真正的「第一个恢复窗口」启动竞态。
 

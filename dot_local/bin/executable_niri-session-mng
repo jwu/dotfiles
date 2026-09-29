@@ -529,11 +529,11 @@ def type_command(window_id: int, command: str) -> None:
 
     Include the newline in the text because wtype's `-k Return` never reaches
     niri. The leading space absorbs the first character dropped on connect;
-    a 10ms inter-key delay prevents longer text from losing characters.
+    a 15ms inter-key delay prevents longer text from losing characters.
     """
     action("focus-window", "--id", str(window_id), check=False)
     time.sleep(0.3)
-    result = subprocess.run(["wtype", "-d", "10", f" {command}\n"], text=True, capture_output=True)
+    result = subprocess.run(["wtype", "-d", "15", f" {command}\n"], text=True, capture_output=True)
     if result.returncode != 0:
         print(f"niri-session-mng: warning: wtype failed: {result.stderr.strip()}", file=sys.stderr)
 
