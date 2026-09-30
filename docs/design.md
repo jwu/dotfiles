@@ -520,6 +520,7 @@ chezmoi 官方文档和本机 `scriptState` 都不符——`run_once_` 同样会
 | `desktop-settings/inputsource-pro/` 的说明与截图 | 文档（含截图的文字）迁入 `docs/inputsource-pro/` | 配置本身不迁，改用应用自己的导出/导入，见下 |
 | `install-arch/install.sh` | `bootstrap/arch.sh` | 见「安装入口」 |
 | `configs/win/install.bat`、`config.bat` | 转成 `bootstrap/windows.bat` 与 scoop 清单 | Windows 装机层 |
+| `jwu/dev-settings` 的 mac / win 清单 | `run_onchange_before_12-dev-runtimes.sh.tmpl` + `bootstrap/windows.bat` | 只作清单参考，不依赖那个仓库；见 [`dev-env.md`](dev-env.md) |
 
 `run_onchange_after_40-fcitx5.sh.tmpl` 的缩水要点：原脚本做三件事——复制配置、下载 Rime Ice 词库、
 `rime_deployer --build` 并重启 fcitx5。复制那半由 chezmoi 接管后，只剩下后两件。**必须用
@@ -864,8 +865,10 @@ reveal、render-markdown、gdscript LSP）和 `.pi/agent/themes/one-dark.json`�
 
 **未纳入**（本次决定不做）：`~/.config/lsd/config.yaml`（旧 `configs/common` 与 home 都有、
 dotfiles 漏了；但 aliases 已改用 eza）、`~/.config/git/ignore`、`~/.config/opencode/`、
-`AppData/Local/nvim/lazy-lock.json`、`~/bin/imtip-config/`、`~/bin/dev-settings/`、
-`%APPDATA%\Zed\AGENTS.md`。
+`AppData/Local/nvim/lazy-lock.json`、`~/bin/imtip-config/`、`%APPDATA%\Zed\AGENTS.md`。
+
+`~/bin/dev-settings/` 当时也在这个列表里，2026-09-30 重判：它只是一份开发运行时清单，
+内容已按本仓库的分层重新实现，仓库本身不入库也不被依赖，见 [`dev-env.md`](dev-env.md)。
 
 Zed 的 Windows settings 与 Unix 侧那份已经对齐（补齐 `project_panel` / `outline_panel` /
 `collaboration_panel` / `git_panel` 的 dock、`agent` 块、`soft_wrap`、`cli_default_open_behavior`），
@@ -942,6 +945,22 @@ JSON 坏掉、`python3` 缺失、模板渲染失败这四种情况都只打印�
 defaultTools` 并复原；随后再 apply 两次，输出为空、文件 mtime 不变。Windows 上脚本渲染为空
 字符串（与其他 `run_*` 相同的 `{{ if ne .chezmoi.os "windows" }}` 写法），托管键不自动同步，
 `create_` 模板仍负责打底。
+
+### 开发运行时四个工具（2026-09-30）
+
+`rustup`、`nvm` + Node LTS、`uv`、`bun` 此前没有任何安装步骤：`arch.sh` 只装了 Arch 的
+`rustup` 包（没有 toolchain），`macos.sh` 与 `windows.bat` 一个都没有，而 `dot_zshrc.tmpl`
+早就把 `~/.cargo/bin` 与 `$BUN_INSTALL/bin` 加进了 PATH。撞到的症状都不是「装不上」而是
+「装了没初始化」：`nvm` 缺失让 `npm` 缺失，于是 `run_once_after_50-pi-config.sh.tmpl` 的
+`ensure_pi()` 只打印一行警告，pi CLI 静默没装。
+
+现在 Unix 侧是 `run_onchange_before_12-dev-runtimes.sh.tmpl`（四个工具全部 per-user 安装、无需
+root），Windows 侧是 `bootstrap/windows.bat` 的 `:SCOOP_DEV_RUNTIMES` 与 `:DEV_RUSTUP`。
+编号 12 < 50 保证 pi CLI 那步拿得到 `npm`。清单来自 `jwu/dev-settings`，但只作参考——那个
+仓库是一次性交互式脚本，与本仓库的分层相反。
+
+取舍、三处坑（installer 改写 shell 配置、bun 的 completions 引号、`nvm.sh` 与 `set -u`）
+以及「缺失才装」这条判据见 [`dev-env.md`](dev-env.md)。
 
 ### pi-mcp-adapter 改读 `mcp-adapter.json`（2026-09-27）
 

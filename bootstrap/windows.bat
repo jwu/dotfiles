@@ -28,6 +28,7 @@ if not defined PI_DIR set "PI_DIR=C:\bin\pi-config"
 set "CONFIG_DIR=%USERPROFILE%\.config\chezmoi"
 set "SCOOP_APPS=clink clink-completions starship fzf zoxide fd bat delta ripgrep eza uutils-coreutils alacritty"
 set "SCOOP_FONT=FiraMono-NF"
+set "SCOOP_DEV=uv bun nodejs-lts"
 set "ERROR_COUNT=0"
 
 echo ^>^>^> dotfiles bootstrap ^(Windows^)
@@ -41,6 +42,8 @@ call :REQUIRE "configure chezmoi sourceDir" :WRITE_CONFIG || goto :ABORT
 
 call :DO "scoop buckets (extras, nerd-fonts)" :SCOOP_BUCKETS
 call :DO "scoop packages" :SCOOP_PACKAGES
+call :DO "developer runtimes (uv, bun, nodejs-lts)" :SCOOP_DEV_RUNTIMES
+call :DO "rustup + stable toolchain" :DEV_RUSTUP
 call :DO "user environment variables" :WRITE_ENV
 call :DO "clink: register clink-completions" :CLINK_SCRIPTS
 call :DO "pi-config checkout" :ENSURE_PI_CONFIG
@@ -169,8 +172,9 @@ exit /b 0
 
 :ENSURE_PI_CONFIG
 :: pi loads extensions/ live from the checkout, so the settings.json chezmoi
-:: writes points at %PI_DIR%\extensions. pi itself and nodejs are a manual
-:: install on Windows; this step only keeps the checkout in place.
+:: writes points at %PI_DIR%\extensions. nodejs now comes from scoop above; pi
+:: itself is still a manual install on Windows, so this step only keeps the
+checkout in place.
 :: See docs/design.md, the pi-config orchestration section.
 if exist "%PI_DIR%\.git" (
   echo     updating %PI_DIR%
@@ -216,6 +220,43 @@ if errorlevel 1 exit /b 1
 :: Windows 10 1809 and later, which is why this no longer needs admin.
 echo     Installing %SCOOP_FONT%
 call scoop install %SCOOP_FONT%
+exit /b %errorlevel%
+
+:SCOOP_DEV_RUNTIMES
+:: uv, bun and Node LTS come from scoop like the rest of the shell tools: their
+:: shims land on a PATH that is already set up, so nothing here touches the
+:: user environment. See docs/dev-env.md.
+echo     Installing: %SCOOP_DEV%
+call scoop install %SCOOP_DEV%
+exit /b %errorlevel%
+
+:DEV_RUSTUP
+:: Rust's own installer rather than a manifest: rustup owns the toolchains, and
+:: on Windows it is also the thing that appends %USERPROFILE%\.cargo\bin to the
+:: user PATH -- Unix gets that line from dot_zshrc.tmpl instead, which is why
+:: the Unix side passes --no-modify-path.
+where rustup >nul 2>&1
+if not errorlevel 1 (
+  echo     rustup is already installed
+  call rustup default stable
+  if errorlevel 1 exit /b 1
+  exit /b 0
+)
+set "RUSTUP_INIT=%TEMP%\rustup-init.exe"
+curl -fsSL -o "%RUSTUP_INIT%" https://win.rustup.rs/x86_64
+if errorlevel 1 (
+  echo     downloading rustup-init.exe failed 1>&2
+  exit /b 1
+)
+"%RUSTUP_INIT%" -y
+set "RUSTUP_RC=%errorlevel%"
+del "%RUSTUP_INIT%" >nul 2>&1
+if not "%RUSTUP_RC%"=="0" exit /b %RUSTUP_RC%
+:: The installer edits the registry, not this process, so make the shim visible
+:: for the toolchain select below.
+set "PATH=%PATH%;%USERPROFILE%\.cargo\bin"
+:: rustup ships no toolchain, so cargo does not exist until this runs.
+rustup default stable
 exit /b %errorlevel%
 
 :WRITE_ENV

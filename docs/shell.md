@@ -13,6 +13,11 @@ macOS 分支必须同时认：
 打印一个路径并以 0 退出**——所以它不会报错，只会让 nvm 加载不到。只能靠 `-s` 探
 文件本身，不能看命令是否成功。
 
+Arch 的 `extra/nvm` 是第三种位置：`/usr/share/nvm/nvm.sh`（另有 `init-nvm.sh`），既不在
+`$NVM_DIR` 也不在 brew 的 prefix。这一路**有意不支持**：Linux 分支只探 `$NVM_DIR`，而
+`run_onchange_before_12-dev-runtimes.sh.tmpl` 用 `git clone` 把 nvm 装进 `$NVM_DIR`；理由与
+取舍见 [`dev-env.md`](dev-env.md)。
+
 ## Apple Silicon 的 MPS 变量
 
 ```sh

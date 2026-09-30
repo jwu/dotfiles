@@ -1,0 +1,136 @@
+{{ if ne .chezmoi.os "windows" -}}
+#!/bin/bash
+# Per-user developer runtimes: rustup, nvm + Node LTS, uv, bun.
+#
+# All four live under $HOME (.cargo, .nvm, .local/bin, .bun), so nothing here
+# needs root and none of it belongs in bootstrap/. "Missing, so install" is the
+# whole logic -- a machine that already has a tool keeps it, including nvm's
+# default alias, which is that machine's own choice rather than this repo's.
+# Numbered before 50 so run_once_after_50-pi-config.sh finds npm and can install
+# the pi CLI. `run_onchange_` because this list will grow and the prefix says so;
+# re-running is free since every step below probes before it acts. See
+# docs/dev-env.md.
+set -uo pipefail
+
+FAILED_STEPS=()
+
+step() {
+  local name="$1"
+  shift
+  local rc=0
+  echo ""
+  echo ">>> $name"
+  "$@" || rc=$?
+  if [ "$rc" -eq 0 ]; then
+    echo "    ok"
+  else
+    FAILED_STEPS+=("$name")
+    echo "    FAILED (exit $rc); continuing" >&2
+  fi
+}
+
+summary() {
+  echo ""
+  echo "=========================================="
+  if [ "${#FAILED_STEPS[@]}" -eq 0 ]; then
+    echo ">>> All steps completed."
+    return 0
+  fi
+  echo ">>> Finished with ${#FAILED_STEPS[@]} failed step(s):"
+  local s
+  for s in "${FAILED_STEPS[@]}"; do
+    echo "      - $s"
+  done
+  echo ""
+  echo "    Fix these, then clear the ledger and re-run:"
+  echo "      chezmoi state delete-bucket --bucket=scriptState && chezmoi apply"
+  return 1
+}
+
+install_rustup() {
+  if ! command -v rustup > /dev/null 2>&1; then
+    local installer
+    # Fetch first: `sh -c "$(curl ...)"` swallows a failed download and runs an
+    # empty script, leaving rustup silently uninstalled.
+    installer="$(curl -fsSL https://sh.rustup.rs)" || return 1
+    # --no-modify-path: dot_zshrc.tmpl already carries ~/.cargo/bin, and chezmoi
+    # is the only thing that should be editing shell files here.
+    sh -c "$installer" "" -y --no-modify-path || return 1
+    export PATH="$HOME/.cargo/bin:$PATH"
+  fi
+  # Rust's own installer and Arch's rustup package both ship without a
+  # toolchain, so `cargo` does not exist until this line runs.
+  rustup default stable || return 1
+  echo "    rustup: $(rustup --version 2>/dev/null | head -1)"
+}
+
+install_nvm() {
+  export NVM_DIR="$HOME/.nvm"
+  if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+    # A tag rather than the default branch, so a fresh machine and an existing
+    # one agree on what nvm is.
+    git clone --quiet --depth 1 --branch v0.40.7 \
+      https://github.com/nvm-sh/nvm.git "$NVM_DIR" || return 1
+  fi
+  # nvm.sh reads variables it never initializes, which `set -u` turns into a
+  # hard error on some of the versions a machine may already be carrying.
+  set +u
+  # shellcheck source=/dev/null
+  . "$NVM_DIR/nvm.sh" || { set -u; return 1; }
+  local node_dir found=0
+  for node_dir in "$NVM_DIR"/versions/node/*; do
+    if [ -d "$node_dir" ]; then
+      found=1
+      break
+    fi
+  done
+  if [ "$found" -eq 1 ]; then
+    echo "    nvm: $(nvm --version); Node already installed, left alone"
+    set -u
+    return 0
+  fi
+  echo "    nvm: installing Node LTS"
+  nvm install --lts || { set -u; return 1; }
+  nvm alias default 'lts/*' || { set -u; return 1; }
+  set -u
+  echo "    nvm: $(nvm --version)"
+}
+
+install_uv() {
+  if command -v uv > /dev/null 2>&1; then
+    echo "    uv: $(uv --version)"
+    return 0
+  fi
+  local installer
+  installer="$(curl -fsSL https://astral.sh/uv/install.sh)" || return 1
+  # The installer appends to ~/.zshrc and ~/.zshenv on its own; dot_zshrc.tmpl
+  # owns both, so it is told not to.
+  UV_NO_MODIFY_PATH=1 sh -c "$installer" || return 1
+  echo "    uv: installed at $HOME/.local/bin/uv"
+}
+
+install_bun() {
+  if command -v bun > /dev/null 2>&1; then
+    echo "    bun: $(bun --version)"
+    return 0
+  fi
+  local installer
+  installer="$(curl -fsSL https://bun.sh/install)" || return 1
+  # bun has no --no-modify-path: it appends to ~/.zshrc whenever $SHELL says
+  # zsh. An unrecognized shell makes it print the two lines instead, and those
+  # are already in dot_zshrc.tmpl. The completions it would have written come
+  # from the explicit call below.
+  BUN_INSTALL="$HOME/.bun" SHELL=/bin/sh sh -c "$installer" || return 1
+  "$HOME/.bun/bin/bun" completions > "$HOME/.bun/_bun" || return 1
+  echo "    bun: installed at $HOME/.bun/bin/bun"
+}
+
+echo ">>> developer runtimes (root-free, per-user)"
+
+step "rustup + stable toolchain" install_rustup
+step "nvm + Node LTS" install_nvm
+step "uv" install_uv
+step "bun" install_bun
+
+summary
+{{ end -}}

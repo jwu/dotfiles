@@ -284,8 +284,9 @@ Clink；这里**不能**改用 `clink autorun`：Clink 的 `os.setenv` 改不了
 **(d) pi 的接线由 chezmoi 与 `bootstrap/windows.bat` 一起补。** `create_settings.json.tmpl` 渲染
 出的 `extensions` 在 Windows 上是 `c:/bin/pi-config/extensions`（pi 会展开 `~`，所以 Unix 那份
 写 `~/bin/pi-config/extensions` 就够）。clone 由 `bootstrap/windows.bat` 的 `:ENSURE_PI_CONFIG`
-步骤负责，目标是固定的 `C:\bin\pi-config`；**node 与 pi CLI 不在 bootstrap 里**，要在那台机器上
-手工装（`scoop install nodejs-lts`，再 `npm i -g @earendil-works/pi-coding-agent`）。
+步骤负责，目标是固定的 `C:\bin\pi-config`；**node 现在由同一份 bootstrap 的 scoop 步骤装上**
+（`nodejs-lts`），pi CLI 仍是手工装（`npm i -g @earendil-works/pi-coding-agent`），因为
+`run_once_after_50` 在 Windows 上渲染为空。见 [`dev-env.md`](dev-env.md)。
 
 `run_once_after_50-pi-config.sh.tmpl` 在 Windows 上渲染为空，所以 Windows 那条路径上的 clone
 完全靠 bootstrap。这台机器以前是手工 clone 到 `C:\dev\pi-config` 再让 `settings.json` 指向它，
