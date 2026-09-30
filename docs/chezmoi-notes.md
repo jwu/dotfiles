@@ -45,6 +45,33 @@ chezmoi 依据权限位给源文件加前缀，所以源路径与目标路径不
 
 完整清单见 [`design.md`](design.md) 的「属性前缀会进源路径」。
 
+## `end -}}` 会吃掉条件体末尾的段落空行
+
+`{{-` / `-}}` 削掉的是**所有**连续空白，不是一个换行。所以「在分支体末尾留一个空行做
+段落分隔」只在条件命中的平台上成立：命中时空行属于分支体、照样输出；未命中时整个分支体
+被丢弃，空行一并消失，两段就贴到了一起。
+
+`dot_zshrc.tmpl` 的 Linux `open()` 分支踩过这个——macOS 上 `alias lt=...` 直接贴住下一段
+标题。让空行改由 `end` 所在行恒定产出即可，且两端输出都不用变（Linux 侧分支体末尾只剩
+`}` 与它自己的换行，`end` 后的换行恰好补回原来的空行）：
+
+```
+alias lt='eza --icons --tree'
+{{ if eq .chezmoi.os "linux" -}}
+open() {
+  setsid -f xdg-open "$@" >/dev/null 2>&1 </dev/null
+}
+{{ end }}
+# ------------------------------
+```
+
+改完必须两个平台都渲染一遍，不要只看本机：
+
+```bash
+chezmoi execute-template < dot_zshrc.tmpl                                 # 本机
+sed 's/\.chezmoi\.os/"linux"/' dot_zshrc.tmpl | chezmoi execute-template  # 另一平台
+```
+
 ## `create_` 是「一次性初始化」，不是真源
 
 `settings.json`、`mcp-adapter.json` 这种会被工具自己回写的文件用 `create_` 前缀：chezmoi 只在**目标
