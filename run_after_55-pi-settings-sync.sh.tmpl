@@ -1,0 +1,87 @@
+{{ if ne .chezmoi.os "windows" -}}
+#!/bin/bash
+# Reconcile the managed keys of ~/.pi/agent/settings.json.
+#
+# That file is a create_ target: chezmoi writes it once, then pi rewrites it with
+# machine-local state (default provider/model, lastChangelogVersion, ...). This script
+# pushes the keys that must match on every machine from the create_ template into the
+# existing file and leaves everything else alone. It is idempotent and runs on every
+# apply, so editing the template is enough to update an existing machine.
+# See docs/chezmoi-notes.md, the create_ section.
+set -uo pipefail
+
+SETTINGS="$HOME/.pi/agent/settings.json"
+# Source path, not target path: the attribute prefixes live in the source tree.
+SOURCE_SETTINGS="{{ .chezmoi.sourceDir }}/private_dot_pi/private_agent/create_settings.json.tmpl"
+
+if [ ! -f "$SETTINGS" ]; then
+  echo "    pi settings: $SETTINGS does not exist; the create_ template owns it"
+  exit 0
+fi
+
+if ! command -v python3 > /dev/null 2>&1; then
+  echo "    pi settings: python3 not found; managed keys not synced" >&2
+  exit 0
+fi
+
+if ! rendered="$(chezmoi execute-template < "$SOURCE_SETTINGS")"; then
+  echo "    pi settings: cannot render $SOURCE_SETTINGS; managed keys not synced" >&2
+  exit 0
+fi
+
+PI_MANAGED_JSON="$rendered" python3 - "$SETTINGS" <<'PY'
+import json
+import os
+import sys
+
+# Keys the dotfiles own. Everything else in settings.json belongs to pi or to this machine.
+MANAGED_KEYS = (
+    "extensions",
+    "packages",
+    "defaultTools",
+    "theme",
+    "tuiMode",
+    "quietStartup",
+    "enableInstallTelemetry",
+    "defaultProjectTrust",
+    "hideThinkingBlock",
+)
+
+path = sys.argv[1]
+
+try:
+    managed = json.loads(os.environ["PI_MANAGED_JSON"])
+except (KeyError, ValueError) as error:
+    print(f"    pi settings: rendered source is unusable ({error}); nothing synced", file=sys.stderr)
+    raise SystemExit(0)
+
+try:
+    with open(path, encoding="utf-8") as handle:
+        settings = json.load(handle)
+except (OSError, ValueError) as error:
+    print(f"    pi settings: {path} is unreadable ({error}); left untouched", file=sys.stderr)
+    raise SystemExit(0)
+
+if not isinstance(settings, dict) or not isinstance(managed, dict):
+    print("    pi settings: expected JSON objects; left untouched", file=sys.stderr)
+    raise SystemExit(0)
+
+synced = []
+for key in MANAGED_KEYS:
+    if key not in managed:
+        print(f"    pi settings: {key} is missing from the source; skipped", file=sys.stderr)
+        continue
+    if settings.get(key) != managed[key]:
+        settings[key] = managed[key]
+        synced.append(key)
+
+if not synced:
+    raise SystemExit(0)
+
+# Match pi's own writer: JSON.stringify(value, null, 2) with no trailing newline.
+with open(path, "w", encoding="utf-8") as handle:
+    handle.write(json.dumps(settings, indent=2, ensure_ascii=False))
+
+print(f"    pi settings: synced {', '.join(synced)}")
+PY
+{{ end -}}

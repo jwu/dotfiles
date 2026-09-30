@@ -1,3 +1,8 @@
+{{- /* Keys synced into an existing ~/.pi/agent/settings.json by
+       run_after_55-pi-settings-sync.sh.tmpl: extensions, packages, defaultTools, theme,
+       tuiMode, quietStartup, enableInstallTelemetry, defaultProjectTrust, hideThinkingBlock.
+       The rest is the baseline for a machine with no settings.json yet.
+       See docs/chezmoi-notes.md. */ -}}
 {
   "shellCommandPrefix": "python(){ uv run python \"$@\"; }\npython3(){ uv run python \"$@\"; }\nexport -f python\nexport -f python3",
   "defaultProvider": "deepseek",
@@ -35,5 +40,6 @@
     "find",
     "ls",
     "codemode"
-  ]
+  ],
+  "hideThinkingBlock": false
 }

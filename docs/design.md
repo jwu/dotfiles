@@ -140,7 +140,7 @@ dot_pi/agent/
   themes/one-dark.json                 ← pi-config: themes/
   keybindings.json                     ← pi-config
   APPEND_SYSTEM.md                     ← pi-config
-  create_settings.json.tmpl            ← 新机器的初始 settings.json（`create_`，只落地一次）
+  create_settings.json.tmpl            ← 新机器的初始 settings.json（`create_`；托管键另有 run_after 同步）
   create_mcp-adapter.json              ← 新机器的初始 mcp-adapter.json（同上）
   extensions/eko24ive-pi-ask.json      ← pi-ask 设置（真源；在 /ask-settings 里改设置会被写回）
   extensions/pi-tui-animations.json    ← pi-animations 设置（同上）
@@ -198,14 +198,15 @@ chezmoi 依据权限位给源文件加前缀，所以**源路径与目标路径�
 
 ### 已导入的文件
 
-阶段 1 与平台搬入已完成（见「实施状态」）。当前源里共 **95 个目标文件**（去重口径 = Linux
-目标 + macOS 专有 + Windows 专有）：**74 个 Linux 目标 + 4 个 macOS 专有 + 17 个 Windows
-专有**；16 个 `.tmpl`（其中 8 个是 `run_*` 动作脚本），3 个 `create_` 目标。`chezmoi diff`
-在 Linux 上为空，macOS / Windows 目标由 `.chezmoiignore` 按 OS 排除。
+阶段 1 与平台搬入已完成（见「实施状态」）。当前源里共 **109 个目标文件**（去重口径 = Linux
+目标 + macOS 专有 + Windows 专有）：**87 个 Linux 目标 + 5 个 macOS 专有 + 17 个 Windows
+专有**；23 个 `.tmpl`（其中 10 个是 `run_*` 动作脚本），3 个 `create_` 目标。`chezmoi diff`
+在 Linux 上为空，macOS / Windows 目标由 `.chezmoiignore` 按 OS 排除。数字于 2026-09-30 重算
+（三个平台各 87 / 36 / 39，后两个减去 Linux 目标集得 5 / 17）。
 
 数字这样复现：当前平台直接跑 `chezmoi managed --include=files`；另两个平台把
-`.chezmoiignore` 里的 `.chezmoi.os` 替换成 `"linux"` / `"windows"` 字面量各存一份临时源，
-再用 `chezmoi --source <临时源> managed --include=files`，最后 `comm` 去重相减。
+`.chezmoiignore` 里的 `.chezmoi.os` 替换成 `"linux"` / `"darwin"` / `"windows"` 字面量各存
+一份临时源，再用 `chezmoi --source <临时源> managed --include=files`，最后 `comm` 去重相减。
 
 > Windows 接入又添了 5 个 Windows 目标（yazi / gitui / glow / zed），见「Windows 侧」。
 
@@ -297,7 +298,7 @@ git 先读 XDG 那份、再读 `~/.gitconfig`，后者覆盖前者，所以个�
 | --- | --- | --- |
 | 静态资源（pi 只读） | `agents/`、`skills/`、`prompts/`、`themes/` | **已纳入**，源是真源 |
 | 人工维护的配置 | `keybindings.json`、`APPEND_SYSTEM.md` | **已纳入**，源是真源 |
-| 会被 pi 回写 | `settings.json`、`mcp-adapter.json` | **已纳入**，但用 `create_` 前缀 |
+| 会被 pi 回写 | `settings.json`、`mcp-adapter.json` | **已纳入**：`create_` 打底，`settings.json` 的托管键再由 `run_after_` 脚本同步 |
 | 设置面板会回写 | `extensions/*.json`（pi-ask、pi-animations） | **已纳入**，源是真源；只有改设置时才被写回 |
 | 凭据与运行时 | `auth.json`、`sessions/`、`models-store.json`、`*-cache.json`、`install/`、`bin/`、`npm/` | **绝不纳入** |
 
@@ -306,15 +307,28 @@ git 先读 XDG 那份、再读 `~/.gitconfig`，后者覆盖前者，所以个�
 `/mcp` 改写。这两份用 `create_` 前缀：**只在目标不存在时**渲染一次，之后不再碰。新机器因此
 拿到一份能开箱用的配置，本机后来被 pi 改成什么样，都不会在下次 apply 时被抹掉。
 
-代价是源与磁盘会漂移：源里的 `packages` / `defaultTools` 改动**不会**传到已经落地过的机器，
-要手工同步。这是刻意的取舍——把它们当纯真源管的话，`/model` 切一次模型就会留下永久非空的
-`chezmoi diff`，而每次 apply 都在和 pi 抢同一份文件。
+代价是源与磁盘会漂移，所以跨机器必须一致的那几个键另走一条**字段级**通道：
+`run_after_55-pi-settings-sync.sh.tmpl` 每次 apply 渲染 `create_settings.json.tmpl`，把
+`extensions`、`packages`、`defaultTools`、`theme`、`tuiMode`、`quietStartup`、
+`enableInstallTelemetry`、`defaultProjectTrust`、`hideThinkingBlock` 合并进已存在的文件，
+其余键（`defaultProvider` / `defaultModel` / `defaultThinkingLevel` / `lastChangelogVersion`，
+以及 pi 或扩展以后新加的任何键）原样保留。合并是幂等的：内容一致就不写盘，所以既不在
+mtime 上与 pi 抢文件，也不留下非空的 `chezmoi diff`。
 
-两份源都是**新机器的初始值**，不是任何一台机器的现状：`create_settings.json.tmpl` 的
-`packages` 用 npm 包名（`npm:@johnnywu/pi-filechanges` …），因为新机器上还没有 `~/dev/jwu/*`
-的 checkout；本机 macOS 是开发机，已经手工把 `packages` 换成那些本地路径，`create_` 不会再
-覆盖它。`extensions` 按 `.chezmoi.os` 渲染：Unix 是 `~/bin/pi-config/extensions`，Windows 是
+为什么不整份当纯真源管：那样 `/model` 切一次模型、pi 读一次 changelog，都会变成 apply 要撤销的
+差异。为什么不用 chezmoi 的 `modify_` 目标类型：它要求脚本在 Windows 上也能执行，而这份源是
+Linux / macOS / Windows 共用一份（见「脚本层」）。
+
+非托管键的取值仍是**新机器的初始值**：`create_settings.json.tmpl` 的 `defaultProvider` /
+`defaultModel` / `defaultThinkingLevel` 给新机器一个 deepseek 起点，之后跟着 `/model` 走。
+`extensions` 按 `.chezmoi.os` 渲染：Unix 是 `~/bin/pi-config/extensions`，Windows 是
 `c:/bin/pi-config/extensions`（pi 会展开 `~`，见 `dist/utils/paths.js` 的 `expandTilde`）。
+
+`packages` 自 2026-09-30 起是**托管键**，源里的列表就是每台机器上的列表：源里存的是 npm
+包名（`npm:@johnnywu/pi-filechanges` …），所以 macOS 那台开发机原先手工换成的 `~/dev/jwu/*`
+本地路径会被下一次 apply 覆盖回包名版；要保住本地路径，得把它们写进源（例如像 `extensions`
+那样按 `.chezmoi.os` 分支），不能只写在一台机器上。出于同样的原因，在 pi 里临时 `pi install`
+的包会在下次 apply 时被源列表重排或删掉，想长期保留就得写进源。
 
 `extensions/` 下的两份配置（`eko24ive-pi-ask.json`、`pi-tui-animations.json`）按真源纳入，与
 上面那组 `create_` 刻意不同：它们**只**在用户主动改设置时被回写——pi-ask 在 `/ask-settings`
@@ -474,6 +488,12 @@ Linux / macOS 的渲染逐字节不变（已逐个比对）。
 前缀可组合，如 `run_once_after_foo.sh`、`run_onchange_after_bar.sh`。**没有合法前缀的
 `.sh` 文件会被当成目标文件在 home 目录创建**（实测：`badprefix_test-c.sh` 被创建成
 `~/badprefix_test-c.sh`），所以所有动作脚本必须带前缀。
+
+`run_after_55-pi-settings-sync.sh.tmpl` 是目前唯一的 `run_`（每次 apply 都跑）实例，它不部署
+文件，而是把托管键合并进 `create_` 目标 `~/.pi/agent/settings.json`（见「pi 的可变状态」）。
+选 `run_` 而不是 `run_onchange_`：`run_onchange_` 只按**脚本自身内容**记账，而这个脚本的值来自
+它渲染的模板，模板改了脚本内容不变，就不会重跑。跑十次与跑一次等价是它自己的性质——没有
+差异就不写盘。
 
 从两个退役仓库迁入的动作：
 
@@ -895,6 +915,24 @@ home 目录文件，所以那几份文件原样留在家中，只是不再由 ch
   `create_mcp.json` 里只留 `blender` 与 `chrome-devtools`（`open-pencil` 已去掉）。
 - Windows 那台已有的 `settings.json` 指向 `c:/dev/pi-config/extensions`，`create_` **不会**改它。
   迁移时要么手工改这一行，要么删掉该文件让模板按 `c:/bin/pi-config/extensions` 重写。
+
+### settings.json 的托管键同步（2026-09-30）
+
+`create_` 只打底、不改已有机器，于是源里 `defaultTools` / `packages` 的改动传不到本机。
+现在把跨机器一致的九个键交给 `run_after_55-pi-settings-sync.sh.tmpl`：它渲染
+`create_settings.json.tmpl`，把托管键合并进 `~/.pi/agent/settings.json`，pi 自己写的键一律
+不碰；无差异时不写盘（连 mtime 都不动），于是 apply 保持幂等、`chezmoi diff --include=files`
+仍为空。
+
+脚本用 `python3` 合并 JSON，并按 `JSON.stringify(value, null, 2)`、无末尾换行的格式写回，与
+pi 自己的写盘格式逐字节一致，免得出现「内容没变但格式变了」的抖动。渲染靠
+`chezmoi execute-template` 读源模板（`extensions` 的平台分支因此自动生效）；文件不存在、
+JSON 坏掉、`python3` 缺失、模板渲染失败这四种情况都只打印一行并 `exit 0`，不拖住 apply。
+
+实测：人为把 `defaultTools` 改成 `["read"]` 后 `chezmoi apply` 输出 `pi settings: synced
+defaultTools` 并复原；随后再 apply 两次，输出为空、文件 mtime 不变。Windows 上脚本渲染为空
+字符串（与其他 `run_*` 相同的 `{{ if ne .chezmoi.os "windows" }}` 写法），托管键不自动同步，
+`create_` 模板仍负责打底。
 
 ### pi-mcp-adapter 改读 `mcp-adapter.json`（2026-09-27）
 

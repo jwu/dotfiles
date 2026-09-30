@@ -56,6 +56,11 @@ chezmoi 依据权限位给源文件加前缀，所以源路径与目标路径不
 - 源与磁盘会静默漂移，`chezmoi diff --include=files` 为 0 **不代表**目标内容等于源。
 - 改源里的这类文件不会传到已有机器，得手工同步。
 
+**字段级例外**：`~/.pi/agent/settings.json` 里跨机器必须一致的那几个键（扩展源、包列表、
+`defaultTools` 与启动观感）由 `run_after_55-pi-settings-sync.sh.tmpl` 在每次 apply 时合并进
+已有文件，其余键不动、无差异不写盘，于是那部分改源即生效。清单与取舍见 `design.md` 的
+「pi 的可变状态」。
+
 ## git 不记录目录权限
 
 所以 home 目录上的 `0700` / `0600` 除了写进源文件名（`private_` 前缀）没有别处可以
