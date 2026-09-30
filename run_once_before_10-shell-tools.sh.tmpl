@@ -36,8 +36,8 @@ summary() {
     echo "      - $s"
   done
   echo ""
-  echo "    Re-run 'chezmoi apply' after fixing them; run_once_ retries a script"
-  echo "    that failed."
+  echo "    Fix these, then clear the ledger and re-run:"
+  echo "      chezmoi state delete-bucket --bucket=scriptState && chezmoi apply"
   return 1
 }
 
