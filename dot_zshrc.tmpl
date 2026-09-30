@@ -74,7 +74,12 @@ alias ls='eza'
 alias ll='eza -lh --icons'
 alias la='eza -lah --icons'
 alias lt='eza --icons --tree'
+{{ if eq .chezmoi.os "linux" -}}
+open() {
+  setsid -f xdg-open "$@" >/dev/null 2>&1 </dev/null
+}
 
+{{ end -}}
 # ------------------------------
 # bat configs
 # ------------------------------
