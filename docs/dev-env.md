@@ -66,6 +66,17 @@ Arch extra 里四个包**全都有**（2026-09-30 查询）：
 代价要记着：这四个工具**不在 `pacman -Syu` 的覆盖范围内**，版本由脚本里的 tag 决定
 （nvm 现在 pin 在 `v0.40.7`）。升级是手动的。
 
+落点定下来之后还漏了一处收尾：`bootstrap/arch.sh` 的 `PACKAGES` 里仍旧跟着装 Arch 的
+`rustup` 包，与 per-user 安装重复。这个重复会真的制造分叉——pacman 的 `/usr/bin/rustup` 先
+存在时，`install_rustup()` 的「命令不存在才装」判据直接短路，那台机器就留在 Arch 的 rustup +
+`/usr/bin/cargo`（proxy）上，只有没装过该包的机器（本机就是）才走官方安装器。已把 `rustup`
+从 `PACKAGES` 摘掉（2026-09-30），新机器只剩一条路。
+
+**已经装过该包的机器不会被自动卸载**：`/usr/bin/rustup` 还在，`install_rustup()` 仍短路。
+要退出分叉得手工 `pacman -Rns rustup`，之后 dev-runtimes 才会在下次 apply 时装官方那份装到
+`~/.cargo/bin`（`dot_zshrc.tmpl` 把 `~/.cargo/bin` 排在 PATH 前，两套并存时生效的是官方那份，
+但 toolchain 仍会写进 pacman rustup 的 `~/.rustup`）。
+
 ## Windows 侧
 
 `run_*.sh` 在 Windows 上会被渲染成空字符串（`exec(3)` 不认 shebang，失败发生在解释器

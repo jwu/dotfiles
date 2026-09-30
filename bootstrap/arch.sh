@@ -62,7 +62,8 @@ PACKAGES=(
   "pkgconf"
   "gtk3"
   "git"
-  "rustup"
+  # Rust is installed per-user by run_onchange_before_12-dev-runtimes.sh.tmpl;
+  # see docs/dev-env.md.
 )
 
 XWS_PKG="xwayland-satellite"
