@@ -76,7 +76,7 @@ PowerShell 是为了和原来的 Windows 脚本层一致；批处理没有 `curl
 入口是「先下到 `%TEMP%` 再执行」两行。
 
 **Linux 与 macOS 的 bootstrap 是各自平台上唯一需要 root 或终端的脚本。** Linux 侧的 sudo
-动作：装 41 个包、yay 与 AUR 的 xwayland-satellite-git、`chsh`（走 PAM，同样需要终端）、TTY
+动作：装 46 个包、yay 与 AUR 的 xwayland-satellite-git、`chsh`（走 PAM，同样需要终端）、TTY
 字体、drivetemp、mihomo 的 AUR 包与 drop-in 与面板、sudoers 的免密窗口（见下）。macOS 侧只有两处：`chsh`，以及首次把 Homebrew 的 zsh 加进 `/etc/shells`。
 **Windows 侧不需要任何提权**：scoop 是 per-user 安装，字体 manifest 也写
 `%LOCALAPPDATA%\Microsoft\Windows\Fonts`，所以 `bootstrap/windows.bat` 与 `chezmoi apply`

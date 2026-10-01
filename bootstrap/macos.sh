@@ -35,6 +35,8 @@ PACKAGES=(
   "bat"
   "git-delta"
   "jq"
+  "just"
+  "cocogitto"
   "yazi"
   "gitui"
   "glow"

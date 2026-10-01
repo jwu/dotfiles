@@ -25,7 +25,7 @@ clone configs → win/install.bat（把便携工具下载到 %USERPROFILE%\bin�
 
 | 来源 | 包 |
 | --- | --- |
-| `main` | `clink` `clink-completions` `starship` `fzf` `zoxide` `fd` `bat` `delta` `ripgrep` `eza` `uutils-coreutils` |
+| `main` | `clink` `clink-completions` `starship` `fzf` `zoxide` `fd` `bat` `delta` `ripgrep` `eza` `just` `cocogitto` `uutils-coreutils` |
 | `extras` | `alacritty` |
 | `nerd-fonts` | `FiraMono-NF` |
 

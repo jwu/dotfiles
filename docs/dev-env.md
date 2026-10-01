@@ -142,7 +142,10 @@ bun 的安装器**没有**对应开关：只要 `case $(basename "$SHELL")` 命�
 - **`tree-sitter-cli`**：Arch 有 extra 包（已在 `arch.sh` 的 `PACKAGES` 里），macOS 与
   Windows 需要 `cargo install`。本机那份就是这么来的。属于「下一轮再看」。
 - **`zig`、`deno`**：仓库里没有任何引用（本机的 `deno` 是手工 brew 装的）。
-- **`~/.cargo/bin` 里的零散工具**（`cog`、`gdscript-formatter` 等）：无仓库内引用。
+- **`~/.cargo/bin` 里的零散工具**（`gdscript-formatter` 等）：无仓库内引用。`cog` 原本也在这
+  一列；2026-10-01 起 `just` 与 `cocogitto` 由三平台的系统包层提供（`extra`、Homebrew、scoop 的
+  `main`，版本都是 1.58.0 / 7.0.0），而手工 `cargo install` 的那份 `cog` 仍在：`dot_zshrc.tmpl`
+  把 `~/.cargo/bin` 前置，所以装的机器上生效的是手工那份，不冲突但也没被系统包接管。
 - **`jwu/dev-settings` 仓库本身**：见文首，只作清单参考。
 
 ## 验证
