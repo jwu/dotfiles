@@ -343,6 +343,10 @@ Linux / macOS / Windows 共用一份（见「脚本层」）。
 冲突。上游有更新时在 `~/dev/pi-ask` 里 `git fetch upstream && git rebase upstream/main`，
 再升版本发布到 npm，新机器就装到新版。
 
+`@johnnywu/pi-image-gen` 不同：它没有上游，就是本仓库作者写的扩展，仓库在
+`~/dev/pi-image-gen`。本机原先写的是本地路径，2026-10-01 起改为按包名入源，那份本地路径
+会在下一次 apply 时被同步脚本覆盖成 `npm:@johnnywu/pi-image-gen`。
+
 ### 项目级：仓库根的 `.pi/`
 
 仓库根的 `.pi/` 是 pi 的**项目级**配置，只在把本仓库当工作目录时加载，不进 home 目录，
