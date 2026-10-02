@@ -24,6 +24,7 @@
 | 平台 | 位置 | 来源 |
 | --- | --- | --- |
 | Linux、macOS | `run_onchange_before_12-dev-runtimes.sh.tmpl` | 各工具的官方 per-user 安装器 |
+| Linux、macOS | `run_onchange_before_13-scrapling.sh.tmpl` | `uv tool install "scrapling[shell]"` + `playwright install chromium`，紧跟 12 的 `uv`；见 [`pi-webfetch.md`](pi-webfetch.md) |
 | Windows | `bootstrap/windows.bat` 的 `:SCOOP_DEV_RUNTIMES`、`:DEV_RUSTUP` | scoop（`uv`、`bun`、`nodejs-lts`）与官方 `rustup-init.exe` |
 
 编号 12 是有意的：`run_once_after_50-pi-config.sh.tmpl` 要 `npm` 才能装 pi CLI，而

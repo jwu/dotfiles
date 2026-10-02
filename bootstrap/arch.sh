@@ -34,6 +34,9 @@ PACKAGES=(
   "just"
   "cocogitto"
   "unzip"
+  # pi-webfetch's YouTube/Bilibili route; scrapling itself is per-user, see
+  # run_onchange_before_13-scrapling.sh.tmpl and docs/pi-webfetch.md.
+  "yt-dlp"
   "terminus-font"
   "otf-firamono-nerd"
   "niri"

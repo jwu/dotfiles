@@ -1,0 +1,81 @@
+{{ if ne .chezmoi.os "windows" -}}
+#!/bin/bash
+# Scrapling is pi-webfetch's fallback for every URL that is not GitHub, a
+# YouTube/Bilibili video, or an image. Installed per-user through uv, which
+# run_onchange_before_12-dev-runtimes.sh supplies, so nothing here needs root
+# and it is not a bootstrap/ concern. Numbered 13 to run right after that
+# script; both run before any file lands in $HOME. See docs/pi-webfetch.md.
+set -uo pipefail
+
+# uv puts tool shims in ~/.local/bin, which is not necessarily on PATH when
+# chezmoi runs a run_ script without a login shell.
+export PATH="$HOME/.local/bin:$PATH"
+
+FAILED_STEPS=()
+
+step() {
+  local name="$1"
+  shift
+  local rc=0
+  echo ""
+  echo ">>> $name"
+  "$@" || rc=$?
+  if [ "$rc" -eq 0 ]; then
+    echo "    ok"
+  else
+    FAILED_STEPS+=("$name")
+    echo "    FAILED (exit $rc); continuing" >&2
+  fi
+}
+
+summary() {
+  echo ""
+  echo "=========================================="
+  if [ "${#FAILED_STEPS[@]}" -eq 0 ]; then
+    echo ">>> All steps completed."
+    return 0
+  fi
+  echo ">>> Finished with ${#FAILED_STEPS[@]} failed step(s):"
+  local s
+  for s in "${FAILED_STEPS[@]}"; do
+    echo "      - $s"
+  done
+  echo ""
+  echo "    Fix these, then clear the ledger and re-run:"
+  echo "      chezmoi state delete-bucket --bucket=scriptState && chezmoi apply"
+  return 1
+}
+
+install_scrapling() {
+  if ! command -v uv > /dev/null 2>&1; then
+    echo "    uv is missing (see run_onchange_before_12-dev-runtimes.sh); skipping scrapling" >&2
+    return 1
+  fi
+  # [shell], not [fetchers]: `scrapling shell -c` imports IPython before it runs
+  # the snippet, so the fetchers alone fail with ModuleNotFoundError.
+  uv tool install --force "scrapling[shell]" || return 1
+  local py
+  py="$(uv tool dir)/scrapling/bin/python"
+  # Deliberately not `scrapling install`: its last step is
+  # `playwright install-deps`, which shells out to apt-get, fails on Arch, and
+  # aborts before the marker file is written. The browser is what matters and
+  # both platforms here already carry its runtime libraries. See
+  # docs/pi-webfetch.md.
+  "$py" -m playwright install chromium || return 1
+  # The marker upstream writes last. With it present a manual `scrapling
+  # install` is a no-op instead of a guaranteed apt-get failure.
+  "$py" - <<'PY' || return 1
+import pathlib
+import scrapling
+
+(pathlib.Path(scrapling.__file__).parent / ".scrapling_dependencies_installed").touch()
+PY
+  echo "    scrapling: $(scrapling --version 2>/dev/null | head -1)"
+}
+
+echo ">>> scrapling (pi-webfetch fallback, root-free, per-user)"
+
+step "scrapling + chromium for its fetchers" install_scrapling
+
+summary
+{{ end -}}
