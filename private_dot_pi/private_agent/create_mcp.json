@@ -1,0 +1,32 @@
+{
+  "mcpServers": {
+    "blender": {
+      "command": "uvx",
+      "args": ["blender-mcp"],
+      "exposure": "codemode",
+      "description": "Blender 3D: scene objects, materials, rendering, animation, and addon status checks."
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest",
+        "--wsEndpoint",
+        "ws://127.0.0.1:9222/devtools/browser/pi-agent"
+      ],
+      "exposure": "codemode",
+      "description": "Control an attached Chrome browser: navigate pages, inspect DOM, analyze network and performance."
+    },
+    "chrome-devtools-alt": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest",
+        "--autoConnect"
+      ],
+      "exposure": "codemode",
+      "enabled": false,
+      "description": "Fallback for chrome-devtools: --autoConnect reads the Chrome 144+ remote debugging service via DevToolsActivePort. Needs Full Disk Access for the terminal."
+    }
+  }
+}

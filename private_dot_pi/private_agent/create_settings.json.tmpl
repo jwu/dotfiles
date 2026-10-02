@@ -2,9 +2,9 @@
        run_after_55-pi-settings-sync.sh.tmpl: extensions, packages, defaultTools, theme,
        tuiMode, quietStartup, enableInstallTelemetry, defaultProjectTrust, hideThinkingBlock.
        The rest is the baseline for a machine with no settings.json yet.
-       extensions also carries -builtin:mcp: the built-in MCP support stays off because
-       pi-mcp-adapter (in packages) owns /mcp. See docs/design.md.
-       See docs/chezmoi-notes.md. */ -}}
+       The built-in MCP extension stays enabled (no `-builtin:mcp`): pi-mcp-adapter was removed
+       in favor of it, and the servers live in ~/.pi/agent/mcp.json (source: create_mcp.json).
+       See docs/design.md. */ -}}
 {
   "shellCommandPrefix": "python(){ uv run python \"$@\"; }\npython3(){ uv run python \"$@\"; }\nexport -f python\nexport -f python3",
   "defaultProvider": "deepseek",
@@ -17,11 +17,10 @@
   "defaultProjectTrust": "always",
   "extensions": [
 {{- if eq .chezmoi.os "windows" }}
-    "c:/bin/pi-config/extensions",
+    "c:/bin/pi-config/extensions"
 {{- else }}
-    "~/bin/pi-config/extensions",
+    "~/bin/pi-config/extensions"
 {{- end }}
-    "-builtin:mcp"
   ],
   "packages": [
     "npm:@johnnywu/pi-ask",
@@ -32,7 +31,6 @@
     "npm:pi-animations",
     "npm:pi-powerline",
     "npm:pi-stats-ext",
-    "npm:pi-mcp-adapter",
     "npm:@juicesharp/rpiv-todo"
   ],
   "defaultTools": [
