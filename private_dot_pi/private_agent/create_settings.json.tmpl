@@ -2,6 +2,8 @@
        run_after_55-pi-settings-sync.sh.tmpl: extensions, packages, defaultTools, theme,
        tuiMode, quietStartup, enableInstallTelemetry, defaultProjectTrust, hideThinkingBlock.
        The rest is the baseline for a machine with no settings.json yet.
+       extensions also carries -builtin:mcp: the built-in MCP support stays off because
+       pi-mcp-adapter (in packages) owns /mcp. See docs/design.md.
        See docs/chezmoi-notes.md. */ -}}
 {
   "shellCommandPrefix": "python(){ uv run python \"$@\"; }\npython3(){ uv run python \"$@\"; }\nexport -f python\nexport -f python3",
@@ -15,10 +17,11 @@
   "defaultProjectTrust": "always",
   "extensions": [
 {{- if eq .chezmoi.os "windows" }}
-    "c:/bin/pi-config/extensions"
+    "c:/bin/pi-config/extensions",
 {{- else }}
-    "~/bin/pi-config/extensions"
+    "~/bin/pi-config/extensions",
 {{- end }}
+    "-builtin:mcp"
   ],
   "packages": [
     "npm:@johnnywu/pi-ask",

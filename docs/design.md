@@ -323,6 +323,10 @@ Linux / macOS / Windows 共用一份（见「脚本层」）。
 `defaultModel` / `defaultThinkingLevel` 给新机器一个 deepseek 起点，之后跟着 `/model` 走。
 `extensions` 按 `.chezmoi.os` 渲染：Unix 是 `~/bin/pi-config/extensions`，Windows 是
 `c:/bin/pi-config/extensions`（pi 会展开 `~`，见 `dist/utils/paths.js` 的 `expandTilde`）。
+数组里另有一条 `-builtin:mcp`：`packages` 里的 `pi-mcp-adapter` 已经接管 `/mcp`，显式关掉
+内置 MCP 支持，免得两套 MCP 同时在场（内置那份还会去读 `~/.pi/agent/mcp.json`）。依据见 pi
+文档 `mcp.md` 的「Replace the built-in MCP support」。它是托管键的一部分，所以对已有机器
+同样生效。
 
 `packages` 自 2026-09-30 起是**托管键**，源里的列表就是每台机器上的列表：源里存的是 npm
 包名（`npm:@johnnywu/pi-filechanges` …），所以 macOS 那台开发机原先手工换成的 `~/dev/jwu/*`
