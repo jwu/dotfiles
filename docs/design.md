@@ -1149,3 +1149,56 @@ ExecStartPre=+/usr/local/bin/mihomo-overlay
 
 `Country.mmdb` 由 bootstrap 重新指到 `clash-geoip` 的副本（`/etc/clash/Country.mmdb`，上游
 地理库更新更勤）。
+
+### pi-mcp-adapter 退役，改用内置 MCP（2026-10-02）
+
+pi 内置的 MCP 扩展（`builtin:mcp`）此前被 `-builtin:mcp` 关掉，把 `/mcp` 让给
+`npm:pi-mcp-adapter`。内核补上 `exposure: codemode` 之后，适配器赖以存在的理由（「只注册一个
+约 200 token 的 `mcp` 工具、工具按需发现」）已被内核原样吸收，于是把适配器整份卸掉。
+
+实测的上下文成本（同一 prompt 只切 MCP 配置，取系统提示 sections 与工具声明的字符数）：
+
+| 配置 | 进 prompt 的工具声明 | `mcp_servers` 章节 |
+| --- | --- | --- |
+| codemode（现用） | 13 个 / 16,379 字符 | **488 字符** |
+| 无 MCP | 13 个 / 16,379 字符 | — |
+| 三个 server 全改 `direct` | 121 个 / **158,324 字符** | — |
+
+`codemode` 下 105 个 MCP 工具的 schema 一个都不进模型上下文，代价只有 488 字符的
+`mcp_servers` 章节（三个 server 各一行）；换成 `direct` 则净增 141,945 字符（约 3.5 万 token），
+整个 prompt 膨胀 6.2 倍。两者相差 291 倍，这是不把 server 设为 `direct` 的理由。
+
+三处改动：
+
+- `settings.json` 去掉 `-builtin:mcp`（`extensions`）与 `npm:pi-mcp-adapter`（`packages`），
+  两处都在 `create_settings.json.tmpl` 同步跟上——它们是 `run_after_55` 的托管键，源里不改的话
+  下次 apply 会把这次迁移整个写回去。
+- `create_mcp-adapter.json` 改名 `create_mcp.json`（内置实现只读 `~/.pi/agent/mcp.json`）：
+  内容里的 `directTools: false` 换成 `exposure: codemode`，`settings.mcpFooterStatus` 丢弃
+  （内核无对应项）。源里仍是 `blender` + `chrome-devtools` 两条；`comfy-mcp` 是本机新增、
+  `COMFY_BIN` 又是绝对路径，未纳入源。
+- `chrome-devtools` 的参数从 `--wsEndpoint ws://127.0.0.1:9222/devtools/browser/pi-agent` 换成
+  `--autoConnect`。当时判旧值是错的（`pi-agent` 不像 Chrome 的随机 UUID endpoint），**这个判断
+  事后被实测推翻**：Chrome 144+ 在 `chrome://inspect/#remote-debugging` 开启后启用的调试服务
+  不校验 endpoint 路径，`--wsEndpoint .../pi-agent` 照样连得上。连不上的真正原因有两层：
+
+  1. 那个开关从未开启 → Chrome 没在 9222 上监听，报 `ECONNREFUSED 127.0.0.1:9222`；
+  2. `--autoConnect` 走 `puppeteer.connect({ channel: "chrome" })`，要读默认 profile 下的
+     `DevToolsActivePort`，而 `~/Library/Application Support/Google/Chrome/` 受 macOS TCC
+     保护 —— 宿主终端没有「完全磁盘访问权限」时 `cat` 直接报 `Operation not permitted`，
+     工具只报 `Could not find DevToolsActivePort`（误导性措辞）。给 Ghostty 补上满盘访问权限
+     后立刻工作，实测列出 10 个已开页面。
+
+  开关本身是**持久**的：开过之后 `Chrome/Local State` 里留下
+  `devtools.remote_debugging.user-enabled: true`，Chrome 重启仍有效，所以只需开一次；之后每次
+  连接由 Chrome 弹窗确认——那一步就是「他自己询问我」的来源。
+
+  最终选型是 **`--wsEndpoint` 主用 + `--autoConnect` 作为 `enabled: false` 的 fallback**
+  （`chrome-devtools-alt`）。理由：wsEndpoint 不触发 Chrome 的授权对话框、也不需要终端的 TCC
+  满盘权限，代价是端口 9222 与 endpoint 路径硬编码；autoConnect 端口自适应，但两道前置条件
+  （开关 + TCC）都得在。出问题时在 `/mcp` 里启用 `chrome-devtools-alt`、禁用主 server 即可，
+  零编辑。Ghostty 的完全磁盘访问权限保留，好让 fallback 随时可用。
+
+已卸包、已改源并 apply 验证过：`chezmoi diff --include=files` 为空，源模板渲染与磁盘的 9 个
+托管键逐键一致、`settings.json` 的 mtime 未动（幂等），`~/.pi/agent/mcp-adapter.json` 也
+未被 chezmoi 回收、仍在原地。尚未提交。
