@@ -74,7 +74,7 @@ sed 's/\.chezmoi\.os/"linux"/' dot_zshrc.tmpl | chezmoi execute-template  # 另�
 
 ## `create_` 是「一次性初始化」，不是真源
 
-`settings.json`、`mcp-adapter.json` 这种会被工具自己回写的文件用 `create_` 前缀：chezmoi 只在**目标
+`settings.json`、`mcp.json` 这种会被工具自己回写的文件用 `create_` 前缀：chezmoi 只在**目标
 不存在**时渲染并写入，目标一旦存在就不再碰它。它既不是「纳入真源」（那会在每次 apply 抹掉
 工具写进去的东西），也不是「排除」（新机器上就没有基线）。
 
@@ -175,7 +175,7 @@ sourceDir = "/Users/<user>/bin/dotfiles"
 | `~/.pi/agent/auth.json` | 凭据 |
 | `~/.gitconfig` | 个人层（邮箱、姓名），每台机器手工维护 |
 | `~/.config/Moonlight Game Streaming Project/Moonlight.conf` | 含客户端私钥、内网与公网地址、MAC、对端主机名；且 Moonlight 会写回 |
-| `~/.config/mcp/mcp.json` | pi-mcp-adapter 的用户全局共享层；里面列的是本机 venv 里的 comfy-mcp 绝对路径 |
+| `~/.config/mcp/mcp.json` | 已退役的 pi-mcp-adapter 留下的共享层；里面列的是本机 venv 里的 comfy-mcp 绝对路径 |
 
 清单是**判据的实例**，不是穷举。新装一个软件、位置对不上的，按同样两条判据判断：会被
 工具重写的不进，带机器身份的不进。

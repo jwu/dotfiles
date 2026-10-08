@@ -141,7 +141,7 @@ dot_pi/agent/
   keybindings.json                     ← pi-config
   APPEND_SYSTEM.md                     ← pi-config
   create_settings.json.tmpl            ← 新机器的初始 settings.json（`create_`；托管键另有 run_after 同步）
-  create_mcp-adapter.json              ← 新机器的初始 mcp-adapter.json（同上）
+  create_mcp.json                      ← 新机器的初始 mcp.json（内置 MCP，同上）
   extensions/eko24ive-pi-ask.json      ← pi-ask 设置（真源；在 /ask-settings 里改设置会被写回）
   extensions/pi-tui-animations.json    ← pi-animations 设置（同上）
 # macOS 专有（本机不存在，从仓库搬入）
@@ -298,13 +298,14 @@ git 先读 XDG 那份、再读 `~/.gitconfig`，后者覆盖前者，所以个�
 | --- | --- | --- |
 | 静态资源（pi 只读） | `agents/`、`skills/`、`prompts/`、`themes/` | **已纳入**，源是真源 |
 | 人工维护的配置 | `keybindings.json`、`APPEND_SYSTEM.md` | **已纳入**，源是真源 |
-| 会被 pi 回写 | `settings.json`、`mcp-adapter.json` | **已纳入**：`create_` 打底，`settings.json` 的托管键再由 `run_after_` 脚本同步 |
+| 会被 pi 回写 | `settings.json`、`mcp.json` | **已纳入**：`create_` 打底，`settings.json` 的托管键再由 `run_after_` 脚本同步 |
 | 设置面板会回写 | `extensions/*.json`（pi-ask、pi-animations） | **已纳入**，源是真源；只有改设置时才被写回 |
 | 凭据与运行时 | `auth.json`、`sessions/`、`models-store.json`、`*-cache.json`、`install/`、`bin/`、`npm/` | **绝不纳入** |
 
 `settings.json` 会被 pi 写入 `lastChangelogVersion`（看过哪版 changelog）、
-`defaultProvider` / `defaultModel` / `defaultThinkingLevel`（`/model` 切换），`mcp-adapter.json` 会被
-`/mcp` 改写。这两份用 `create_` 前缀：**只在目标不存在时**渲染一次，之后不再碰。新机器因此
+`defaultProvider` / `defaultModel` / `defaultThinkingLevel`（`/model` 切换），`mcp.json` 会被
+`/mcp` 改写（改 exposure 或启用、禁用 server 时，写回的是定义该 server 的那份文件）。这两份用
+`create_` 前缀：**只在目标不存在时**渲染一次，之后不再碰。新机器因此
 拿到一份能开箱用的配置，本机后来被 pi 改成什么样，都不会在下次 apply 时被抹掉。
 
 代价是源与磁盘会漂移，所以跨机器必须一致的那几个键另走一条**字段级**通道：
@@ -323,10 +324,10 @@ Linux / macOS / Windows 共用一份（见「脚本层」）。
 `defaultModel` / `defaultThinkingLevel` 给新机器一个 deepseek 起点，之后跟着 `/model` 走。
 `extensions` 按 `.chezmoi.os` 渲染：Unix 是 `~/bin/pi-config/extensions`，Windows 是
 `c:/bin/pi-config/extensions`（pi 会展开 `~`，见 `dist/utils/paths.js` 的 `expandTilde`）。
-数组里另有一条 `-builtin:mcp`：`packages` 里的 `pi-mcp-adapter` 已经接管 `/mcp`，显式关掉
-内置 MCP 支持，免得两套 MCP 同时在场（内置那份还会去读 `~/.pi/agent/mcp.json`）。依据见 pi
-文档 `mcp.md` 的「Replace the built-in MCP support」。它是托管键的一部分，所以对已有机器
-同样生效。
+内置 MCP 保持启用：`pi-mcp-adapter` 退役后 `/mcp` 归内核，server 定义落在
+`~/.pi/agent/mcp.json`（源 `create_mcp.json`），依据见 pi 文档 `mcp.md`。`extensions` 与
+`packages` 都是托管键的一部分，所以这条迁移对已有机器同样生效。细节见「pi-mcp-adapter
+退役，改用内置 MCP」。
 
 `packages` 自 2026-09-30 起是**托管键**，源里的列表就是每台机器上的列表：源里存的是 npm
 包名（`npm:@johnnywu/pi-filechanges` …），所以 macOS 那台开发机原先手工换成的 `~/dev/jwu/*`
@@ -569,7 +570,7 @@ run_once_after_50-pi-config.sh.tmpl
   └─ 提示 /reload 生效
 ```
 
-它**不调用** `pi-config/install.sh`（该脚本已删除）：`settings.json` 与 `mcp-adapter.json` 都是 chezmoi
+它**不调用** `pi-config/install.sh`（该脚本已删除）：`settings.json` 与 `mcp.json` 都是 chezmoi
 的 `create_` 目标，再复制一遍就是两个所有者争同一份文件（见上节）。clone 目标仍是固定的
 `~/bin/pi-config`，因为 `create_settings.json.tmpl` 渲染出的 `extensions` 指向它。
 
@@ -914,7 +915,7 @@ home 目录文件，所以那几份文件原样留在家中，只是不再由 ch
 | 源 | 目标 | 说明 |
 | --- | --- | --- |
 | `private_dot_pi/private_agent/create_settings.json.tmpl` | `~/.pi/agent/settings.json` | `extensions` 按 `.chezmoi.os` 分支 |
-| `private_dot_pi/private_agent/create_mcp-adapter.json` | `~/.pi/agent/mcp-adapter.json` | 取本机现状：chrome-devtools 用 `--wsEndpoint ws://127.0.0.1:9222/devtools/browser/pi-agent`，不是 pi-config 里的 `--autoConnect` |
+| `private_dot_pi/private_agent/create_mcp.json` | `~/.pi/agent/mcp.json` | 内置 MCP 的 server 定义。取本机现状：chrome-devtools 用 `--wsEndpoint ws://127.0.0.1:9222/devtools/browser/pi-agent`，另有 `enabled: false` 的 `chrome-devtools-alt` 作 `--autoConnect` fallback |
 
 `create_` 只在目标不存在时写一次，于是：
 
@@ -1202,3 +1203,7 @@ pi 内置的 MCP 扩展（`builtin:mcp`）此前被 `-builtin:mcp` 关掉，把 
 已卸包、已改源并 apply 验证过：`chezmoi diff --include=files` 为空，源模板渲染与磁盘的 9 个
 托管键逐键一致、`settings.json` 的 mtime 未动（幂等），`~/.pi/agent/mcp-adapter.json` 也
 未被 chezmoi 回收、仍在原地。尚未提交。
+
+后来本机同步时手工删掉了那份 `mcp-adapter.json`：源里已经没有它，chezmoi 默认也不 prune，
+所以删前删后 `chezmoi diff --include=files` 都是空的；同一次同步里 `~/.pi/agent/mcp.json`
+按源创建。新机器只会拿到 `mcp.json`，不会再有 `mcp-adapter.json`。

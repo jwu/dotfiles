@@ -209,10 +209,10 @@ git push
 
 另外：**`~/.config/chezmoi/chezmoi.toml` 不由本仓库管理**（鸡生蛋：chezmoi 不可能管自己的源在哪）。
 
-`settings.json` 与 `mcp-adapter.json` 也会被 pi 回写（`lastChangelogVersion`、`/model`、`/mcp`），但它们
-由 chezmoi 的 `create_` 目标落地——只在目标不存在时写一次，所以既留在源里，又不会被 `apply`
-抹掉。代价是源与磁盘会漂移：改 `packages` 或 MCP server 时要手工同步已有机器。见 `design.md`
-的「pi 的可变状态」。
+`settings.json` 与 `mcp.json` 也会被 pi 回写（`lastChangelogVersion`、`/model`，以及 `/mcp` 里的
+exposure 与启用状态），但它们由 chezmoi 的 `create_` 目标落地——只在目标不存在时写一次，所以
+既留在源里，又不会被 `apply` 抹掉。代价是源与磁盘会漂移：改 MCP server 时要手工同步已有机器
+（`packages` 这类托管键由 `run_after_` 脚本自动同步）。见 `design.md` 的「pi 的可变状态」。
 
 `~/.pi/agent/extensions/*.json`（pi-ask、pi-animations 的设置）不属于这一类，它们按**真源**纳入：
 只有用户主动改设置时扩展才会写回，`apply` 不会持续覆盖，漂移出现时用 `/collect` 回收。
