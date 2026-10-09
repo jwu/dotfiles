@@ -1,0 +1,30 @@
+# Satty -- screenshot annotation, reached from niri with Print through
+# dot_local/bin/executable_niri-screenshot-annotate, which feeds it the file
+# niri's screenshot UI just saved. Satty cannot capture a screen by itself;
+# Mod+Shift+A is flameshot, whose overlay can still resize the selection.
+#
+# Everything below is the default for this machine; the helper passes no extra
+# flags.
+
+[general]
+# Float instead of being tiled into a column. niri decides the resulting size;
+# see the window rule in dot_config/niri/config.kdl.
+fullscreen = false
+# Fit the image to the window. Saving keeps the original pixels, this only
+# affects what is on screen.
+resize = { mode = "smart" }
+# Saving or copying is the end of the interaction, so close the window then.
+early-exit = ["all"]
+copy-command = "wl-copy"
+# Save next to niri's own screenshots, with the same date format so the two sets
+# sort together. Ctrl+S is the only way to reach this path.
+output-filename = "~/Pictures/Screenshots/Satty from %Y-%m-%d %H-%M-%S.png"
+# Enter keeps the annotated image both on disk and in the clipboard; Esc drops
+# the annotations and leaves niri's original file alone.
+actions-on-enter = ["save-to-file", "save-to-clipboard", "exit"]
+actions-on-escape = ["exit"]
+
+[font]
+# Satty ships Roboto for Latin; text annotations in Chinese need a fallback.
+# Noto Color Emoji is picked up automatically as the last fallback.
+fallback = ["Noto Sans CJK SC"]

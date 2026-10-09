@@ -131,6 +131,13 @@ layout {
     }
 }
 
+// Satty (bound to Print, through the helper) annotates a single screenshot, so
+// it should float at its own size instead of being tiled into a column.
+window-rule {
+    match app-id="com\\.gabm\\.satty"
+    open-floating true
+}
+
 spawn-at-startup "waybar"
 spawn-at-startup "fcitx5"
 spawn-at-startup "wl-paste" "--watch" "cliphist" "store"
@@ -220,9 +227,16 @@ binds {
     Mod+Shift+F { fullscreen-window; }
     Mod+M { maximize-window-to-edges; }
 
-    Print { screenshot; }
+    // Print keeps niri's own selection UI (drag to select, hold Space to move it)
+    // and then hands the saved file to Satty to annotate.
+    Print { spawn "~/.local/bin/niri-screenshot-annotate"; }
     Ctrl+Print { screenshot-screen; }
     Alt+Print { screenshot-window; }
+
+    // flameshot brings its own full-screen overlay, which is the only way here to
+    // get a selection that can still be resized by its handles after the first
+    // drag; niri's own screenshot UI can only move a selection around.
+    Mod+Shift+A { spawn "flameshot" "gui"; }
 
     Mod+Shift+Slash { show-hotkey-overlay; }
 }

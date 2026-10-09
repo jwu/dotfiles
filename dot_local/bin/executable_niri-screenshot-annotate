@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# niri-screenshot-annotate -- niri's screenshot UI, then Satty on the result.
+#
+# niri's screenshot action is asynchronous: it opens the UI and returns
+# immediately, so the file only exists once the selection has been confirmed.
+# niri announces the saved file on its IPC event stream (ScreenshotCaptured), so
+# subscribe first, open the UI second, and hand the path to Satty when it shows
+# up. One key press becomes: pick the region, annotate, save.
+#
+# The capture itself stays niri's job -- Satty only annotates the image it is
+# given, it cannot take a screenshot -- so this is a bridge between the two.
+# Mod+Shift+A is flameshot instead, for when the selection itself needs resizing.
+#
+# Bound in dot_config/niri/config.kdl:
+#   Print { spawn "~/.local/bin/niri-screenshot-annotate"; }
+
+set -uo pipefail
+
+for bin in niri satty; do
+    if ! command -v "$bin" >/dev/null; then
+        echo "niri-screenshot-annotate: $bin is not installed" >&2
+        exit 1
+    fi
+done
+
+TIMEOUT="${SCREENSHOT_ANNOTATE_TIMEOUT:-180}"
+
+# Satty is a GTK app and needs the compositor, so make sure this also works when
+# started from a terminal instead of from niri's spawn.
+uid="$(id -u)"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$uid}"
+if [ -z "${WAYLAND_DISPLAY:-}" ]; then
+    for w in "$XDG_RUNTIME_DIR"/wayland-[0-9]*; do
+        [ -S "$w" ] && export WAYLAND_DISPLAY="$(basename "$w")"
+    done
+fi
+
+# niri's IPC socket name contains niri's pid, so it changes on every niri
+# restart: resolve it fresh rather than trusting an inherited NIRI_SOCKET.
+if [ ! -S "${NIRI_SOCKET:-}" ]; then
+    unset NIRI_SOCKET
+    for s in "$XDG_RUNTIME_DIR"/niri.*.sock; do
+        [ -S "$s" ] && NIRI_SOCKET="$s"
+    done
+    export NIRI_SOCKET="${NIRI_SOCKET:-}"
+fi
+if [ ! -S "${NIRI_SOCKET:-}" ]; then
+    echo "niri-screenshot-annotate: no niri IPC socket in $XDG_RUNTIME_DIR" >&2
+    exit 1
+fi
+
+# Dismissing the UI with Esc never produces a file, which would otherwise leave
+# this waiting out the timeout. Replace the previous instance instead of
+# refusing to start, and drop the pidfile before exec so the Satty window it
+# hands over to is never the process that gets killed.
+PIDFILE="$XDG_RUNTIME_DIR/niri-screenshot-annotate.pid"
+if [ -f "$PIDFILE" ]; then
+    kill "$(cat "$PIDFILE")" 2>/dev/null || true
+fi
+printf '%s\n' "$$" > "$PIDFILE"
+trap 'rm -f "$PIDFILE"' EXIT
+
+# Subscribe before opening the UI so the event cannot be missed.
+exec 3< <(niri msg --json event-stream)
+niri msg action screenshot
+
+while IFS= read -r -t "$TIMEOUT" line <&3; do
+    case "$line" in
+        *'"ScreenshotCaptured"'*'"path":"'*) ;;
+        *) continue ;;
+    esac
+    path="${line#*'"path":"'}"
+    path="${path%%'"'*}"
+    [ -n "$path" ] || continue
+    rm -f "$PIDFILE"
+    exec satty --filename "$path"
+done

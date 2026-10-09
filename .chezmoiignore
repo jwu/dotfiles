@@ -68,6 +68,7 @@ Library
 .config/chromium-flags.conf
 .config/environment.d
 .config/fcitx5
+.config/flameshot
 .config/fontconfig
 .config/gtk-4.0
 .config/ghostty/titlebar.css
@@ -78,12 +79,14 @@ Library
 .config/mimeapps.list
 .config/niri
 .config/niri-session-mng
+.config/satty
 .config/sunshine
 .config/swaylock
 .config/systemd
 .config/voxtype
 .config/waybar
 .config/wireplumber
+.config/xdg-desktop-portal
 # Whole subtree: ignoring the files alone still makes chezmoi create the empty
 # parent directories. See docs/chezmoi-notes.md.
 .local

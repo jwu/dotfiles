@@ -1,0 +1,13 @@
+# flameshot's own settings file. It writes this back on exit, so chezmoi only
+# creates it on a machine that does not have one yet (create_ prefix): edit it
+# through flameshot's preferences afterwards, not here.
+#
+# The screenshot key is Mod+Shift+A in dot_config/niri/config.kdl. flameshot
+# draws a full-screen overlay, which needs the Screenshot portal to hand it the
+# screen -- see dot_config/xdg-desktop-portal/portals.conf.
+
+[General]
+savePath={{ .chezmoi.homeDir }}/Pictures/Screenshots
+saveAsFileExtension=png
+copyPathAfterSave=false
+showStartupLaunchMessage=false

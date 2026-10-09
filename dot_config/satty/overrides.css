@@ -1,0 +1,13 @@
+/* Satty's toolbars impose a minimum window width of about 955px (button padding
+ * plus minimum button sizes), which is wider than most screenshot selections.
+ * Zeroing those minimums lets the window shrink to the size of the image, so
+ * annotating a small selection does not come up in a screen-wide window. */
+* {
+    min-width: 0;
+    min-height: 0;
+}
+
+.toolbar * {
+    padding: 0;
+    margin: 0;
+}
