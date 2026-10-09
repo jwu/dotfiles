@@ -165,7 +165,7 @@ chezmoi 的源路径与目标路径不一定逐字对应：`dot_` 加前置点�
 - [`docs/xwayland-satellite.md`](docs/xwayland-satellite.md) — X11 弹窗焦点、Steam 顶栏菜单闪退、AUR `-git` 包的取舍。
 - [`docs/ime-icons.md`](docs/ime-icons.md) — Fcitx5 托盘图标的覆盖规则与状态对应。
 - [`docs/rime/rime-config.md`](docs/rime/rime-config.md) — Rime 词库、补丁写法、`__patch` 的坑。
-- [`docs/zed/`](docs/zed/)、[`docs/aerospace/`](docs/aerospace/)、[`docs/obsidian/`](docs/obsidian/)、[`docs/totalcmd/`](docs/totalcmd/)、[`docs/inputsource-pro/`](docs/inputsource-pro/) — 各 GUI 应用的配置说明。
+- [`docs/zed/`](docs/zed/)、[`docs/aerospace/`](docs/aerospace/)、[`docs/obsidian/`](docs/obsidian/)、[`docs/totalcmd/`](docs/totalcmd/)、[`docs/inputsource-pro/`](docs/inputsource-pro/)、[`docs/pixpin.md`](docs/pixpin.md) — 各 GUI 应用的配置说明。
 
 源码里的注释保持简短；推导写在上述文档里。
 

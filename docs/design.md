@@ -148,6 +148,8 @@ dot_pi/agent/
 dot_aerospace.toml                         ← desktop-settings: aerospace/.aerospace.toml
 dot_config/ghostty/config                  ← configs: mac/.config/ghostty/config
 Library/Rime/squirrel.custom.yaml          ← desktop-settings: rime/squirrel.custom.yaml
+# macOS 专有（本机存在，从本机收进）
+private_Library/private_Application Support/PixPin/Config/PixPinConfig.json ← 见 docs/pixpin.md
 # Windows 专有（本机不存在，从仓库搬入）
 AppData/Roaming/alacritty/alacritty.toml   ← configs: win/alacritty.toml
 # starship 后来不再是 Windows 专有：Windows 也读 ~/.config/starship.toml，
@@ -175,7 +177,7 @@ run_*.sh
 ### 属性前缀会进源路径
 
 chezmoi 依据权限位给源文件加前缀，所以**源路径与目标路径不一定逐字对应**。本仓库里目前有
-八个，其中 `private_` 那个曾经绊了一下：`run_onchange_after_40-fcitx5.sh.tmpl` 的 `include`
+九个，其中 `private_` 那个曾经绊了一下：`run_onchange_after_40-fcitx5.sh.tmpl` 的 `include`
 写目标路径 `profile` 会直接渲染失败，必须写源路径 `private_profile`。
 
 | 源路径 | 目标 | 权限 |
@@ -183,6 +185,7 @@ chezmoi 依据权限位给源文件加前缀，所以**源路径与目标路径�
 | `dot_config/fcitx5/private_profile` | `~/.config/fcitx5/profile` | 600 |
 | `private_dot_pi/private_agent/**` | `~/.pi/agent/**` | 700（目录） |
 | `private_Library/Rime/squirrel.custom.yaml` | `~/Library/Rime/squirrel.custom.yaml` | 700（目录） |
+| `private_Library/private_Application Support/PixPin/Config/PixPinConfig.json` | `~/Library/Application Support/PixPin/Config/PixPinConfig.json` | 700（目录，`Application Support` 一节也带前缀） |
 | `dot_config/waybar/scripts/executable_disk-temp.sh` | `~/.config/waybar/scripts/disk-temp.sh` | 755 |
 | `dot_local/bin/executable_niri-clipboard-history` | `~/.local/bin/niri-clipboard-history` | 755 |
 | `dot_local/bin/executable_niri-lock` | `~/.local/bin/niri-lock` | 755 |
@@ -198,11 +201,11 @@ chezmoi 依据权限位给源文件加前缀，所以**源路径与目标路径�
 
 ### 已导入的文件
 
-阶段 1 与平台搬入已完成（见「实施状态」）。当前源里共 **109 个目标文件**（去重口径 = Linux
-目标 + macOS 专有 + Windows 专有）：**87 个 Linux 目标 + 5 个 macOS 专有 + 17 个 Windows
+阶段 1 与平台搬入已完成（见「实施状态」）。当前源里共 **110 个目标文件**（去重口径 = Linux
+目标 + macOS 专有 + Windows 专有）：**87 个 Linux 目标 + 6 个 macOS 专有 + 17 个 Windows
 专有**；23 个 `.tmpl`（其中 10 个是 `run_*` 动作脚本），3 个 `create_` 目标。`chezmoi diff`
-在 Linux 上为空，macOS / Windows 目标由 `.chezmoiignore` 按 OS 排除。数字于 2026-09-30 重算
-（三个平台各 87 / 36 / 39，后两个减去 Linux 目标集得 5 / 17）。
+在 Linux 上为空，macOS / Windows 目标由 `.chezmoiignore` 按 OS 排除。数字于 2026-10-09 重算
+（三个平台各 87 / 37 / 39，后两个减去 Linux 目标集得 6 / 17）。
 
 数字这样复现：当前平台直接跑 `chezmoi managed --include=files`；另两个平台把
 `.chezmoiignore` 里的 `.chezmoi.os` 替换成 `"linux"` / `"darwin"` / `"windows"` 字面量各存
@@ -1207,3 +1210,20 @@ pi 内置的 MCP 扩展（`builtin:mcp`）此前被 `-builtin:mcp` 关掉，把 
 后来本机同步时手工删掉了那份 `mcp-adapter.json`：源里已经没有它，chezmoi 默认也不 prune，
 所以删前删后 `chezmoi diff --include=files` 都是空的；同一次同步里 `~/.pi/agent/mcp.json`
 按源创建。新机器只会拿到 `mcp.json`，不会再有 `mcp-adapter.json`。
+
+### PixPin 配置纳管（2026-10-09）
+
+PixPin（macOS）把状态摊在 `~/Library/Application Support/PixPin/`：`Config/PixPinConfig.json`
+是设置，`LocalStorage.data` 是 Qt `QSettings`（配置窗口的位置与大小、截图矩形）。只有前者
+进源，理由与 Input Source Pro 那份 plist 相同——后者拖一下窗口就变。两条与既有做法不同的
+取舍：
+
+- 源里存**原样单行字节**，不做 `jq -S` 规范化：应用写回也是单行，两边格式一致时 `diff`
+  只会因真实改设置而报警；源格式化成多行反而让每次 GUI 改动都多出一层格式噪声。
+- `Application Support` 那一节也带 `private_` 前缀，因为 `~/Library/Application Support`
+  是 `0700`，而 chezmoi 的目录权限只能由源名表达。少了它，apply 会把权限放宽成 `0755`，
+  `chezmoi status` 会以 ` M Library/Application Support` 报出来（第一次试探就是这么发现的）。
+
+`pixpin` cask 同时加进 `bootstrap/macos.sh` 的 `CASKS`：本机原先用 dmg 手装，纳入后由 brew
+接管。托管只是单向的——源是新机器的起点，运行时真源仍是应用自己那份。细节见
+`docs/pixpin.md`。
