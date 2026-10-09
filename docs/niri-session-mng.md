@@ -152,3 +152,9 @@ eDP-1 而不是快照里的 DP-2。ghostty 没中招纯属侥幸——它的 `fo
   也放行，同 uid 且进程 dumpable），`fdinfo` 里的 `tty-index` 就是对应的 pts 号。
   **这条没走**：虚拟键盘方案更简单，不需要碰 ghostty 的私有 fd。
 - niri 实现了 `zwp_virtual_keyboard_manager_v1`，`wtype` 可用。
+- Godot 4.7（Arch `godot` 包，走 Wayland 后端）编辑器窗口的 app_id 是
+  `org.godotengine.Editor`，**不是** `Godot`：项目管理器是 `org.godotengine.ProjectManager`，
+  运行时游戏是项目名 / `org.godotengine.Godot`（见 Godot 源码
+  `platform/linuxbsd/wayland/display_server_wayland.cpp` 的 `_get_app_id_from_context()`）。
+  app_id 写错不会报错，只会让 `save` 把窗口算进 “outside the whitelist” 静默丢掉，
+  连 `restore` 都轮不到。

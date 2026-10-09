@@ -189,6 +189,9 @@ class Recipe:
     launch: list[str]
     spawn: str = "per_window"
     terminal: bool = False
+    # Whether the window's app can hand over a project directory, which is what
+    # the {project} placeholder in the launch argv expands to. Godot only.
+    project: bool = False
 
 
 @dataclass(frozen=True)
@@ -213,7 +216,12 @@ def load_config() -> Config:
         spawn = table.get("spawn", "per_window")
         if spawn not in ("per_window", "once"):
             sys.exit(f'niri-session-mng: {CONFIG_PATH}: [apps."{app_id}"] spawn must be "per_window" or "once"')
-        apps[app_id] = Recipe([str(part) for part in launch], spawn, bool(table.get("terminal", False)))
+        apps[app_id] = Recipe(
+            [str(part) for part in launch],
+            spawn,
+            bool(table.get("terminal", False)),
+            bool(table.get("project", False)),
+        )
 
     rerun: dict[str, list[str]] = {}
     for command, argv in (raw.get("rerun") or {}).items():
@@ -296,6 +304,7 @@ def cmd_save(path: Path) -> None:
         if app_id not in config.apps:
             skipped += 1
             continue
+        recipe = config.apps[app_id]
         workspace = workspaces.get(window["workspace_id"])
         if workspace is None:
             continue
@@ -324,9 +333,7 @@ def cmd_save(path: Path) -> None:
                 "focused": bool(window.get("is_focused")),
                 "cwd": cwd,
                 "foreground": foreground,
-                "project": godot_project_path(window)
-                if app_id == "Godot"
-                else None,
+                "project": godot_project_path(window) if recipe.project else None,
             }
         )
 

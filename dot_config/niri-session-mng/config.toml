@@ -7,6 +7,9 @@
 # and the whole argument is dropped when it is not. `{project}` expands to a
 # captured Godot project path; without one Godot opens the project manager.
 #
+# `project = true` marks an app that can hand over a project directory, which
+# is what fills `{project}` in. Only the Godot editor does today.
+#
 # `spawn` says how many windows one launch produces:
 #   "per_window" -- one window per launch, so every captured window is spawned
 #                   separately and lands in the right place in the column order
@@ -41,9 +44,13 @@ spawn = "per_window"
 launch = ["obsidian"]
 spawn = "once"
 
-[apps."Godot"]
+# Godot 4.7 on Wayland reports the editor window under this app_id; older
+# builds used a plain "Godot" WM_CLASS, and a running game or the project
+# manager use other ids, so they are deliberately not listed.
+[apps."org.godotengine.Editor"]
 launch = ["godot", "--editor", "--path", "{project}"]
 spawn = "per_window"
+project = true
 
 [apps."blender"]
 launch = ["blender"]
