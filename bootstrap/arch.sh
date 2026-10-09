@@ -57,6 +57,14 @@ PACKAGES=(
   "fuzzel"
   "wtype"
   "wl-clipboard"
+  # Screenshot/annotation flow (Mod+Shift+A / Print); see docs/niri.md.
+  # portal-wlr supplies the Screenshot interface flameshot draws its overlay
+  # from, and pulls in grim + slurp itself.
+  "xdg-desktop-portal"
+  "xdg-desktop-portal-gtk"
+  "xdg-desktop-portal-wlr"
+  "flameshot"
+  "satty"
   "noto-fonts-cjk"
   "noto-fonts-emoji"
   "noto-fonts"

@@ -194,3 +194,67 @@ match source {
 所以滚轮归 `input.mouse.scroll_factor` 管，和高分辨率滚轮（`REL_WHEEL_HI_RES`）配合生效。
 `window-rule` 的 `scroll-factor` 会再乘上去，可给单个应用单独调速。
 本机鼠标没有 `REL_HWHEEL`，`horizontal=` 用不上。
+
+## 截图与标注
+
+三个键分两条路：
+
+| 键 | 走哪条 |
+| --- | --- |
+| `Mod+Shift+A` | flameshot overlay：拖出框后还能拖 8 个手柄调，`方向键` / `Shift+方向键` 逐像素移动与缩放选区 |
+| `Print` | niri 自己的截图 UI 框选（按住 `Space` 拖 = 整体移动），保存后由 `~/.local/bin/niri-screenshot-annotate` 把文件交给 satty 标注 |
+| `Ctrl+Print`、`Alt+Print` | niri 原生整屏 / 当前窗口，不进标注 |
+
+### 选区手柄只能靠 flameshot
+
+Wayland 客户端不能自己决定窗口位置，所以「在屏幕上就地拖出一块可反复调整的选区」只能由自带
+全屏 overlay 的应用实现，flameshot 就是这类。niri 内置截图 UI（`src/ui/screenshot_ui.rs`）
+里只有拖选和「按住 Space 整体移动」，没有任何边角 resize 逻辑；slurp 同样没有——它的
+`handle_selection_end()` 一松手就提交并退出。所以 `Print` 那条路保留了 niri 的选区体验，
+要把框调准则用 flameshot。
+
+### 为什么必须配 portal 后端
+
+flameshot 不自己抓屏：它通过 `org.freedesktop.portal.Screenshot` 拿到整屏，再画自己的
+overlay。而 niri 没有自己的 portal 后端，`xdg-desktop-portal-wlr` 的 `wlr.portal` 里
+`UseIn=wlroots;sway;Wayfire;river;phosh;Hyprland;` **不含 niri**（本机 `XDG_CURRENT_DESKTOP=niri`），
+于是 Screenshot 会落到 gtk 后端，而它要 fork 本机没装的 `gnome-screenshot`。
+
+所以 `dot_config/xdg-desktop-portal/portals.conf` 只把那一个接口指给 wlr：
+
+```ini
+[preferred]
+default=gtk
+org.freedesktop.impl.portal.Screenshot=wlr
+```
+
+wlr 后端走 `zwlr_screencopy_manager_v1`（niri 实现了它，见 docs/streaming.md）。改完必须
+`systemctl --user restart xdg-desktop-portal`，否则它不会重新读配置。
+
+### flameshot 的工具栏位置固定不了
+
+它全部 47 个配置项里没有位置相关的键，那排按钮（源码里的 `UtilityPanel`）位置是按选区/
+鼠标算出来以避开选区的。要「位置固定」只能改用 satty 那种窗口内工具栏；用 flameshot 时
+就直接上键盘：`P`/`A`/`R`/`C`/`T`/`M`/`B` 选工具，`Ctrl+C` 复制、`Ctrl+S` 保存、`Ctrl+Q`
+退出，选区微调用 `方向键` 与 `Shift+方向键`。
+
+### 踩过的坑：工具图标全是空白
+
+flameshot 的图标是内嵌 SVG，要 Qt 的 SVG 图标引擎插件才能渲染。Arch 上 `qt6-svg` 与
+`qt6-base` 必须同主次版本：装 flameshot 时它作为依赖把 `qt6-svg 6.12` 拉了进来，而系统的
+`qt6-base` 还停在 `6.11`，插件加载直接失败（`/proc/<pid>/maps` 里连 `libQt6Svg` 都没有），
+按钮就只剩纯色块。`pacman -Syu` 让两者对齐后恢复。
+
+这是 partial upgrade 的典型后果：只装单个包会把依赖的新版本拖进来，与没升级的其余 Qt 包
+错配。同类症状出现时先查 `/proc/<pid>/maps` 里那个插件库在不在。
+
+### satty 侧只负责标注
+
+satty 不含任何抓屏代码，只吃别人给的图。所以 `Print` 是「niri 截图 → 事件流 → satty」的
+桥接：`dot_local/bin/executable_niri-screenshot-annotate` 先订阅 `niri msg --json event-stream`，
+再触发 `niri msg action screenshot`，收到 `ScreenshotCaptured` 后把 path 交给 satty
+（先订阅再触发，事件不会漏；`Esc` 取消则不会产生文件，脚本按超时自行退出）。
+
+配置在 `dot_config/satty/`：`config.toml` 让窗口浮动并按图片尺寸开，`overrides.css` 把工具栏
+的最小宽度归零（默认约 955px），否则小选区也会顶出一个屏幕宽的窗口。
+
