@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# niri-flameshot-gui -- flameshot's overlay, opened on the output that has focus.
+#
+# flameshot does not grab the screen itself: on Wayland it gets the whole desktop
+# through org.freedesktop.portal.Screenshot, crops that to a single monitor, and
+# before cropping it asks which one by showing a preview of every screen.
+# `flameshot screen -n N -e` is the same overlay editor with the monitor already
+# chosen -- main.cpp turns it into GRAPHICAL_MODE + setSelectedMonitor(N), and
+# ScreenGrabber::grabEntireDesktop skips the preview when it gets one -- so this
+# resolves the focused output to a screen index instead of letting it ask.
+#
+# With one output there is nothing to ask and nothing to resolve: flameshot crops
+# a single-screen desktop to monitor 0 itself (`screens.size() == 1` in
+# selectMonitorAndCrop), so the plain command is already right and the lookup
+# below is skipped.
+#
+# N is a Qt screen index, so it is the order of wl_output globals in the Wayland
+# registry. Neither of niri's own listings has that order: the IPC reply is a
+# HashMap (random per request) and `niri msg outputs` sorts by name. wayland-info
+# walks the registry, so it does. It runs once per keypress, and only when there
+# is more than one output.
+#
+# If any step of that lookup fails -- no wayland-info, niri not running, a name
+# that does not resolve, a name set that does not match niri's -- fall back to
+# plain `flameshot gui` and let flameshot show its picker. Capturing the wrong
+# monitor silently would be worse than one extra click.
+#
+# Bound in dot_config/niri/config.kdl:
+#   Mod+Shift+A { spawn "~/.local/bin/niri-flameshot-gui"; }
+
+set -uo pipefail
+
+if ! command -v flameshot >/dev/null 2>&1; then
+    echo "niri-flameshot-gui: flameshot is not installed" >&2
+    exit 1
+fi
+
+index=""
+
+if command -v niri >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+    # Only the output count is used, and that one is stable; the key order of this
+    # reply is not, so it is never used for ordering.
+    outputs="$(niri msg --json outputs 2>/dev/null)" || outputs=""
+    if [ "$(printf '%s' "$outputs" | jq 'length' 2>/dev/null)" = "1" ]; then
+        exec flameshot gui
+    fi
+
+    focused="$(niri msg --json focused-output 2>/dev/null | jq -r '.name // empty' 2>/dev/null)" || focused=""
+
+    if [ -n "$focused" ] && command -v wayland-info >/dev/null 2>&1; then
+        # "N<TAB>name" for every wl_output, in registry order. Each output is one
+        # `interface: 'wl_output'` block whose first `name:` line is the output name.
+        map="$(wayland-info 2>/dev/null | awk '
+            /^interface: / {
+                if (name != "") { print n - 1 "\t" name; name = "" }
+                in_wl = index($0, "wl_output") > 0
+                if (in_wl) { n++ }
+                next
+            }
+            in_wl && name == "" && /^[[:space:]]*name:[[:space:]]/ {
+                sub(/^[[:space:]]*name:[[:space:]]+/, "")
+                name = $0
+            }
+            END { if (name != "") { print n - 1 "\t" name } }
+        ')"
+
+        wanted="$(printf '%s\n' "$map" | awk -F'\t' -v want="$focused" '$2 == want { print $1; exit }')"
+        listed="$(printf '%s\n' "$map" | cut -f2 | sort | paste -sd' ' -)"
+        known="$(printf '%s' "$outputs" | jq -r 'keys_unsorted | sort | join(" ")' 2>/dev/null)" || known=""
+        # A resolved index is only trusted when the two name sets agree; otherwise
+        # the parse went wrong somewhere and the index means nothing.
+        if [ -n "$wanted" ] && [ "$listed" = "$known" ]; then
+            index="$wanted"
+        fi
+    fi
+fi
+
+if [ -z "$index" ]; then
+    exec flameshot gui
+fi
+
+exec flameshot screen -n "$index" -e

@@ -201,7 +201,7 @@ match source {
 
 | 键 | 走哪条 |
 | --- | --- |
-| `Mod+Shift+A` | flameshot overlay：拖出框后还能拖 8 个手柄调，`方向键` / `Shift+方向键` 逐像素移动与缩放选区 |
+| `Mod+Shift+A` | flameshot overlay：拖出框后还能拖 8 个手柄调，`方向键` / `Shift+方向键` 逐像素移动与缩放选区。`~/.local/bin/niri-flameshot-gui` 把它直接开在焦点屏上，不再弹屏幕选择；只有一个输出时它直接把 `flameshot gui` 交出去 |
 | `Print` | niri 自己的截图 UI 框选（按住 `Space` 拖 = 整体移动），保存后由 `~/.local/bin/niri-screenshot-annotate` 把文件交给 satty 标注 |
 | `Ctrl+Print`、`Alt+Print` | niri 原生整屏 / 当前窗口，不进标注 |
 

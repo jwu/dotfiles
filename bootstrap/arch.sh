@@ -58,13 +58,16 @@ PACKAGES=(
   "wtype"
   "wl-clipboard"
   # Screenshot/annotation flow (Mod+Shift+A / Print); see docs/niri.md.
-  # portal-wlr supplies the Screenshot interface flameshot draws its overlay
-  # from, and pulls in grim + slurp itself.
+  # portal-wlr is what implements the portal Screenshot interface on niri for
+  # flameshot; the grim + slurp it pulls in are its own capture tools, not
+  # something flameshot calls. wayland-utils serves the niri-flameshot-gui
+  # helper, which needs wl_output order only when there is more than one output.
   "xdg-desktop-portal"
   "xdg-desktop-portal-gtk"
   "xdg-desktop-portal-wlr"
   "flameshot"
   "satty"
+  "wayland-utils"
   "noto-fonts-cjk"
   "noto-fonts-emoji"
   "noto-fonts"

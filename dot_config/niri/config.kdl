@@ -235,8 +235,9 @@ binds {
 
     // flameshot brings its own full-screen overlay, which is the only way here to
     // get a selection that can still be resized by its handles after the first
-    // drag; niri's own screenshot UI can only move a selection around.
-    Mod+Shift+A { spawn "flameshot" "gui"; }
+    // drag; niri's own screenshot UI can only move a selection around. The helper
+    // picks the focused output so flameshot skips its own monitor picker.
+    Mod+Shift+A { spawn "~/.local/bin/niri-flameshot-gui"; }
 
     Mod+Shift+Slash { show-hotkey-overlay; }
 }
