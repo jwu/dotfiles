@@ -228,8 +228,85 @@ default=gtk
 org.freedesktop.impl.portal.Screenshot=wlr
 ```
 
-wlr 后端走 `zwlr_screencopy_manager_v1`（niri 实现了它，见 docs/streaming.md）。改完必须
-`systemctl --user restart xdg-desktop-portal`，否则它不会重新读配置。
+改完必须 `systemctl --user restart xdg-desktop-portal`，否则它不会重新读配置。wlr 后端自己不带
+捕获代码，它在更下一层调 grim。
+
+### portal 后端的捕获其实是 grim
+
+xdpw 收到非交互的 Screenshot 请求时执行的是一条固定命令（实测抓到的进程命令行）：
+
+```text
+grim -- /tmp/out.png
+```
+
+没有 `-o`（输出名）、没有 `-s`、没有 `-l`，所以永远是**整个虚拟桌面**拼成一张图写进临时 PNG
+（本机 4096x3904）。grim 才是走 `zwlr_screencopy_manager_v1` 的那一层（niri 实现了它，见
+docs/streaming.md）。也就是说 grim 只在这条链的最底层出现，**调用者是 xdpw，flameshot 不知道
+它存在**；这条依赖也不是我们选的：`grim` 由 `xdg-desktop-portal-wlr` 拖进来，而后者本来就被
+`niri` 包依赖。
+
+`pacman -Qi flameshot` 里那行 `grim: for wlroots wayland support` 是 13 时代的旧文本：
+flameshot 曾有 `USE_WAYLAND_GRIM` 编译开关，v13 改成运行时 `useGrimAdapter` 设置并进了配置界面
+（PR #3859 / #3919 / #3943），**v14 全部移除**——14.0.0 的源码树里没有 grim 文件，
+`strings /usr/bin/flameshot | rg grim` 也是空。上游后来试过用 `FLAMESHOT_USE_GRIM=1` 把 grim
+快路径加回来（PR #4944），被关掉的理由是 `We intentionally use the portal backend for
+commonality.`
+
+### 这一路为什么慢：整桌面图编解码两次
+
+按 `Mod+Shift+A` 到 overlay 出现实测 1.82s（本机两屏：eDP-1 逻辑 1600x1000 @1.6、
+DP-2 2560x1440 @1）：
+
+| 阶段 | 耗时 |
+| --- | --- |
+| `niri-flameshot-gui` 自己（niri IPC + wayland-info + jq/awk） | 0.04s |
+| flameshot 的 Qt/Wayland 启动（拿 `flameshot screen -n 99 -r` 测，它在进 portal 前就报错退出） | 0.07s |
+| portal：grim 抓整个虚拟桌面（4096x3904，约 16M 像素）并编码 PNG | ~1.10s |
+| flameshot 读回并解码同一张图、裁到单屏、建全屏窗口 | ~0.6s |
+
+那 1.10s 里纯捕获只占 0.17s（同期 `grim -t ppm` 测得），**PNG 编码约 0.94s**；作为对照，
+`grim -o DP-2` 单屏只要 0.19s。时间几乎全花在两块屏的拼接图与它的 PNG 编解码上，瓶颈是 portal
+的交付形态，不在 flameshot 也不在这个脚本。
+
+没有可调的余地：xdpw 的配置只有 `[screencast]` 段（`man 5 xdg-desktop-portal-wlr`），没有
+任何 screenshot 键，无法让它只截一块屏或降压缩级别；`/tmp` 本来就是 tmpfs，那张 PNG 也只有
+2.4MB，IO 不是瓶颈。
+
+### flameshot 会自弹屏幕选择，得替它先选
+
+Wayland 下 flameshot 拿的是**整张虚拟桌面**（portal 的 Screenshot 返回所有输出的图），裁到
+单屏之前它会先弹一圈屏幕预览让人点，因为 `flameshot gui` 从不预选屏幕：
+
+```cpp
+// src/utils/screengrabber.cpp, grabEntireDesktop()
+// If monitor was pre-selected skip UI and crop directly
+if (preSelectedMonitor >= 0) { ... return cropToMonitor(screenshot, preSelectedMonitor); }
+return selectMonitorAndCrop(screenshot, ok);   // createMonitorPreviews()
+```
+
+`flameshot screen -n N -e` 是同一套 overlay 编辑器加上预选屏幕（`main.cpp` 把它重写成
+GRAPHICAL_MODE + `setSelectedMonitor(N)`，`capturewidget.cpp` 再把 N 传给 `grabEntireDesktop`），
+所以 `dot_local/bin/executable_niri-flameshot-gui` 先问 niri 要焦点输出，再把它当 N 传进去。
+
+- 为什么不用配置项 `captureActiveMonitor`（自动用光标所在屏）：它在 Wayland 下被硬编码关掉，
+  源码里的理由是 `Capture Active Monitor is not supported on Wayland due to Wayland security
+  model.`
+- 编号 N 是 **Qt 的 screen index**，也就是 Wayland registry 里 wl_output 全局的注册顺序。niri
+  自己的两种列法都不能用：`niri msg --json outputs` 的 JSON 来自 `HashMap<String, Output>`，
+  同一个会话里连续两次请求的顺序都可能不同（实测两种顺序各出现三次）；`niri msg outputs`
+  人类可读的那份则是 niri 客户端按输出名排序的（`src/ipc/client.rs` 里的
+  `sort_unstable_by(|a, b| a.0.compare(&b.0))`），与 Qt 无关。所以脚本改问 `wayland-info`
+  （`wayland-utils` 包），它按 registry 顺序枚举，和 Qt 建屏的顺序同源。
+- 编号与屏幕的对应关系本身也是实测的：`flameshot screen -n N -r | file -`，不带 `-e` 时不会弹
+  任何 UI，PNG 尺寸直接暴露是哪块屏（`-n 0` → 3200x2000 是 eDP-1，`-n 1` → 2560x1440 是 DP-2）。
+  那个 3200x2000 来自 wl_output 报的整数 `scale: 2`，与 niri 的 fractional 1.6 无关。
+- 只有一个输出时这些换算全都不需要：flameshot 自己就会跳过选择器（`selectMonitorAndCrop` 里
+  `screens.size() == 1` 直接裁到 monitor 0），所以脚本先数一下输出个数，是 1 就把
+  `flameshot gui` 原样交出去，连 `wayland-info` 都不查。省掉的那次查询只有几毫秒，重点是**单
+  显示器的机器不必为了这个键去装 `wayland-utils`**。判断用的是个数不是顺序，所以不会踩上面
+  那个随机序的坑。
+- 任何一步拿不到编号（没装 `wayland-utils`、niri 没在跑、解析出的名字集合与 niri 的对不上）都
+  回退到 `flameshot gui`：宁可多一次点选，也不静默截错屏。
 
 ### flameshot 的工具栏位置固定不了
 
