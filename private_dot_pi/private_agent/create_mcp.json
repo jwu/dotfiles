@@ -27,6 +27,15 @@
       "exposure": "codemode",
       "enabled": false,
       "description": "Fallback for chrome-devtools: --autoConnect reads the Chrome 144+ remote debugging service via DevToolsActivePort. Needs Full Disk Access for the terminal."
+    },
+    "rea": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "rea-agents@latest",
+        "mcp"
+      ]
     }
   }
 }
