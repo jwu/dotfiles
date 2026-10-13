@@ -313,11 +313,20 @@ git 先读 XDG 那份、再读 `~/.gitconfig`，后者覆盖前者，所以个�
 
 代价是源与磁盘会漂移，所以跨机器必须一致的那几个键另走一条**字段级**通道：
 `run_after_55-pi-settings-sync.sh.tmpl` 每次 apply 渲染 `create_settings.json.tmpl`，把
-`extensions`、`packages`、`defaultTools`、`theme`、`tuiMode`、`quietStartup`、
+`$schema`、`extensions`、`packages`、`defaultTools`、`theme`、`tuiMode`、`quietStartup`、
 `enableInstallTelemetry`、`defaultProjectTrust`、`hideThinkingBlock` 合并进已存在的文件，
 其余键（`defaultProvider` / `defaultModel` / `defaultThinkingLevel` / `lastChangelogVersion`，
 以及 pi 或扩展以后新加的任何键）原样保留。合并是幂等的：内容一致就不写盘，所以既不在
 mtime 上与 pi 抢文件，也不留下非空的 `chezmoi diff`。
+
+`$schema` 是 pi 发布的编辑器校验入口：`settings.json`、`keybindings.json` 与主题各有一份
+`https://pi.dev/schemas/*.schema.json`（与 npm 包内 `schemas/` 逐字节一致）。
+`settings.json` 把 `$schema` 列进托管键，是为了让已有机器也拿到——`create_` 只在目标不存在时
+渲染。`keybindings.json` 与 `themes/one-dark.json` 是纯真源，直接写在源里即可；后者原先指向
+`raw.githubusercontent.com` 的源文件路径，上游搬家后那个 URL 已经 404。
+`mcp.json` 没有 schema（`pi.dev/schemas/mcp.schema.json` 是 404），`extensions/*.json` 的
+schema 归各扩展自己（pi-ask 是 `src/config/schema.ts` 里的 zod），两者都不加。
+`models.json` 含 per-provider 的 `apiKey`，按「绝不纳入」处理，它的 `$schema` 只存在本机那份。
 
 为什么不整份当纯真源管：那样 `/model` 切一次模型、pi 读一次 changelog，都会变成 apply 要撤销的
 差异。为什么不用 chezmoi 的 `modify_` 目标类型：它要求脚本在 Windows 上也能执行，而这份源是
