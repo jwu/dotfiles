@@ -150,10 +150,12 @@ sourceDir = "/Users/<user>/bin/dotfiles"
 
 | 路径 | 原因 |
 | --- | --- |
-| `~/.config/{chromium,google-chrome}/**` | 浏览器 profile，含 Cookies 与 Login Data |
+| `~/.config/{chromium,google-chrome,google-chrome-for-testing}/**` | 浏览器 profile，含 Cookies 与 Login Data |
+| `~/.config/obsidian/**` | Electron profile（Cookies、GPUCache、`obsidian-*.asar`、日志） |
 | `~/.config/dconf/user` | 二进制状态库 |
 | `~/.config/chezmoi/chezmoistate.boltdb` | chezmoi 记账库 |
 | `~/.config/{fcitx,ibus}/**` | dbus / socket 句柄 |
+| `~/.config/pulse/` | PulseAudio 的 `<machine-id>-runtime` cookie |
 | `~/.config/{btop,go,nautilus,systemd,yay}/` | 空目录，工具首次运行才填 |
 | `~/.config/comfy-cli/**` | `recent_workspace` 之类由 comfy-cli 写回，且含本机路径 |
 
