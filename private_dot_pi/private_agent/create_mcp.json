@@ -28,6 +28,12 @@
       "enabled": false,
       "description": "Fallback for chrome-devtools: --autoConnect reads the Chrome 144+ remote debugging service via DevToolsActivePort. Needs Full Disk Access for the terminal."
     },
+    "lightpanda": {
+      "command": "lightpanda",
+      "args": ["mcp"],
+      "exposure": "codemode",
+      "description": "Headless browser without Chrome: read pages as markdown or semantic trees, run page JS, click/fill/scroll, cookies, screenshots. See docs/lightpanda.md."
+    },
     "rea": {
       "type": "stdio",
       "command": "npx",
