@@ -1,0 +1,15 @@
+#!/bin/sh
+# Chrome with hardware WebGPU, for vgpu-render work. The Vulkan feature turns
+# Skia into GaneshVulkan: hardware WebGPU appears, but VA-API never initialises
+# and native Wayland renders every video white. Hence XWayland plus a separate
+# profile, so the default Chrome keeps its hardware decode.
+# Replaces the AcceleratedVideoDecodeLinuxGL line from chrome-flags.conf: a
+# later --enable-features wins, and the wrapper puts CHROME_USER_FLAGS first.
+# See docs/chrome.md.
+exec "${HOME}/.local/bin/google-chrome-stable" \
+  --user-data-dir="${XDG_DATA_HOME:-${HOME}/.local/share}/chrome-webgpu" \
+  --ozone-platform=x11 \
+  --enable-features=Vulkan \
+  --no-first-run \
+  --no-default-browser-check \
+  "$@"

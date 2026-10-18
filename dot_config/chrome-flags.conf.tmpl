@@ -3,10 +3,13 @@
 # docs/onboarding-a-machine.md, the network section.
 --proxy-server=http://127.0.0.1:7890
 --proxy-bypass-list=localhost;127.0.0.1;::1;10.0.0.0/8;172.16.0.0/12;192.168.0.0/16
+{{- $gpu := output "sh" "-c" "lspci -d ::0300 2>/dev/null || true" }}
+{{- if and (contains "Intel" $gpu) (not (or (contains "NVIDIA" $gpu) (contains "Advanced Micro Devices" $gpu))) }}
 
 # Hardware video decode. Without this Chrome leaves the VCS engine idle and
 # decodes in the renderer process. It only works while Skia stays on GL, so the
 # Vulkan feature that hardware WebGPU needs is deliberately not set: with it,
 # VA-API never initialises, and on Wayland every video plays white.
-# Measurements and the dropped alternatives are in docs/chrome.md.
+# A discrete-GPU host does not want either line; see docs/chrome.md.
 --enable-features=AcceleratedVideoDecodeLinuxGL
+{{- end }}

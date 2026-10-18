@@ -1066,6 +1066,16 @@ feature 时 `chrome://gpu` 的 `Skia Backend` 是 `GaneshVulkan`，客户端在�
 
 `chromium-flags.conf` 没有跟着改：这台机器没装 chromium，那份文件目前仍只有两行代理。
 
+硬件 WebGPU 用一个单独的启动器承接，而不是二选一地写死在 `chrome-flags.conf` 里：
+`dot_local/bin/executable_chrome-webgpu` 带 `--ozone-platform=x11 --enable-features=Vulkan`
+和独立 profile，命令行参数排在 wrapper 读的 flags 之后，会覆盖日常那份的硬解 feature。
+两个实例可以同时运行。
+
+**这套东西只对纯 Intel 显的机器成立**，而 `chrome-flags.conf` 原本是 Linux-only 的普通
+文件，会原样推到那台 4070Ti。所以它改成了 `.tmpl`：渲染时用 `lspci -d ::0300` 判断，
+只有「有 Intel 且无 NVIDIA/AMD」才加硬解那行；启动器与 desktop 条目由
+`.chezmoiignore` 里的同一条件排除。带独显的机器只拿到两行代理。
+
 ### 2026-09-27 metacubexd 老方案残留清理
 
 这台机器的代理现在是**系统级 mihomo**：`mihomo.service`（AUR 的 `mihomo-bin` 包，见「mihomo：哪些能管，哪些不能」）读

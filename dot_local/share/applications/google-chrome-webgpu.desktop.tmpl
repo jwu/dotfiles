@@ -1,0 +1,15 @@
+# A second launcher entry: hardware WebGPU on XWayland with its own profile.
+# Deliberately no MimeType, so it never competes as the default handler for
+# http/https. See docs/chrome.md.
+[Desktop Entry]
+Version=1.0
+Name=Google Chrome (WebGPU)
+GenericName=Web Browser
+Comment=Hardware WebGPU via Vulkan on XWayland; software video decode
+Exec={{ .chezmoi.homeDir }}/.local/bin/chrome-webgpu %U
+StartupNotify=true
+StartupWMClass=google-chrome
+Terminal=false
+Icon=google-chrome
+Type=Application
+Categories=Network;WebBrowser;

@@ -15,7 +15,13 @@
 
 代价是 WebGPU 没有硬件 adapter（`requestAdapter()` 返回 null；加
 `--enable-unsafe-webgpu` 会退到 SwiftShader 软渲染）。这是刻意的取舍：
-`~/dev/vgpu-render/` 需要硬件 WebGPU 时，用下面「需要 WebGPU 时」的临时命令。
+`~/dev/vgpu-render/` 需要硬件 WebGPU 时用 `chrome-webgpu`，见下。
+
+这套配置只对纯 Intel 显卡的机器有意义，所以源是 `chrome-flags.conf.tmpl`：
+渲染时用 `lspci -d ::0300` 判断，只有「有 Intel 显卡且没有 NVIDIA/AMD 显卡」才加那行
+feature。带独显的机器（比如那台 4070Ti）拿到的仍是两行代理；`chrome-webgpu` 启动器与
+它的 desktop 条目由 `.chezmoiignore` 里的同一条件排除。判据逻辑实测过三种输入：
+纯 NVIDIA / 纯 Intel / Intel+NVIDIA 混合，后两种里只有第二种会渲染出那段。
 
 ## 实测矩阵
 
@@ -64,15 +70,21 @@ ffmpeg -hwaccel vaapi -hwaccel_device /dev/dri/renderD128 -i in.mp4 -f null -
 
 ## 需要 WebGPU 时
 
-不要改 `chrome-flags.conf`，用一次性的覆盖启动（同一个 profile 也可以，但必须
-完全退出已有 Chrome，因为新参数不会被转发给已运行的实例）：
+用 `~/.local/bin/chrome-webgpu`（源在 `dot_local/bin/executable_chrome-webgpu`）。
+它带 `--ozone-platform=x11 --enable-features=Vulkan` 和独立 profile
+（`~/.local/share/chrome-webgpu`），能与日常 Chrome 同时运行。命令行里的
+`--enable-features` 排在 wrapper 读的 `chrome-flags.conf` 之后，会覆盖那行的
+`AcceleratedVideoDecodeLinuxGL`，所以这个实例不会去试硬解。
 
-```
-google-chrome-stable --ozone-platform=x11 --enable-features=Vulkan
-```
+已验证：`requestAdapter()` 拿到 Intel gen-9 硬件 adapter，WebGPU 画布内容可见，
+同一实例播放本地视频正常（截图 YAVG≈30）。
 
-此时视频会回到软解；XWayland 下单屏 scale 1.6 也可能发糊。用完关掉、用普通方式
-重开即可。
+启动器也注册到了 fuzzel：`dot_local/share/applications/google-chrome-webgpu.desktop.tmpl`
+提供 `Google Chrome (WebGPU)` 条目，与 `Google Chrome` 并列。它故意不带 `MimeType`，
+不会去抢 http/https 的默认处理器。
+
+这一整套（`chrome-flags.conf` 的硬解行、启动器、desktop 条目）都只部署在纯 Intel
+显卡的机器上，带独显的机器不需要：那边 Vulkan WebGPU 本来就能直接跑。
 
 ## 被否的方向
 
