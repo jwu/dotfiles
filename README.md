@@ -147,6 +147,7 @@ chezmoi 的源路径与目标路径不一定逐字对应：`dot_` 加前置点�
 - [`docs/shell.md`](docs/shell.md) — zsh 配置里的两个坑：nvm 的两种装法与 Apple Silicon 的 MPS 变量。
 - [`docs/dev-env.md`](docs/dev-env.md) — 开发运行时（rustup / nvm + Node / uv / bun）的落点与取舍：为什么 per-user 而不是 pacman、installer 改写 shell 配置的坑、「缺失才装」的判据。
 - [`docs/pi-webfetch.md`](docs/pi-webfetch.md) — webfetch 三个外部 CLI 的落点：`scrapling` 为什么走 `uv tool`、上游 `scrapling install` 在 Arch 上必失败的原因、`[shell]` 与 `[fetchers]` 的区别。
+- [`docs/lightpanda.md`](docs/lightpanda.md) — 原生 headless 浏览器接进 pi 的内置 MCP：实测耗时、markdown 不抽正文的边界、CDP 与 `create_` 目标的同步方式。
 - [`docs/windows-shell.md`](docs/windows-shell.md) — Windows 的 shell 层：scoop、Clink 的 `session.cmd` 接线、用户环境变量、批处理必须 CRLF。
 - [`docs/waybar.md`](docs/waybar.md) — 模块基线与行高约定、配色、`cffi/niri-windows`、GPU 与磁盘取值脚本。
 - [`docs/lockscreen.md`](docs/lockscreen.md) — hyprlock / swaylock、熄屏计时、按屏幕尺寸挑样式。

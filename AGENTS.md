@@ -98,7 +98,7 @@ dotfiles/
 - 找文件用 `fd`，找文本用 `rg`，不要 `find` / `grep -r`。
 - chezmoi 的怪癖先查 `docs/chezmoi-notes.md`——那里专门记「看起来会工作、实际不会」的地方。
 - 各主题的既有推导按名字对应：`docs/waybar.md`、`docs/lockscreen.md`、`docs/niri.md`、
-  `docs/ghostty*.md`、`docs/rime/`、`docs/alacritty.md`、`docs/shell.md`。
+  `docs/ghostty*.md`、`docs/rime/`、`docs/alacritty.md`、`docs/shell.md`、`docs/lightpanda.md`。
 - 外部知识库：暂无。
 
 ### 提交
