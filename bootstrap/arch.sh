@@ -73,6 +73,9 @@ PACKAGES=(
   "noto-fonts"
   "adwaita-fonts"
   "ttf-sarasa-gothic"
+  # VA-API hardware video decode in Chrome. Intel-only driver; an AMD host gets
+  # the equivalent from mesa and can drop this line. See docs/chrome.md.
+  "intel-media-driver"
   "go"
   "gcc"
   "make"
