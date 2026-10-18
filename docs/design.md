@@ -1032,7 +1032,7 @@ apply 把 6 个 `run_*` 全部重跑了一遍。它们都幂等，重跑的代�
 | 源 | 目标 | 说明 |
 | --- | --- | --- |
 | `dot_config/chrome-flags.conf` | `~/.config/chrome-flags.conf` | Arch 的 `google-chrome-stable` wrapper 读它 |
-| `dot_config/chromium-flags.conf` | `~/.config/chromium-flags.conf` | 同一机制的 chromium 版，内容与上一份逐字相同（除首行） |
+| `dot_config/chromium-flags.conf` | `~/.config/chromium-flags.conf` | 同一机制的 chromium 版，最初与上一份逐字相同（除首行） |
 | `dot_config/mimeapps.list` | `~/.config/mimeapps.list` | 默认浏览器与几个 `x-scheme-handler` 指向 `google-chrome.desktop` |
 
 **口径是「所有 Linux 主机都带代理行」，不是只在本机渲染。** 三份都是普通文件而不是模板，
@@ -1049,6 +1049,22 @@ macOS 与 Windows 的 Chrome 不认这些文件名，`mimeapps.list` 是 XDG 的
 `~/.oh-my-zsh.bak.1790327059`、空的 `~/.config/gtk-3.0/`。当时 **`zellij` 二进制还装着**，上一节
 「不再被使用」只对 macOS 成立；删掉的是那份 `default_shell` / `copy_command` 两行配置。
 同一天稍后把包也卸了：`pacman -Rns zellij`，52 MiB，无反向依赖。
+
+### 2026-10-18 Chrome 视频白屏：不启用 Vulkan，改用 VA-API 硬解
+
+10-17 为硬件 WebGPU 加入的 `--enable-features=Vulkan` 把所有网页视频打成了白屏：带这个
+feature 时 `chrome://gpu` 的 `Skia Backend` 是 `GaneshVulkan`，客户端在这种后端下拿不到
+视频帧纹理（`canvas.drawImage(video)` 读出来接近全黑），其余内容正常。装好
+`intel-media-driver` 后又多一个限制：Vulkan feature 在时 VA-API **根本不初始化**，
+即使显式开启 `AcceleratedVideoDecodeLinuxGL` 也一样（i915 的 VCS 引擎 0ms）。
+
+中间试过 `--ozone-platform=x11`：XWayland 下白屏消失、硬件 WebGPU 也在，但视频只能
+软解（1080p60 多占约 28% 的一个核），且失去原生 Wayland。最终取舍是**视频优先**：
+`chrome-flags.conf` 只留 `--enable-features=AcceleratedVideoDecodeLinuxGL`，
+不启用 Vulkan，WebGPU 退回 null adapter（`--enable-unsafe-webgpu` 时是 SwiftShader）。
+需要硬件 WebGPU 时用一次性覆盖启动，命令写在 [`chrome.md`](chrome.md)。
+
+`chromium-flags.conf` 没有跟着改：这台机器没装 chromium，那份文件目前仍只有两行代理。
 
 ### 2026-09-27 metacubexd 老方案残留清理
 
