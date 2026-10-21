@@ -643,34 +643,93 @@ def target_width(entry: dict, snapshot: dict, outputs: dict[str, int]) -> int:
     return width
 
 
-def place(entry: dict, window: dict, snapshot: dict, outputs: dict[str, int]) -> None:
-    """Put one window back: its output, its workspace, its column and its width."""
-    window_id = str(window["id"])
-    if entry.get("floating"):
-        # Floating geometry is not captured; leave the window where it opened.
-        print(f"niri-session-mng: note: {entry['app_id']}: floating window left unplaced", file=sys.stderr)
+def send_to_workspace(entry: dict, window: dict, outputs: dict[str, int]) -> None:
+    """Move a window onto its captured output and workspace, by id.
 
-    # A window lands on whatever workspace holds the focus when it maps, and a
-    # slow app can map only after a later spawn has moved the focus to another
-    # output. So move the window onto its captured output by id rather than
-    # trusting where it opened. This cannot be done with focus-monitor:
-    # move-window-to-workspace resolves an index against the window's *own*
-    # output, not the focused one. See docs/niri-session-mng.md.
+    A window lands on whatever workspace holds the focus when it maps, and a
+    slow app can map only after a later spawn has moved the focus to another
+    output. Moving it by id avoids trusting where it opened. This cannot be
+    done with focus-monitor: move-window-to-workspace resolves an index against
+    the window's *own* output, not the focused one. See
+    docs/niri-session-mng.md.
+    """
+    window_id = str(window["id"])
     output = entry.get("output")
     if output in outputs:
         action("move-window-to-monitor", "--id", window_id, output, check=False)
-    action("focus-window", "--id", window_id, check=False)
     if target_workspace(entry):
         action("move-window-to-workspace", "--window-id", window_id, str(target_workspace(entry)), check=False)
-    if entry.get("column"):
-        action("focus-window", "--id", window_id, check=False)
-        action("move-column-to-index", str(entry["column"]), check=False)
+
+
+def place_column(entry: dict, window: dict, column_index: int, snapshot: dict, outputs: dict[str, int]) -> None:
+    """Give one window its own column at the given index and width."""
+    window_id = str(window["id"])
+    action("focus-window", "--id", window_id, check=False)
+    if column_index:
+        action("move-column-to-index", str(column_index), check=False)
     width = target_width(entry, snapshot, outputs)
     if width:
         action("focus-window", "--id", window_id, check=False)
         # SizeChange parses plain integers as logical pixels; "800px" is a
         # parse error, and a percent sign means a proportion instead.
         action("set-column-width", str(width), check=False)
+
+
+def stack_rows(group: list[tuple[dict, dict]]) -> None:
+    """Merge the windows that shared a column back into one column.
+
+    `group` is flattened in snapshot order, one window per column, so the rows
+    of a column are consecutive. niri has no action that sets a row index: the
+    only way to build a stacked column is consume-window-into-column, which
+    moves the top window of the column on the right to the bottom of the
+    focused one. Merging right to left keeps the indices of the columns that
+    still have to be merged, since each merge removes a column to the right.
+    """
+    runs: list[list[tuple[dict, dict]]] = []
+    for pair in group:
+        column = pair[0].get("column", 0)
+        if runs and column == runs[-1][0][0].get("column", 0):
+            runs[-1].append(pair)
+        else:
+            runs.append([pair])
+
+    for run in reversed(runs):
+        if len(run) < 2:
+            continue
+        action("focus-window", "--id", str(run[0][1]["id"]), check=False)
+        for _ in range(len(run) - 1):
+            action("consume-window-into-column", check=False)
+
+
+def place_all(pairings: list[tuple[dict, dict]], snapshot: dict, outputs: dict[str, int]) -> None:
+    """Rebuild the layout per workspace, then merge the rows back into columns."""
+    groups: dict[tuple[str | None, int | None], list[tuple[dict, dict]]] = {}
+    for pair in pairings:
+        entry = pair[0]
+        key = (entry.get("output"), target_workspace(entry))
+        groups.setdefault(key, []).append(pair)
+
+    for group in groups.values():
+        tiled = [pair for pair in group if not pair[0].get("floating")]
+        floating = [pair for pair in group if pair[0].get("floating")]
+        tiled.sort(key=lambda pair: (pair[0].get("column", 0), pair[0].get("row", 0)))
+
+        # Send every window to its workspace before touching column indices.
+        # A window arriving from another workspace is inserted wherever the
+        # focus is, which would shift columns that were already placed.
+        for entry, window in tiled + floating:
+            send_to_workspace(entry, window, outputs)
+
+        # One window per column first, left to right: every column index has to
+        # be settled before any of them gets stacked, because moving a stacked
+        # column to an index moves all of its rows at once.
+        for index, (entry, window) in enumerate(tiled, start=1):
+            place_column(entry, window, index, snapshot, outputs)
+        stack_rows(tiled)
+
+        for entry, window in floating:
+            # Floating geometry is not captured; leave the window where it opened.
+            print(f"niri-session-mng: note: {entry['app_id']}: floating window left unplaced", file=sys.stderr)
 
 
 def ensure_blank_session(windows: list[dict]) -> None:
@@ -757,7 +816,7 @@ def cmd_restore(path: Path, dry_run: bool) -> None:
     finally:
         events.close()
 
-    # Place the columns left to right so move-column-to-index settles on target.
+    # Stable group/target order only; place_all re-sorts inside each workspace.
     pairings.sort(
         key=lambda pair: (
             pair[0].get("output") or "",
@@ -768,8 +827,7 @@ def cmd_restore(path: Path, dry_run: bool) -> None:
     )
 
     print(f"niri-session-mng: placing {len(pairings)} window(s)", file=sys.stderr)
-    for entry, window in pairings:
-        place(entry, window, snapshot, outputs)
+    place_all(pairings, snapshot, outputs)
 
 
 # --- show --------------------------------------------------------------------

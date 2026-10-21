@@ -21,7 +21,7 @@ zed / obsidian / Godot / Blender）。命令不绑键位，按需手动跑。
 
 | app | 恢复 | 靠谁 |
 | --- | --- | --- |
-| ghostty | 位置、列宽、shell 的工作目录 | 自己（`cd` 打进 shell） |
+| ghostty | 位置、列宽、列内堆叠顺序、shell 的工作目录 | 自己（`cd` 打进 shell） |
 | ghostty 里的前台命令 | 见 `[rerun]` | 自己（打进 shell） |
 | google-chrome | 位置；窗口与 tab | Chrome 的 `--restore-last-session` |
 | chromium | 位置；窗口与 tab | Chromium 的 `--restore-last-session` |
@@ -99,6 +99,31 @@ eDP-1 而不是快照里的 DP-2。ghostty 没中招纯属侥幸——它的 `fo
 `move-window-to-monitor --id <win> <output>` 把窗口搬回快照记的 output，
 再 `move-window-to-workspace --window-id <win> <rank>` 落到正确的 workspace。
 
+## 列内堆叠（同一列多窗口）
+
+快照里的 `layout.pos_in_scrolling_layout` 已经带 `(column, row)`，两者都从 1 开始，`save` 侧
+不需要额外处理。问题在恢复：niri **没有**任何 action 能直接指定窗口的 row。
+`move-column-to-index` 移动的是整列（连同列内所有行），所以逐窗口恢复会把同一列的多个窗口
+拆成并排的多列。
+
+`restore` 因此分两阶段放置：
+
+1. **先把每个窗口落成独立列**。把该 workspace 的窗口按 `(column, row)` 展平成一个序列，
+   第 i 个窗口用 `move-column-to-index i` 定位。此阶段结束时列序就是快照的阅读顺序。
+2. **再把同列的窗口合并回去**。同一 `column` 的行在展平序列里是连续的；从最右边的组开始，
+   聚焦组内第一行，重复 `consume-window-into-column` 把右侧相邻列的窗口吞进来。
+
+niri 源码（`src/layout/scrolling.rs`）里 `consume_into_column()` 的语义正好是：取右邻列的
+**顶部**窗口，追加到聚焦列的**底部**。所以按 row 升序合并就得到快照里的列内顺序。从右往左
+处理是为了不破坏还没合并的左侧组的列索引。
+
+列宽是列属性，合并后保留第一行的宽度（快照里同一列的宽度本来就一致）。浮动窗口不参与这一
+过程，只回到 workspace。
+
+另一个细节：所有窗口会先统一 `move-window-to-monitor` / `move-window-to-workspace` 到目标
+workspace，之后才开始 `move-column-to-index`。从别的 workspace 移入的窗口会插到当前焦点处，
+若边移边定位会打乱已经放好的列。
+
 ## 现状（2026-09-29，交接点）
 
 **已经做完并 apply 的**：
@@ -127,12 +152,14 @@ eDP-1 而不是快照里的 DP-2。ghostty 没中招纯属侥幸——它的 `fo
    现在会先刷新新窗口标题并按快照中的 title 一对一匹配，剩余未匹配的再按快照顺序与窗口 id 升序兜底。
    标题重复或应用改了标题时，兜底配对仍可能不准确；Obsidian 的标题包含 vault 名时，不同 vault 可据此区分。
 
+3. **列内堆叠恢复（待实测）**：已改为两阶段放置 + `consume-window-into-column` 合并，离线模拟
+   验证了列序与列内顺序，尚未在真实会话上端到端复测。
+
 **尚未处理 / 待确认**：
 
 - `wait_for_prompt()` 目前是「等 title 非空 + `PROMPT_SETTLE = 1.5s`」。够用，但没有真正的
   "shell 到提示符"信号，慢启动的 shell 理论上会漏。先观察。
 - 浮动窗口只回到 workspace，位置不恢复。
-- 只处理平铺窗口的列序；同一列多窗口的**列内顺序**不保证。
 
 ## 世代问题（容易踩）
 
