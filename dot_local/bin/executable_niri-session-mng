@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Snapshot a niri session and rebuild it in a fresh one.
 
-    niri-session-mng save    [--file PATH]
-    niri-session-mng restore [--dry-run] [--file PATH]
-    niri-session-mng show    [--file PATH]
+    niri-session-mng [--file PATH] save
+    niri-session-mng [--file PATH] restore [--dry-run]
+    niri-session-mng [--file PATH] show
 
 Only the apps listed in ~/.config/niri-session-mng/config.toml are captured. What a
 window gets back depends on its app: terminals get their working directory (and
