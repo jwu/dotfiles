@@ -6,6 +6,24 @@
 layout = "comfortable-rounded"
 theme = "Atom One Dark"
 
+{{ if eq .chezmoi.os "darwin" -}}
+# macOS: Ghostty's FiraMono at 16pt and PingFang SC for the UI.
+[terminal]
+family = "FiraMono Nerd Font"
+size = 16.0
+
+[sidebar]
+family = "FiraMono Nerd Font"
+size = 14.0
+
+[tabs]
+family = "FiraMono Nerd Font"
+size = 14.0
+
+[ui]
+family = "PingFang SC"
+size = 14.0
+{{ else -}}
 [terminal]
 # Ghostty's font-size is points: 13.5pt @ 96dpi = 18px em.
 size = 18.0
@@ -36,3 +54,4 @@ fallback = ["Sarasa Mono SC", "Noto Sans Mono CJK SC"]
 
 [backdrop]
 opacity = 1.0
+{{ end -}}

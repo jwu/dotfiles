@@ -5,11 +5,11 @@ Herdr 是两个程序、两处配置：
 | 程序 | 来源 | 作用 |
 | --- | --- | --- |
 | `herdr` | `~/.local/bin/herdr`（0.9.5） | daemon + TUI：会话、pane、agent 检测 |
-| `herdr-gpui` | Arch 包 `herdr-gpui` → `/usr/bin/herdr-gpui` | 原生 GUI 窗口，画字的是它 |
+| `herdr-gpui` | Linux：Arch 包 `herdr-gpui` → `/usr/bin/herdr-gpui`；macOS：`/Applications/Herdr.app`（bundle id `so.pen.herdr-gpui`） | 原生 GUI 窗口，画字的是它 |
 
-GUI 不是 daemon 的一部分：`herdr-gpui` 单独连 `~/.config/herdr/herdr-client.sock`，字体、主题、布局全在它自己的配置里。改字体只动 GUI 那份，`herdr` 的 TUI 不受影响。
+GUI 不是 daemon 的一部分：它单独连 `~/.config/herdr/herdr-client.sock`，字体、主题、布局全在它自己的配置里。改字体只动 GUI 那份，`herdr` 的 TUI 不受影响。
 
-字体观感对齐 Ghostty 这件事做过一轮实测，结论是：**字重和字号能追上，hinting 追不上**。原因在下面。
+Linux 那台为对齐 Ghostty 的字体观感做过一轮实测，结论是：**字重和字号能追上，hinting 追不上**。原因在下面；macOS 那套取值见「平台分派」。
 
 ## 配置文件
 
@@ -26,13 +26,41 @@ GUI 不是 daemon 的一部分：`herdr-gpui` 单独连 `~/.config/herdr/herdr-c
 - `*.lock`、`*.sock`、`*.log`、`session.json`、`session-snapshots/`
 - `~/.local/state/herdr/` —— 窗口状态、agent 检测缓存、GPUI 日志
 
-两个受管文件都由程序回写，所以 `chezmoi apply` 覆盖掉 GUI 里的运行时改动是正常现象；在 Settings 里改完要同步回源。
+两个受管文件都由程序回写：Herdr UI 的 Settings 面板、`Herdr config set`、以及对话框里的「Do not ask again」，都直接写 `config-gpui.local.toml`；`herdr config reset-keys` 会备份并重写 `config.toml`。所以 `chezmoi apply` 覆盖掉 GUI 里的改动是正常现象——**要留下的设置必须写回源**：在 GUI 里试好后跑 `chezmoi add`，或者直接改源再 apply。改完 `config.toml` 用 `herdr server reload-config` 让运行中的 server 重读。
 
-`.chezmoiignore` 把 `.config/herdr` 归在 Linux-only 块：GPUI 走 Wayland/wgpu，macOS 和 Windows 上没有这个程序。
+源路径：
+
+```
+dot_config/herdr/config.toml
+  → ~/.config/herdr/config.toml
+
+dot_config/herdr/private_config-gpui.local.toml.tmpl
+  → ~/.config/herdr/config-gpui.local.toml
+```
+
+`config-gpui.local.toml` 在原机上是 0600，所以带 `private_` 前缀。
+
+`~/.agents/skills/herdr-gpui-browser/SKILL.md` 也不托管：文件头带 `herdr-gpui-managed-skill` 标记，Herdr UI 会自己刷新它，纳进来只会制造 diff。
+
+## 平台分派
+
+两份配置全平台托管，`~/.config/herdr/` 在 Linux / macOS / Windows 上路径相同，`.chezmoiignore` 不再按 OS 忽略它。
+
+但字体值不同：Linux 那台对齐的是 Ghostty，macOS 跟系统字体。于是 `config-gpui.local.toml` 是模板，按 `.chezmoi.os` 分两套：
+
+| 段 | macOS | Linux |
+| --- | --- | --- |
+| `[terminal]` | FiraMono 16 | FiraMono 18、`weight = "medium"`、`line_height = 1.2` |
+| `[sidebar]` / `[tabs]` | FiraMono 14 | FiraMono 16，CJK fallback 到 Sarasa Mono |
+| `[ui]` | PingFang SC 14 | FiraMono 16，CJK fallback 到 Sarasa Mono |
+
+macOS 那套沿用这台 Mac 的 Ghostty：`font-size = 16`、中文回退 `PingFang SC`（见 `dot_config/ghostty/config`）。Windows 没有实测值，走 Linux 那一支。
+
+字体键的可用性是 GPUI 的，两个平台一样；下面的实测数值来自 Linux 那台。
 
 ## 字体：四个 section，只有 terminal 能设字重
 
-`config-gpui.local.toml` 的四个段落吃不同的键：
+`config-gpui.local.toml` 的四个段落吃不同的键（`[terminal]` 的 `weight` 只在 Linux 那套里用得上，macOS 侧没设）：
 
 | 段 | family | size | fallback | weight | line_height |
 | --- | --- | --- | --- | --- | --- |
@@ -60,11 +88,15 @@ cosmic-text 通过 fontdb 找字体，因此这条绕过路径不通。想给 si
 
 ## fontconfig 在这里基本不生效
 
+这一节只对 Linux 那台成立；macOS 的 Herdr UI 根本不经过 fontconfig。
+
 Herdr 走 `fontdb` 的 `fontconfig` feature，但那个后端只用来**枚举字体目录**（`fontdb-0.23.0/src/lib.rs:501`）和读泛型别名（`serif` / `sans-serif` / `monospace`）。`<match>`、`<edit>`、`hinting`、`hintstyle`、`autohint`、家族重定向全都不读。
 
 所以 `~/.config/fontconfig/fonts.conf` 里为 Chrome 调的那套（见 `docs/fontconfig.md`）对 Herdr 一个字都不生效。反过来也意味着 Herdr 的 hinting 完全由它自己的光栅器决定，外部没有开关。
 
 ## 字号与行高：points 与逻辑像素
+
+下面这组换算只对 Linux 那台成立（96 dpi、`xft_scale = 1.0`）。
 
 Ghostty 的 `font-size` 单位是 points，Herdr 的 `size` 是逻辑像素。在 96 dpi、`gtk-xft-dpi` 未设置（Ghostty 的 `xft_scale = 1.0`）时：
 
@@ -104,7 +136,7 @@ Nerd Font 图标不用写进去 —— Herdr 会自动回退到已安装的 Nerd
 
 ## 改不了的部分：GPUI 的文本渲染
 
-`herdr-gpui`（20261020.1）用的是 Zed 的 GPUI —— `gpui-pre-wgpu 0.3.6` + `cosmic-text 0.19` + `swash 0.2.10` + `wgpu`，和 Ghostty 的自绘渲染器不是一回事：
+`herdr-gpui`（20261020.1）用的是 Zed 的 GPUI —— `gpui-pre-wgpu 0.3.6` + `cosmic-text 0.19` + `swash 0.2.10` + `wgpu`，和 Ghostty 的自绘渲染器不是一回事（表里是 Linux 那台的 Ghostty；macOS 版走 CoreText）：
 
 | | Ghostty | Herdr (GPUI) |
 | --- | --- | --- |
@@ -128,6 +160,9 @@ lsof -p "$(pgrep -x herdr-gpui)" | rg -i '\.(otf|ttf|ttc)'
 
 # daemon 配置的诊断（不含 GUI 那份）
 herdr config check
+
+# macOS 的 GUI 那份（Linux 用 herdr-gpui config check）
+/Applications/Herdr.app/Contents/MacOS/Herdr config check
 ```
 
 配置写错时 GUI 会弹一张可关闭的警告卡片，例如 `Configured fonts not installed:` —— 那是唯一的 GUI 侧反馈渠道。

@@ -160,7 +160,7 @@ chezmoi 的源路径与目标路径不一定逐字对应：`dot_` 加前置点�
 - [`docs/ghostty-gl-version.md`](docs/ghostty-gl-version.md) — Intel HD 4000 上保住硬件渲染的 MESA override。
 - [`docs/gtk4.md`](docs/gtk4.md) — GTK4 全局 CSD 直角微调。
 - [`docs/fontconfig.md`](docs/fontconfig.md) — 字体渲染参数与中文回退：对齐 Ghostty 的 FreeType 默认、`hintstyle` 的取舍、为什么只能用 family 名改字体。
-- [`docs/herdr.md`](docs/herdr.md) — Herdr 与 Herdr UI：两个二进制的配置分工、四个字体 section 的能力差异、fontdb 的 nameID 16 规则、为什么 fontconfig 对它不生效。
+- [`docs/herdr.md`](docs/herdr.md) — Herdr 与 Herdr UI：两个二进制的配置分工、macOS / Linux 两套字体值的分派、四个字体 section 的能力差异、fontdb 的 nameID 16 规则、为什么 fontconfig 对它不生效。
 - [`docs/bluetooth.md`](docs/bluetooth.md) — BlueZ OBEX agent 单槽位与冲突诊断。
 - [`docs/audio.md`](docs/audio.md) — MacBook CS8409 内置音频：主线只支持 Dell，靠 AUR 的 DKMS 补丁出声。
 - [`docs/ulanzi-au05.md`](docs/ulanzi-au05.md) — Ulanzi Vibe Key (AU05)：原始报文实测、固件 4 秒断连与 keepalive、语音键（F9）接 voxtype、麦克风优先级。
