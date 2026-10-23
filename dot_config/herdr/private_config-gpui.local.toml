@@ -1,0 +1,38 @@
+# Herdr UI overrides. Saved changes reload automatically.
+# Unset keys inherit config-gpui.toml; tables merge key by key.
+
+# New installs start with the roomy rounded sidebar. Remove this line for
+# the managed default, or pick another layout listed in config-gpui.toml.
+layout = "comfortable-rounded"
+theme = "Atom One Dark"
+
+[terminal]
+# Ghostty's font-size is points: 13.5pt @ 96dpi = 18px em.
+size = 18.0
+family = "FiraMono Nerd Font"
+# Ghostty renders FiraMono at its Medium face (font-style = Medium).
+weight = "medium"
+# Ghostty uses Fira Mono's own line metrics (hhea 1.2em); Herdr defaults to 20/14.
+line_height = 1.2
+# Noto Sans CJK SC is proportional; pin CJK to Sarasa Mono like Ghostty does.
+# Nerd Font icons fall back automatically, so they are not listed here.
+fallback = ["Sarasa Mono SC", "Noto Sans Mono CJK SC"]
+
+[sidebar]
+# Zed's ui_font_size is 16; keep the three UI surfaces on that scale.
+size = 16.0
+family = "FiraMono Nerd Font"
+fallback = ["Sarasa Mono SC", "Noto Sans Mono CJK SC"]
+
+[tabs]
+size = 16.0
+family = "FiraMono Nerd Font"
+fallback = ["Sarasa Mono SC", "Noto Sans Mono CJK SC"]
+
+[ui]
+size = 16.0
+family = "FiraMono Nerd Font"
+fallback = ["Sarasa Mono SC", "Noto Sans Mono CJK SC"]
+
+[backdrop]
+opacity = 1.0
