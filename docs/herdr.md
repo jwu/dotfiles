@@ -58,6 +58,23 @@ macOS 那套沿用这台 Mac 的 Ghostty：`font-size = 16`、中文回退 `Ping
 
 字体键的可用性是 GPUI 的，两个平台一样；下面的实测数值来自 Linux 那台。
 
+## Shift+Enter：为什么要取消默认的 `[pane_keys]`
+
+Herdr UI 在 PR #518 里给所有平台加了一条默认映射 `[pane_keys] "shift-enter" = "alt-enter"`，为的是让没启用键盘协议的 prompt_toolkit 类程序也能换行。代价是启用 kitty 键盘协议的 pane 收到 `CSI 13;3u`（真正的 Alt+Enter），而不是 `CSI 13;2u`（Shift+Enter）。
+
+pi 就是这样：它启动时 push kitty 协议（`ESC[>7u`），而 `alt+enter` 在 pi 里绑的是 `app.message.followUp`（排队后续消息），于是 Shift+Enter 既不换行也不提交。上游记在 penso/herdr-gpui#575（open，P1），Herdr UI 20261020.1 仍复现。
+
+所以源里写：
+
+```toml
+[pane_keys]
+"shift-enter" = ""
+```
+
+空字符串表示取消默认，Shift-Enter 原样送达 pane，pi 重新把它识别为 Shift+Enter。副作用是普通 shell 里 Shift-Enter 不再被改写成 Alt-Enter：zsh 插入换行，bash 无绑定。临时替代方案是 `Ctrl+J`（pi 默认的第二个换行键）。
+
+上游修好后整段删掉即可。`herdr-gpui config check` 不会为此报错，`herdr-gpui config get pane_keys` 可以确认是否生效。
+
 ## 字体：四个 section，只有 terminal 能设字重
 
 `config-gpui.local.toml` 的四个段落吃不同的键（`[terminal]` 的 `weight` 只在 Linux 那套里用得上，macOS 侧没设）：

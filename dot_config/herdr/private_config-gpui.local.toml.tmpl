@@ -6,6 +6,14 @@
 layout = "comfortable-rounded"
 theme = "Atom One Dark"
 
+# Herdr UI rewrites Shift-Enter to Alt-Enter for every pane by default (PR #518).
+# Kitty-protocol panes such as pi then receive CSI 13;3u, which pi binds to
+# app.message.followUp, so Shift-Enter could not insert a newline.
+# An empty string cancels the mapping and passes Shift-Enter through unchanged.
+# Workaround for penso/herdr-gpui#575; drop this section once that is fixed.
+[pane_keys]
+"shift-enter" = ""
+
 {{ if eq .chezmoi.os "darwin" -}}
 # macOS: Ghostty's FiraMono at 16pt and PingFang SC for the UI.
 [terminal]
