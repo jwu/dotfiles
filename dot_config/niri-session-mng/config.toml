@@ -56,12 +56,22 @@ project = true
 launch = ["blender"]
 spawn = "per_window"
 
+# Herdr UI, the native GPUI client. Each launch is a separate process with its own
+# window (no single-instance handoff), so captured windows are spawned one by one.
+# What a window shows comes from the herdr daemon's own session; only its place in
+# the layout is restored here.
+[apps."so.pen.herdr-gpui"]
+launch = ["herdr-gpui"]
+spawn = "per_window"
+
 # Foreground commands and how to bring them back. The key is the command line
 # seen at save time (argv joined by spaces) and the value is the argv to run.
 # A foreground command that is not listed here comes back as a plain shell in
 # the same directory.
 [rerun]
 "pi" = ["pi", "--continue"]
+# Bare `herdr` attaches to the persistent daemon session, panes included.
+"herdr" = ["herdr"]
 "bun run dev" = ["bun", "run", "dev"]
 "npm run dev" = ["npm", "run", "dev"]
 "pnpm run dev" = ["pnpm", "run", "dev"]

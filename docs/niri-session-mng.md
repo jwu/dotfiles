@@ -15,7 +15,7 @@ niri-session-mng restore             # 按快照重建
 不只看 Ghostty。`restore --dry-run` 不受此限制。
 
 只处理 `~/.config/niri-session-mng/config.toml` 白名单里的 app（ghostty / Chrome / Chromium /
-zed / obsidian / Godot / Blender）。命令不绑键位，按需手动跑。
+zed / obsidian / Godot / Blender / Herdr UI）。命令不绑键位，按需手动跑。
 
 ## 每个 app 恢复什么
 
@@ -29,11 +29,14 @@ zed / obsidian / Godot / Blender）。命令不绑键位，按需手动跑。
 | obsidian | 位置；vault | Obsidian 自己；只启动一次恢复全部 vault 窗口，再按窗口标题配对位置 |
 | Godot Editor | 位置；项目 | 从运行中的 Godot 进程参数 / cwd 采集项目目录，并按窗口标题匹配；以 `--editor --path` 重开，没识别到则进项目管理器 |
 | Blender | 位置 | 启动 Blender 默认场景；不恢复当前 `.blend` 文件 |
+| Herdr UI | 位置、列宽 | 每个窗口一次 `herdr-gpui`；窗口里的 workspace / pane 由 herdr daemon 自己的会话恢复 |
 
-`[rerun]` 是「当时跑的命令 → 恢复时怎么跑」的表。默认两条：
+`[rerun]` 是「当时跑的命令 → 恢复时怎么跑」的表。默认三条：
 
 - `"pi" = ["pi", "--continue"]` —— pi 按目录组织会话（`~/.pi/agent/sessions/` 下的目录名就是
   cwd，斜杠换成横线）。目录对了，`--continue` 就恢复到那个目录最近的会话。
+- `"herdr" = ["herdr"]` —— herdr 的 TUI 跑在 ghostty 里，裸跑就是 attach 到常驻 daemon 的
+  会话，pane 布局由 daemon 的 `session.json` 恢复。
 - `"bun run dev" = [...]` 之类 —— 命中的命令原样重跑。
 
 匹配先看整条命令行，再退回程序名，所以 `pi --model x` 也能命中 `"pi"`。
@@ -185,3 +188,8 @@ workspace，之后才开始 `move-column-to-index`。从别的 workspace 移入�
   `platform/linuxbsd/wayland/display_server_wayland.cpp` 的 `_get_app_id_from_context()`）。
   app_id 写错不会报错，只会让 `save` 把窗口算进 “outside the whitelist” 静默丢掉，
   连 `restore` 都轮不到。
+- Herdr UI 的 app_id 是 `so.pen.herdr-gpui`（GPUI 自己的 app identity，与 desktop 文件的
+  `StartupWMClass` 一致）。**它不是单实例**：每次 `herdr-gpui` 都新起一个进程和一个窗口，
+  所以用 `spawn = "per_window"`，不能用 ghostty 那种「裸启动 + 注入」。窗口几何在
+  `~/.local/state/herdr/gpui/window-state.json` 里由 GUI 自己记，最终仍以 niri 摆放的位置与
+  列宽为准。
