@@ -61,6 +61,8 @@ install_scrapling() {
   # aborts before the marker file is written. The browser is what matters and
   # both platforms here already carry its runtime libraries. See
   # docs/pi-webfetch.md.
+  # Scrapling 0.5 fetches with patchright, which reuses this same
+  # ms-playwright cache and the build `playwright install chromium` fetches.
   "$py" -m playwright install chromium || return 1
   # The marker upstream writes last. With it present a manual `scrapling
   # install` is a no-op instead of a guaranteed apt-get failure.

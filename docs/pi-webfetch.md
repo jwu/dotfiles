@@ -71,6 +71,29 @@ ModuleNotFoundError: No module named 'IPython'
 `StealthyFetcher` 不需要 camoufox：`scrapling/engines/_browsers/_stealth.py` 用的是
 **patchright**（Playwright 的反检测分支），与 `DynamicFetcher` 共用上面的 Chromium。
 
+## Scrapling 0.5 移除了 DynamicFetcher
+
+0.5 把纯 Playwright 的浏览器后端整个删掉，浏览器抓取只剩 patchright 的
+`StealthyFetcher`，`DynamicFetcher` 与 `DynamicSession` 一并移除。pi-webfetch 2.1.0 的抓取
+脚本顶部仍是
+
+```python
+from scrapling.fetchers import Fetcher, DynamicFetcher, StealthyFetcher
+```
+
+import 在脚本最前面，一行失败就让整个 shell 调用以非零退出，所以**把 scrapling 升到 0.5
+会让 webfetch 的通用网页路由全部失效**，连 `fetcher` 策略也一起死——不是降级到静态抓取。
+上游 pi-webfetch 取消 `dynamic` 策略（改成 `fetcher` + `stealthy`）并发布之后才能升。
+
+`[shell]` extra、`scrapling shell -L warning -c` 命令、`Convertor._extract_content(page,
+extraction_type=..., main_content_only=True)` 在 0.5 里都没变，安装命令照旧。
+
+浏览器缓存：0.5 的 patchright 复用与 playwright 同一个缓存目录
+（`~/Library/Caches/ms-playwright`，Arch 上是 `~/.cache/ms-playwright`），但 build 号跟
+0.4 时代不同。2026-10-24 实测 playwright 1.64.1 的 `chromium-1248` 正是 patchright 1.64.2
+启动的那一版，所以脚本里照旧跑 `"$py" -m playwright install chromium` 就够，不需要
+`patchright install`。
+
 ## yt-dlp
 
 pacman 的 `yt-dlp` 是 `2026.08.19-1`，实测 `webfetch` 的 JSON 路由（`-J` 元数据 + VTT
@@ -110,4 +133,15 @@ yt-dlp --cookies-from-browser chrome -J ... → rc=0
 ```
 
 一个回归点：如果哪天 `scrapling shell -c "print('ok')"` 报 `ModuleNotFoundError`，
-先看 `[shell]` extra 是不是被换成 `[fetchers]` 了。
+先看 `[shell]` extra 是不是被换成 `[fetchers]` 了。另一个：如果报
+`ImportError: cannot import name 'DynamicFetcher'`，那是 scrapling 升到了 0.5，而 pi-webfetch
+还停在 2.1.0。
+
+0.5 下的复测（2026-10-24，隔离 venv + 共享 ms-playwright 缓存）：
+
+```text
+Fetcher.get('https://example.com')                      → 200, 176 bytes html
+StealthyFetcher.fetch('quotes.toscrape.com/js/')        → 200, 4107 bytes, JS 已渲染
+runScraplingFetch(静态页)                                → ok, strategy=fetcher
+runScraplingFetch(js 页面, 强制 stealthy)                → ok, strategy=stealthy
+```
