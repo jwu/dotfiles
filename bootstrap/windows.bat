@@ -47,6 +47,8 @@ call :DO "rustup + stable toolchain" :DEV_RUSTUP
 call :DO "user environment variables" :WRITE_ENV
 call :DO "clink: register clink-completions" :CLINK_SCRIPTS
 call :DO "pi-config checkout" :ENSURE_PI_CONFIG
+call :DO "Herdr daemon (upstream installer)" :HERDR_DAEMON
+call :DO "Herdr UI (upstream installer)" :HERDR_UI
 
 call :REQUIRE "chezmoi init --apply" :CHEZMOI_APPLY || goto :ABORT
 
@@ -169,6 +171,28 @@ echo     SSH clone failed, retrying over HTTPS
 git clone "%REPO_HTTPS%" "%SRC_DIR%"
 if errorlevel 1 exit /b 1
 exit /b 0
+
+:HERDR_DAEMON
+:: Upstream's own per-user installer: it downloads the stable release into
+:: %LOCALAPPDATA% and appends that directory to the user PATH. No elevation.
+:: herdr update is the upgrade path once it is there. See docs/herdr.md.
+where herdr >nul 2>&1
+if not errorlevel 1 (
+  echo     herdr is already installed; upgrades come from 'herdr update'
+  exit /b 0
+)
+powershell -ExecutionPolicy Bypass -c "irm https://herdr.dev/install.ps1 ^| iex"
+exit /b %errorlevel%
+
+:HERDR_UI
+:: Herdr UI is the separate native client, installed by its own upstream script
+:: into %LOCALAPPDATA%\Programs\Herdr UI. Also per-user, also no elevation.
+if exist "%LOCALAPPDATA%\Programs\Herdr UI\herdr-gpui.exe" (
+  echo     Herdr UI is already installed; updates come from its App Updates panel
+  exit /b 0
+)
+powershell -ExecutionPolicy Bypass -c "irm https://herdrui.dev/install.ps1 ^| iex"
+exit /b %errorlevel%
 
 :ENSURE_PI_CONFIG
 :: pi loads extensions/ live from the checkout, so the settings.json chezmoi

@@ -57,6 +57,11 @@ CASKS=(
   # Its config is a managed target, so the app has to exist on a new machine.
   # See docs/pixpin.md.
   "pixpin"
+  # Herdr UI's fonts and theme are managed targets as well. Upstream's own cask,
+  # in its own tap, so the fully qualified name is the install command. The
+  # `herdr` daemon is a separate program, installed by
+  # run_onchange_before_14-herdr.sh.tmpl. See docs/herdr.md.
+  "penso/tap/herdr-gpui"
 )
 
 FAILED_STEPS=()
@@ -238,7 +243,7 @@ step_required "clone/update dotfiles" ensure_repo
 step_required "configure chezmoi sourceDir" write_chezmoi_config
 
 step "Homebrew formulae" install_formulae
-step "Homebrew casks (Neovide, Input Source Pro, FiraMono Nerd Font, PixPin)" install_casks
+step "Homebrew casks (Neovide, Input Source Pro, FiraMono Nerd Font, PixPin, Herdr UI)" install_casks
 step "default shell (zsh)" set_default_shell
 
 step_required "chezmoi init --apply" chezmoi init --apply

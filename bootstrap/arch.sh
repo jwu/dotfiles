@@ -273,6 +273,21 @@ install_xwayland_satellite() {
   yay -S --needed --noconfirm "$XWS_AUR_PKG" || return 1
 }
 
+# Herdr UI, the native GPUI client for the herdr daemon. Upstream ships no
+# pacman package: its installer picks the Arch package for this architecture,
+# checks it against the release's published SHA-256, and installs it with sudo,
+# so it cannot live in a run_ script. Updates afterwards come from the app's own
+# App Updates panel, which drives pacman through PolicyKit. The daemon itself is
+# root-free and installed by run_onchange_before_14-herdr.sh.tmpl; see
+# docs/herdr.md.
+install_herdr_ui() {
+  if command -v herdr-gpui &> /dev/null; then
+    echo "    Already installed: $(command -v herdr-gpui)"
+    return 0
+  fi
+  sh -c "$(curl -fsSL https://herdrui.dev/install.sh)" || return 1
+}
+
 # chsh rejects an empty -s argument with "shell must be a full path name", which
 # says nothing about the real cause: zsh was never installed because the pacman
 # step above failed. It also asks for the user's own password via PAM, which is
@@ -471,6 +486,7 @@ step_required "configure chezmoi sourceDir" write_chezmoi_config
 step "pacman packages" install_packages
 step "yay (AUR helper for xwayland-satellite-git)" ensure_yay
 step "xwayland-satellite-git (AUR)" install_xwayland_satellite
+step "Herdr UI (native client for herdr)" install_herdr_ui
 step "default shell (zsh)" set_default_shell
 step "TTY font (vconsole)" set_tty_font
 step "drivetemp module" load_drivetemp

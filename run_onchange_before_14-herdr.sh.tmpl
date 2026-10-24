@@ -1,0 +1,72 @@
+{{ if ne .chezmoi.os "windows" -}}
+#!/bin/bash
+# The Herdr daemon ships no distro package: upstream's installer is a per-user
+# download into ~/.local/bin that needs neither root nor a TTY, which is what
+# keeps it out of bootstrap/. Herdr UI is a separate program with its own
+# installer and lives in bootstrap/ on Linux. See docs/herdr.md.
+set -uo pipefail
+
+# The installer's target directory is not necessarily on PATH in the non-login
+# shell chezmoi uses for run_ scripts.
+export PATH="$HOME/.local/bin:$PATH"
+
+FAILED_STEPS=()
+
+step() {
+  local name="$1"
+  shift
+  local rc=0
+  echo ""
+  echo ">>> $name"
+  "$@" || rc=$?
+  if [ "$rc" -eq 0 ]; then
+    echo "    ok"
+  else
+    FAILED_STEPS+=("$name")
+    echo "    FAILED (exit $rc); continuing" >&2
+  fi
+}
+
+summary() {
+  echo ""
+  echo "=========================================="
+  if [ "${#FAILED_STEPS[@]}" -eq 0 ]; then
+    echo ">>> All steps completed."
+    return 0
+  fi
+  echo ">>> Finished with ${#FAILED_STEPS[@]} failed step(s):"
+  local s
+  for s in "${FAILED_STEPS[@]}"; do
+    echo "      - $s"
+  done
+  echo ""
+  echo "    Fix these, then clear the ledger and re-run:"
+  echo "      chezmoi state delete-bucket --bucket=scriptState && chezmoi apply"
+  return 1
+}
+
+install_herdr() {
+  if command -v herdr > /dev/null 2>&1; then
+    # Deliberately no reinstall: `herdr update` is upstream's own updater, it
+    # keeps running servers intact, and it follows the install's channel. A
+    # fresh install.sh would replace the binary behind them and downgrade a
+    # preview-channel install to stable.
+    echo "    herdr: $(herdr --version 2>/dev/null | head -1); upgrades come from 'herdr update'"
+    return 0
+  fi
+  # sh -c "$(curl ...)" rather than curl | sh: a failed download fails the step
+  # instead of feeding an empty script to sh.
+  sh -c "$(curl -fsSL https://herdr.dev/install.sh)" || return 1
+  command -v herdr > /dev/null 2>&1 || {
+    echo "    herdr is still not on PATH after installing" >&2
+    return 1
+  }
+  echo "    herdr: $(herdr --version 2>/dev/null | head -1)"
+}
+
+echo ">>> herdr daemon (upstream installer, root-free, per-user)"
+
+step "herdr" install_herdr
+
+summary
+{{ end -}}

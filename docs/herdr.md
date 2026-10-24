@@ -4,12 +4,34 @@ Herdr 是两个程序、两处配置：
 
 | 程序 | 来源 | 作用 |
 | --- | --- | --- |
-| `herdr` | `~/.local/bin/herdr`（0.9.5） | daemon + TUI：会话、pane、agent 检测 |
-| `herdr-gpui` | Linux：Arch 包 `herdr-gpui` → `/usr/bin/herdr-gpui`；macOS：`/Applications/Herdr.app`（bundle id `so.pen.herdr-gpui`） | 原生 GUI 窗口，画字的是它 |
+| `herdr` | 上游 `install.sh` → `~/.local/bin/herdr`（0.9.5） | daemon + TUI：会话、pane、agent 检测 |
+| `herdr-gpui` | Linux：上游 Arch 包 → `/usr/bin/herdr-gpui`；macOS：`/Applications/Herdr.app`（bundle id `so.pen.herdr-gpui`） | 原生 GUI 窗口，画字的是它 |
 
 GUI 不是 daemon 的一部分：它单独连 `~/.config/herdr/herdr-client.sock`，字体、主题、布局全在它自己的配置里。改字体只动 GUI 那份，`herdr` 的 TUI 不受影响。
 
 Linux 那台为对齐 Ghostty 的字体观感做过一轮实测，结论是：**字重和字号能追上，hinting 追不上**。原因在下面；macOS 那套取值见「平台分派」。
+
+## 安装
+
+两个程序各装各的，都用上游自己的安装方法：
+
+| 程序 | macOS | Linux | Windows |
+| --- | --- | --- | --- |
+| `herdr`（daemon） | `curl -fsSL https://herdr.dev/install.sh \| sh` | 同左 | `irm https://herdr.dev/install.ps1 \| iex` |
+| `herdr-gpui`（UI） | `brew install penso/tap/herdr-gpui` | `curl -fsSL https://herdrui.dev/install.sh \| sh` | `irm https://herdrui.dev/install.ps1 \| iex` |
+
+daemon 的 `install.sh` 是 per-user 的：二进制落进 `~/.local/bin`，不碰 `sudo`、不写 shell rc
+（`PATH` 里没有时只打印一句提示）。所以它走 `run_onchange_before_14-herdr.sh.tmpl`，与
+scrapling、dev-runtimes 同层。UI 不同：Linux 侧的 `install.sh` 要 `sudo pacman -U`，只能留在
+`bootstrap/arch.sh` 的 `install_herdr_ui`；macOS 侧是 tap 里的 cask，进 `bootstrap/macos.sh` 的
+`CASKS`；Windows 侧两个 installer 都是 per-user，进 `bootstrap/windows.bat` 的
+`:HERDR_DAEMON` / `:HERDR_UI`。
+
+装过之后本仓库不再代劳升级：daemon 归 `herdr update`（认 channel，默认不打断正在跑的
+server），UI 归 App Updates 面板（Homebrew 认领的那份自己跑 `brew upgrade --cask`，pacman
+那份走 PolicyKit）。所以 `run_onchange_before_14-herdr.sh.tmpl` 只在 `command -v herdr` 为空时下载，
+重跑 bootstrap 也不会把 preview 通道降级回 stable。两个程序的版本不需要一致：UI 只是 daemon
+的 client。
 
 ## 配置文件
 
