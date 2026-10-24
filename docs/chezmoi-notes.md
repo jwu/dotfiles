@@ -145,6 +145,7 @@ sourceDir = "/Users/<user>/bin/dotfiles"
 | `~/.config/warp-terminal/user_preferences.json` | Warp 自行重写 |
 | `~/.config/herdr/config-gpui.toml` | Herdr UI 每次启动刷新的全量默认值，文件头写明 DO NOT EDIT，见 `herdr.md` |
 | `~/.agents/skills/herdr-gpui-browser/` | Herdr UI 自动维护的 skill，文件头带 managed 标记 |
+| `~/.config/uv/uv-receipt.json` | uv 的 cargo-dist 安装器写的收据，含本机 `install_prefix` |
 
 `~/.config/chezmoi/chezmoi.toml` 也在这里：由 `bootstrap/<platform>` 写，见上一节。
 
