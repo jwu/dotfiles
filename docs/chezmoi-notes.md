@@ -106,6 +106,14 @@ chezmoi apply -v
 
 `run_*` 脚本都幂等，重跑一遍是安全的。
 
+## `run_after_` 每次都跑，`status` 里恒有 `R`
+
+前缀决定触发时机：`run_onchange_` 只在内容变化时跑，`run_` / `run_after_` 每次 apply 都
+跑。所以 `chezmoi status` 第二列对 `run_after_55-pi-settings-sync.sh` 恒显示 `R`，
+`apply -v` 也每次都把脚本重写一遍（输出里有 `new file mode ... 55-pi-settings-sync.sh`）。
+这不是失败残留，不要为它去清 `scriptState`；幂等性只看文件层
+`chezmoi diff --include=files` 是否为空，以及第二次 apply 有没有文件改动。
+
 ## fail-fast
 
 任一 `run_*` 脚本失败会中止整个 apply，后面的脚本不再执行。所以平台不适合的脚本必须
