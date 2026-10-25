@@ -1,0 +1,42 @@
+{{ if ne .chezmoi.os "windows" -}}
+#!/bin/bash
+# herdr reports agent state (working / waiting / idle) in its pane list through a
+# per-agent integration. For pi it is an extension herdr writes into
+# ~/.pi/agent/extensions/, the directory chezmoi already populates. The file is
+# versioned and owned by herdr (HERDR_INTEGRATION_VERSION, rewritten on every
+# install), so it stays out of the source tree and is installed here instead.
+# Runs on every apply so a 'herdr update' that bumps the integration version, a
+# manual 'herdr integration uninstall pi', or a deleted file heals by itself.
+# See docs/herdr.md.
+set -uo pipefail
+
+export PATH="$HOME/.local/bin:$PATH"
+
+PI_EXT_DIR="$HOME/.pi/agent/extensions"
+
+if ! command -v herdr > /dev/null 2>&1; then
+  # before_14 installs it; a machine that skipped that step has nothing to sync.
+  echo "    herdr: not on PATH; pi integration skipped" >&2
+  exit 0
+fi
+
+if [ ! -d "$PI_EXT_DIR" ]; then
+  # herdr refuses to install without it ("install pi first"), and the directory
+  # only exists after the pi source tree has been applied.
+  echo "    herdr: $PI_EXT_DIR is missing; pi integration skipped" >&2
+  exit 0
+fi
+
+# "pi: current (v9) (/path)" is installed and up to date; "pi: not installed"
+# and an outdated version both take the reinstall path.
+case "$(herdr integration status 2>/dev/null || true)" in
+  *"pi: current ("*) exit 0 ;;
+esac
+
+if herdr integration install pi; then
+  echo "    herdr: pi integration installed"
+else
+  echo "    herdr: pi integration install failed" >&2
+  exit 1
+fi
+{{ end -}}

@@ -33,6 +33,32 @@ server），UI 归 App Updates 面板（Homebrew 认领的那份自己跑 `brew 
 重跑 bootstrap 也不会把 preview 通道降级回 stable。两个程序的版本不需要一致：UI 只是 daemon
 的 client。
 
+## agent 集成
+
+Herdr 的 pane 列表里能显示 agent 状态（working / waiting / idle），靠的是每个 agent 一份
+`herdr integration`。pi 那份是一个扩展文件：
+
+```
+herdr integration install pi
+  → ~/.pi/agent/extensions/herdr-agent-state.ts
+```
+
+这个文件归 herdr 所有：文件头带 `HERDR_INTEGRATION_ID=pi` / `HERDR_INTEGRATION_VERSION=9`，
+`herdr update` 之后上游会提升版本号，任何一次 install 都整份覆盖。所以它**不进源树**——
+chezmoi 托管同名文件只会和上游版本打架。改为由 `run_after_52-herdr-pi-integration.sh.tmpl`
+声明：每次 apply 跑一次 `herdr integration status`，看到 `pi: current` 就静默退出，
+`not installed` 或版本过期就重装。这样 `herdr update` 提升集成版本、手工
+`herdr integration uninstall pi`、文件被删，都在下一次 apply 自愈。
+
+顺序有意义：`herdr integration install` 要求 `~/.pi/agent/extensions/` 已经存在（否则报
+`pi extension directory not found ... install pi first`），而那个目录由 chezmoi 从
+`private_dot_pi/private_agent/extensions/` 铺出来。所以脚本是 `after_` 而不是 `before_14`，
+编号排在 `run_once_after_50-pi-config.sh.tmpl` 之后。
+
+本仓库只管 pi：claude / codex / opencode 的集成在这台机器上是 `herdr` 自己装上的，它们的
+配置也不归这里管。手工查看：`herdr integration status`；只想看落后的：
+`herdr integration status --outdated-only`。
+
 ## 配置文件
 
 `~/.config/herdr/` 下只有两个文件该进版本控制：
