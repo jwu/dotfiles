@@ -149,6 +149,7 @@ chezmoi 的源路径与目标路径不一定逐字对应：`dot_` 加前置点�
 - [`docs/pi-webfetch.md`](docs/pi-webfetch.md) — webfetch 三个外部 CLI 的落点：`scrapling` 为什么走 `uv tool`、上游 `scrapling install` 在 Arch 上必失败的原因、`[shell]` 与 `[fetchers]` 的区别。
 - [`docs/lightpanda.md`](docs/lightpanda.md) — 原生 headless 浏览器接进 pi 的内置 MCP：实测耗时、markdown 不抽正文的边界、CDP 与 `create_` 目标的同步方式。
 - [`docs/windows-shell.md`](docs/windows-shell.md) — Windows 的 shell 层：scoop、Clink 的 `session.cmd` 接线、用户环境变量、批处理必须 CRLF。
+- [`docs/windows-sshd.md`](docs/windows-sshd.md) — Windows 开 OpenSSH Server：能力名与默认 shell、Administrators 组的授权文件位置、scoop 的 `current` 挂载点为何在提权令牌下无法遍历。
 - [`docs/waybar.md`](docs/waybar.md) — 模块基线与行高约定、配色、`cffi/niri-windows`、GPU 与磁盘取值脚本。
 - [`docs/lockscreen.md`](docs/lockscreen.md) — hyprlock / swaylock、熄屏计时、按屏幕尺寸挑样式。
 - [`docs/suspend.md`](docs/suspend.md) — MacBookPro14,2 合盖休眠：S3 被 45 秒硬件唤醒无解，改用 hibernate；resume 挂死的修法与合盖锁屏。
