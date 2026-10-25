@@ -10,11 +10,26 @@
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 $OutputEncoding = [Text.Encoding]::UTF8
 
+# scoop's apps\<name>\current is a mount point, and Windows refuses to traverse a
+# mount point from an elevated token -- which is what sshd hands out. Resolve the
+# real version dir so ssh sessions get the same prompt. See docs/windows-sshd.md.
+function Resolve-ScoopApp([string]$Name) {
+  $root = if ($env:SCOOP) { $env:SCOOP } else { Join-Path $env:USERPROFILE 'scoop' }
+  $appDir = Join-Path $root "apps\$Name"
+  $ver = Get-ChildItem -Path $appDir -Directory -Force -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -ne 'current' } |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+  if ($ver) { Join-Path $ver.FullName "$Name.exe" }
+}
+
 # Prompt: the same ~/.config/starship.toml the cmd and Unix shells use.
-Invoke-Expression (& starship init powershell | Out-String)
+$starship = Resolve-ScoopApp starship
+if ($starship) { Invoke-Expression (& $starship init powershell | Out-String) }
 
 # Replaces clink's zoxide.lua: the z/zi aliases and the pwd hook.
-Invoke-Expression (& { (zoxide init powershell | Out-String) })
+$zoxide = Resolve-ScoopApp zoxide
+if ($zoxide) { Invoke-Expression (& { (& $zoxide init powershell | Out-String) }) }
 
 # wezterm derives the tab title from the cwd reported over OSC 7. Clink did this
 # from clink.lua's prompt filter; starship calls this hook before every prompt.
