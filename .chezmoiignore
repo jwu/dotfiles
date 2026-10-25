@@ -18,6 +18,8 @@ scripts
 {{ if ne .chezmoi.os "windows" }}
 AppData
 .wezterm.lua
+# PowerShell 7 reads its profile from Documents; nothing here reads it there.
+Documents
 {{ end }}
 
 # macOS-only targets.

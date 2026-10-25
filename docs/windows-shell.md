@@ -184,8 +184,83 @@ starship 用的是内置默认值（提示符在，但 config 不生效）。
 注意 `setx` 会把引号**当成值的一部分**存起来——从 `cmd /c` 里配要注意（本仓库的 bootstrap
 是 `.bat`，`setx VAR "..."` 会正常剥掉引号；实测手工从 git-bash 里调时引号被存进了值里）。
 
+## 并行试用的 pwsh 7（默认仍是 cmd）
+
+`Documents/PowerShell/Microsoft.PowerShell_profile.ps1` 只用来把 pwsh 7 拉出来和现役的
+cmd + Clink 对照，**没有**取代它：`dot_wezterm.lua` 的 `default_prog` 与 alacritty 的
+`[terminal.shell]` 都还是 `cmd /s /k session.cmd`。wezterm 侧只多一个 `launch_menu` 条目
+（`ALT|SHIFT e` 打开 launcher 选），Alacritty 不参与——要试就在 cmd 里敲 `pwsh`。
+
+profile 复刻了：
+
+| cmd 侧 | pwsh 侧 |
+| --- | --- |
+| `clink.lua` 的 `starship init cmd` | `starship init powershell`，同一份 `~/.config/starship.toml` |
+| `zoxide.lua` 的 z/zi + pwd hook | `zoxide init powershell` |
+| `clink.lua` 的 OSC 7 | `Invoke-Starship-PreCommand` 钩子（starship 每次出提示符前都会调） |
+| `session.lua` 的 `chcp 65001` | `[Console]::OutputEncoding`；pwsh 7 已是 UTF-8，这行只钉控制台 |
+| `session.lua` 的 11 个别名 | `Set-Alias` / function；`pon`/`poff`/`pstat` 改写成 `$env:` 函数，提示文案逐字照抄；`clear` 不需要（PowerShell 已有） |
+
+有意不做的：
+
+- **clink-completions 的 19 个脚本**（git / npm / pip / scoop / ssh / kubectl …）。
+  PowerShell 侧是另一批 `ArgumentCompleter` 模块，不是同一批，也没有等价物。
+- **`fzf.lua`**。Ctrl-R / Ctrl-T / Alt-C 要靠 `PSFzf` 模块重新绑；而 `**` 与
+  「Tab 候选丢进 fzf」是 Clink 补全引擎的内部机制，PowerShell 只能包 `TabExpansion2`
+  近似。模块本身也还没装。
+- **cmd 方言**。`%VAR%`、`&` 串联、`dir /b`、`set`、`.bat` 脚本在 pwsh 里全是另一套语法，
+  这也是「默认不动」的主要理由。
+
+Herdr UI 不走 `launch_menu`：它的 pane 默认就是 pwsh（本机 `herdr pane list` 的
+`terminal_title` 就是 `C:\Program Files\PowerShell\7\pwsh.exe`），也没有选 shell 的配置键——
+`config-gpui.toml` 的 `[terminal]` 段只有字体、行高、字重、padding，daemon 侧同样没有。
+所以 wezterm / alacritty 是 cmd + Clink，Herdr UI 是 pwsh + 这份 profile，两边并存。
+
+本机曾有两份 pwsh：32 位的 `PowerShell 7-x86` 7.4.2 在 `Program Files (x86)`，64 位的
+7.6.7 在 `Program Files`，而 PATH 先命中 32 位那份——Herdr UI 的 pane 起的就是它。
+32 位那份已于 2026-10-25 用 `msiexec /x {60C67960-C617-4FBA-B42A-E90597E0EE79}` 卸载，
+`where pwsh` 现在只剩一条。装第二份时留意这个先后顺序。
+
+Herdr 的 pane 在 Windows 上**换不了 shell**（下面这几条 0.9.5 实测）：
+
+- `[terminal] default_shell` 是官方键，但把它写成 `"cmd.exe"` 或绝对路径
+  `"C:/Windows/System32/cmd.exe"` 都不生效，新 pane 的 `terminal_title` 仍是 `pwsh.exe`；
+  重启一个独立命名 session 的 server 也一样。而且文档写明它是 *"an executable name or
+  path, not a shell command line"*，即使生效也给不了 `cmd /s /k session.cmd` 的参数。
+- `herdr pane split` 没有 `--shell` / `--command`；`herdr config check` 也不校验未知键。
+
+Clink 那套能在 Herdr 里跑，但入口只能是一个命令。实测：把 AutoRun 写成
+`call "%LOCALAPPDATA%\clink\session.cmd"`，在 Herdr 的 ConPTY pane 里敲 `cmd`，提示符就是
+starship，`ver` 与 `echo %COMSPEC%` 都落在 cmd 里，`clink info` 显示已注入、console codepage
+65001。这修正了上文「AutoRun 已弃用」的结论：失效的是 `clink.bat inject --autorun`
+（Clink 内部注入，`os.setenv` 不落 cmd 环境块），而 `call session.cmd` 是 cmd 自己执行脚本，
+与 `/k` 同一条路径。
+
+暂时没采用，因为 AutoRun 是全局的：`bootstrap/windows.bat`、VS Code 终端、git 调起的每个 cmd
+都会跟着 `chcp 65001` 并注入 Clink。要试的话，更轻的做法是在 pwsh profile 里加
+`function c { cmd /s /k "$env:LOCALAPPDATA\clink\session.cmd" }`，退出 cmd 就回到 pwsh。
+
+代价，本机实测（各 5 次均值，pwsh 7.6.7 x64）：`cmd` 约 57 ms、`pwsh -NoProfile` 约 373 ms、
+完整 profile 约 1130 ms —— 其中 starship 的 `init powershell` 占约 450 ms、zoxide 的
+`init powershell` 约 170 ms。把这两份 init 输出缓存成文件再 dot-source 只省约 130 ms，
+不值得因此往仓库里放生成物。`starship prompt` 每次出提示符另付 56 ms，那是两边都要付的。
+别用 5.1：它默认不是 UTF-8，PSReadLine 也只有 2.0。
+
+验证：
+
+```powershell
+$env:STARSHIP_SHELL       # pwsh
+git status                # 中文不乱码
+z foo                     # zoxide 生效
+gl                        # 别名生效
+# wezterm 新标签页标题应跟着 cwd 变，说明 OSC 7 到位
+```
+
 ## 已知遗留
 
+- eza v0.23 的 `--icons` 实际签名是 `--icons[=WHEN]`，后面紧跟路径时那个路径会被当成
+  WHEN：`ll C:\foo` 报 `invalid value 'C:\foo' for '--icons'`。`session.lua` 与 pwsh
+  profile 的 `ll`/`la`/`lt` 都是无参写法，带路径调用要写成 `--icons=always`。
 - `LS_COLORS` 在 `clink.lua`（`os.setenv`）与 `dot_wezterm.lua`（`set_environment_variables`）
   里各写了一份。可以收敛成一个用户环境变量，但它很长、`setx` 有长度限制，先用 PowerShell
   的 `SetEnvironmentVariable` 也不省事，暂时没动。

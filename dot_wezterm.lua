@@ -30,6 +30,12 @@ end
 -- the way the retired init.bat did; see docs/windows-shell.md.
 if is_windows then
   config.default_prog = { 'cmd.exe', '/s', '/k', os.getenv('LOCALAPPDATA') .. '\\clink\\session.cmd' }
+
+  -- Side-by-side pwsh trial; cmd + Clink stays the default. Picked from the
+  -- launcher (ALT|SHIFT e). See docs/windows-shell.md.
+  config.launch_menu = {
+    { label = 'PowerShell 7 (trial)', args = { 'pwsh.exe', '-NoLogo' } },
+  }
 end
 
 config.default_cwd = default_cwd
@@ -464,6 +470,11 @@ config.keys = {
     key = 'p',
     mods = mod_key_2,
     action = wezterm.action.ActivateCommandPalette
+  },
+  {
+    key = 'e',
+    mods = mod_key_2,
+    action = wezterm.action.ShowLauncherArgs { flags = 'FUZZY|LAUNCH_MENU_ITEMS' },
   },
 }
 
