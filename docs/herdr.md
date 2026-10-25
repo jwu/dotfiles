@@ -42,6 +42,11 @@ server），UI 归 App Updates 面板（Homebrew 认领的那份自己跑 `brew 
 | `config.toml` | 0644 | daemon：`herdr config reset-keys`、Settings 面板 |
 | `config-gpui.local.toml` | 0600 | GUI：Settings 保存时自动写，保存即热重载 |
 
+`~/.config/herdr/` 这个路径对 daemon 三平台都成立，Herdr UI 不是：Windows 上它把托管默认值刷进
+`%APPDATA%\herdr\config-gpui.toml`，overrides 也读 `%APPDATA%\herdr\config-gpui.local.toml`。
+实测本机 `%APPDATA%\herdr\` 里有 73 KB 的 `config-gpui.toml`、`.local.toml` 与两个 `.lock`，
+而 `~/.config/herdr/` 那份 overrides 在 Windows 上根本不被读。
+
 其余全是运行时产物：
 
 - `config-gpui.toml` —— 72 KB 的托管默认值，首行写着 `DO NOT EDIT -- WILL BE OVERWRITTEN`，每次启动刷新
@@ -54,10 +59,13 @@ server），UI 归 App Updates 面板（Homebrew 认领的那份自己跑 `brew 
 
 ```
 dot_config/herdr/config.toml
-  → ~/.config/herdr/config.toml
+  → ~/.config/herdr/config.toml                        (三平台)
 
 dot_config/herdr/private_config-gpui.local.toml.tmpl
-  → ~/.config/herdr/config-gpui.local.toml
+  → ~/.config/herdr/config-gpui.local.toml             (Linux / macOS)
+
+AppData/Roaming/herdr/private_config-gpui.local.toml
+  → %APPDATA%\herdr\config-gpui.local.toml             (仅 Windows)
 ```
 
 `config-gpui.local.toml` 在原机上是 0600，所以带 `private_` 前缀。
@@ -66,19 +74,23 @@ dot_config/herdr/private_config-gpui.local.toml.tmpl
 
 ## 平台分派
 
-两份配置全平台托管，`~/.config/herdr/` 在 Linux / macOS / Windows 上路径相同，`.chezmoiignore` 不再按 OS 忽略它。
+daemon 的 `config.toml` 全平台托管在 `~/.config/herdr/`。Herdr UI 的 overrides 在 Windows 上落在
+`%APPDATA%\herdr\`，所以源有两份：`.chezmoiignore` 让 `~/.config/herdr/config-gpui.local.toml`
+只在非 Windows 生效，Windows 那份是 `AppData/Roaming/herdr/private_config-gpui.local.toml`。
 
-但字体值不同：Linux 那台对齐的是 Ghostty，macOS 跟系统字体。于是 `config-gpui.local.toml` 是模板，按 `.chezmoi.os` 分两套：
+字体值三家都不同：Linux 那台对齐的是 Ghostty，macOS 跟系统字体，Windows 只收了 Herdr UI 首次
+启动时自己写下的值（没有第二个 Windows 参照物，没做过对齐实测）。于是 Unix 那份是模板，按
+`.chezmoi.os` 分两套：
 
-| 段 | macOS | Linux |
-| --- | --- | --- |
-| `[terminal]` | FiraMono 16 | FiraMono 18、`weight = "medium"`、`line_height = 1.2` |
-| `[sidebar]` / `[tabs]` | FiraMono 14 | FiraMono 16，CJK fallback 到 Sarasa Mono |
-| `[ui]` | PingFang SC 14 | FiraMono 16，CJK fallback 到 Sarasa Mono |
+| 段 | macOS | Linux | Windows |
+| --- | --- | --- | --- |
+| `[terminal]` | FiraMono 16 | FiraMono 18、`weight = "medium"`、`line_height = 1.2` | FiraMono 16 |
+| `[sidebar]` / `[tabs]` | FiraMono 14 | FiraMono 16，CJK fallback 到 Sarasa Mono | FiraMono 14 |
+| `[ui]` | PingFang SC 14 | FiraMono 16，CJK fallback 到 Sarasa Mono | Microsoft YaHei UI 14 |
 
-macOS 那套沿用这台 Mac 的 Ghostty：`font-size = 16`、中文回退 `PingFang SC`（见 `dot_config/ghostty/config`）。Windows 没有实测值，走 Linux 那一支。
+macOS 那套沿用这台 Mac 的 Ghostty：`font-size = 16`、中文回退 `PingFang SC`（见 `dot_config/ghostty/config`）。
 
-字体键的可用性是 GPUI 的，两个平台一样；下面的实测数值来自 Linux 那台。
+字体键的可用性是 GPUI 的，macOS 与 Linux 一样；下面的实测数值来自 Linux 那台。
 
 ## Shift+Enter：为什么要取消默认的 `[pane_keys]`
 

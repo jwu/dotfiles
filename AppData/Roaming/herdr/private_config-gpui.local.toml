@@ -1,0 +1,35 @@
+# Herdr UI overrides. Saved changes reload automatically.
+# Unset keys inherit config-gpui.toml; tables merge key by key.
+#
+# Windows reads this from %APPDATA%\herdr, not ~/.config/herdr like the daemon's
+# config.toml does. See docs/herdr.md.
+
+# New installs start with the roomy rounded sidebar. Remove this line for
+# the managed default, or pick another layout listed in config-gpui.toml.
+layout = "comfortable-rounded"
+theme = "Atom One Dark"
+status_icons = "braille"
+
+# Herdr UI rewrites Shift-Enter to Alt-Enter for every pane by default (PR #518).
+# Kitty-protocol panes such as pi then receive CSI 13;3u, which pi binds to
+# app.message.followUp, so Shift-Enter could not insert a newline.
+# An empty string cancels the mapping and passes Shift-Enter through unchanged.
+# Workaround for penso/herdr-gpui#575; drop this section once that is fixed.
+[pane_keys]
+"shift-enter" = ""
+
+[terminal]
+family = "FiraMono Nerd Font"
+size = 16.0
+
+[sidebar]
+family = "FiraMono Nerd Font"
+size = 14.0
+
+[tabs]
+family = "FiraMono Nerd Font"
+size = 14.0
+
+[ui]
+family = "Microsoft YaHei UI"
+size = 14.0
