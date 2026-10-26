@@ -114,6 +114,17 @@ osascript -e 'quit app "Tailscale"' && open -a Tailscale      # 让它重读
 然后到「系统设置 → 通用 → 登录项与扩展」确认 `Tailscale` 没被禁用。`Start on login` 只保证
 进程起来，不保证立刻连上；要「断网后自动重连」得在 App 里配 VPN On-Demand。
 
+### Dock 图标没有 CLI 开关
+
+GUI 的 *Hide Dock icon* 也落在同一份 plist：`HideDockIcon`（1.104.2 实测已是 `true`）。`tailscale set`
+里没有任何 dock/icon 选项，要脚本化只有
+
+```sh
+defaults write io.tailscale.ipn.macsys HideDockIcon -bool true
+```
+
+但这仍然不进仓库，和 `TailscaleStartOnLogin` 同属上面表格里「本机 UI 状态」那一行。
+
 ### 合盖休眠会让这台机器从 tailnet 掉线
 
 作为被连的一方（家里连过来），笔记本合盖就断。`sudo pmset -c disablesleep 1` 或
