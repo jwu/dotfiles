@@ -48,10 +48,45 @@ fi
 # The screen-off timer lives exactly as long as the session is locked: swayidle
 # re-arms after every activity, so the monitors go off again after each further
 # idle period while the lock is held.
+#
+# The timer must not outlive the lock. niri mirrors the ext-session-lock state
+# into logind's LockedHint, so a locker that wedges after niri has already
+# unlocked is detectable -- that exact leak once kept swayidle shutting the
+# screen off for 16 hours after the lock itself was gone.
 swayidle -w timeout "$SCREEN_OFF_TIMEOUT" "niri msg action power-off-monitors" &
 idle_pid=$!
 
+locked_hint() {
+  loginctl show-session "${XDG_SESSION_ID:-1}" -p LockedHint --value 2>/dev/null || true
+}
+
+# Stay out of the way until the session is actually reported locked, then stop
+# idling on the first unlocked report. Two consecutive non-locked readings are
+# required so one transient loginctl failure cannot end the timer early.
+watch_lock_state() {
+  local seen= away=0
+  while sleep 3; do
+    case $(locked_hint) in
+      yes)
+        seen=1
+        away=0
+        ;;
+      *)
+        [[ -n $seen ]] || continue
+        away=$((away + 1))
+        (( away >= 2 )) || continue
+        kill "$idle_pid" 2>/dev/null || true
+        niri msg action power-on-monitors >/dev/null 2>&1 || true
+        return 0
+        ;;
+    esac
+  done
+}
+watch_lock_state &
+hint_pid=$!
+
 cleanup() {
+  kill "${hint_pid:-}" 2>/dev/null || true
   kill "$idle_pid" 2>/dev/null || true
   niri msg action power-on-monitors >/dev/null 2>&1 || true
 }

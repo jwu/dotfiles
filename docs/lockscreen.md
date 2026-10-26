@@ -18,6 +18,14 @@ Linux 侧锁屏统一走 `~/.local/bin/niri-lock`（源是 `dot_local/bin/execut
 `PowerOnMonitors`（同文件的 `allowed_when_locked`）。所以 niri 的 `spawn-at-startup` 里不再
 有 swayidle。
 
+计时器还必须不能比锁活得久：锁屏客户端卡死时 `niri-lock` 会一直阻塞在它上面，`trap EXIT`
+没机会执行，swayidle 就成了孤儿。2026-10-26 的事故正是如此——hyprlock 卡在 futex 上没退出、
+niri 早已判定解锁（`unlocking session`），那个孤儿 swayidle 却继续每 60 秒关一次屏，持续了
+16 小时。现在脚本额外起一个守护：先等 logind 报 `LockedHint=yes`（niri 会把
+ext-session-lock 的状态同步过去，见下面「从 ssh 锁屏」那节的实测），之后连续两次读到非
+`yes` 就杀掉 swayidle 并点亮显示器。要求两次是为了让一次 `loginctl` 瞬时失败不至于提前
+结束计时。
+
 `Mod+Alt+L` 那条恢复绑定直接跑 `swaylock -f`，绕过 `niri-lock`，那条路径没有熄屏计时。
 
 ### Mac mini 例外：不装这个计时器
