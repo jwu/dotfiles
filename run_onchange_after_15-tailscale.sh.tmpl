@@ -1,0 +1,33 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+# Pins the one Tailscale setting that is a security decision rather than a
+# preference: Tailscale SSH stays off. It runs as root and its socket and port
+# forwarding path is the attack surface described in docs/tailscale.md; the
+# system sshd is used instead.
+#
+# Linux is skipped on purpose: `tailscale set` needs root there and `chezmoi
+# apply` stays root-free (see AGENTS.md). bootstrap/arch.sh does it instead.
+set -uo pipefail
+
+TS=/Applications/Tailscale.app/Contents/MacOS/Tailscale
+if [ ! -x "$TS" ]; then
+  TS="$(command -v tailscale || true)"
+fi
+if [ -z "$TS" ] || [ ! -x "$TS" ]; then
+  echo ">>> tailscale: app not installed; skipping (bootstrap/macos.sh provisions the cask)"
+  exit 0
+fi
+# Not joined yet: the node identity is minted by an interactive browser login,
+# which a run_ script cannot do and must not block on.
+if ! "$TS" status --peers=false > /dev/null 2>&1; then
+  echo ">>> tailscale: not joined yet; skipping (run 'tailscale up' once)"
+  exit 0
+fi
+
+if "$TS" debug prefs 2> /dev/null | grep -q '"RunSSH": true'; then
+  echo ">>> tailscale: turning Tailscale SSH off"
+  "$TS" set --ssh=false || exit 1
+else
+  echo ">>> tailscale: Tailscale SSH already off"
+fi
+{{ end -}}
