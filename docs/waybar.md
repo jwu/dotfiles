@@ -3,6 +3,31 @@
 Linux 侧 Waybar 配置位于 `dot_config/waybar/`：`config.jsonc`、`modules.json.tmpl`、
 `style.css`、`colors.css`，以及 `scripts/` 下的取值脚本。
 
+## 启动与守护（waybar-watch）
+
+`spawn-at-startup "waybar-watch"`（见 `dot_config/niri/config.kdl`），不是直接起 `waybar`。
+守护脚本的源是 `dot_local/bin/executable_waybar-watch`。它守两件事，都是踩过的坑。
+
+**bar 缺失就重启。** waybar 0.15 在锁屏/唤醒或显示器重连之后，会保留 eDP-1 的 bar 而再也
+不重建 DP-2 那块，外接屏就空着直到手动杀一次 waybar。niri 只在输出列表真的变化时才发
+"Outputs changed"，关屏再开不触发，所以脚本直接看 layer surface：`niri msg layers` 里每个
+已连接输出都应该有 `Namespace: "waybar"` 的 top layer，缺一个就 bounce。
+
+**崩溃不能变成重启风暴。** 2026-10-26 的事故：waybar 崩在 `Glib::DispatchNotifier::
+unreference_instance` 断言上（waybar 0.15 + glibmm 2.90），当时的脚本没有退避，进程一死就
+立刻拉起，08:16–08:21 每分钟 fork 232 次，内存被吃光后 kernel OOM killer 连带杀掉了
+ghostty 和 chrome。现在有两处限制：
+
+- `BAR_GRACE=8`：新起的 waybar 有 8 秒宽限，之后才判 bar 缺失。之前 2 秒轮询会在启动中途
+  把它杀掉，正常状态下也能形成每分钟 12 次的震荡。
+- `CRASH_WINDOW=10` + 指数退避到 `MAX_BACKOFF=60`：10 秒内死亡算崩溃，退避 1s→2s→4s→…→60s，
+  退出码和存活时长都带 `[watch]` 前缀写进 `~/.local/state/waybar/waybar.log`。
+
+同一次事故里还发现 `glycin-svg` 每次启动都在 bwrap 里崩（`FcRuleDestroy`，fontconfig 线程），
+留下 500MB core dump。图标是路径画的、用不到 fontconfig，所以用
+`dot_local/share/glycin-loaders/2+/conf.d/glycin-svg.conf` 把两个 SVG loader 的 `Fontconfig`
+关掉。
+
 ## 基线与行高
 
 Waybar（GTK3）会把每个模块的 label 放进独立格子做垂直居中，label 的行高取决于它内容里

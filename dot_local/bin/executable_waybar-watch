@@ -1,0 +1,128 @@
+#!/bin/bash
+# Run waybar under a supervisor that restarts it whenever an output has no bar.
+#
+# The bug this guards against: after a lock/wake cycle (or a monitor reconnect)
+# waybar 0.15 keeps its eDP-1 bar but never recreates the DP-2 one, so the
+# external display stays bare until waybar is restarted. niri only reports
+# "Outputs changed" for real output-list changes -- powering monitors off and on
+# does not emit it -- so watch the actual layer surfaces instead: every connected
+# output should carry a waybar top layer, and if one does not, bounce waybar.
+#
+# Two failure modes are guarded separately: a bar that never appears (bounce the
+# process) and a process that keeps dying (back off exponentially). Without the
+# backoff a crash loop forks a GTK process every 0.26s and exhausts memory.
+#
+# waybar's own output goes to the state log instead of the session tty.
+
+set -u
+
+log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/waybar"
+mkdir -p "$log_dir"
+log="$log_dir/waybar.log"
+
+waybar_pid=
+waybar_started=0
+grace_until=0
+fail_streak=0
+
+# A death this soon after start counts as a crash, not as a normal exit.
+CRASH_WINDOW=10
+# A fresh waybar needs a few seconds to map every bar; judging it on missing
+# surfaces before that would kill it mid-startup and cause a restart storm.
+BAR_GRACE=8
+# Backoff cap for a persistent crash loop.
+MAX_BACKOFF=60
+# Cap the streak so the exponential shift cannot overflow.
+MAX_STREAK=6
+
+log_msg() {
+    printf '[%s] [watch] %s\n' "$(date '+%F %T')" "$*" >>"$log"
+}
+
+start_waybar() {
+    waybar >>"$log" 2>&1 &
+    waybar_pid=$!
+    waybar_started=$(date +%s)
+    grace_until=$((waybar_started + BAR_GRACE))
+}
+
+stop_waybar() {
+    [[ -n $waybar_pid ]] || return 0
+    kill "$waybar_pid" 2>/dev/null
+    wait "$waybar_pid" 2>/dev/null
+    waybar_pid=
+}
+
+restart_waybar() {
+    log_msg "restarting waybar: an output is missing its bar"
+    stop_waybar
+    start_waybar
+}
+
+cleanup() {
+    stop_waybar
+    exit 0
+}
+trap cleanup TERM INT HUP
+
+# True when a connected output has no waybar layer surface. Output names carry
+# spaces and '#' (e.g. "Dell Inc. Dell S2716DG #ASP8..."), so keys are kept raw.
+waybar_missing() {
+    local -A has_bar=()
+    local name
+
+    while IFS= read -r name; do
+        has_bar[$name]=1
+    done < <(
+        niri msg layers 2>/dev/null | awk '
+            /^Output "/ { name = $0; sub(/^Output "/, "", name); sub(/":$/, "", name) }
+            /Namespace: "waybar"/ { print name }'
+    )
+
+    while IFS= read -r name; do
+        [[ -z $name ]] && continue
+        [[ -z ${has_bar[$name]:-} ]] && return 0
+    done < <(
+        niri msg outputs 2>/dev/null |
+            sed -n 's/^Output ".*" (\([^)]*\))$/\1/p'
+    )
+
+    return 1
+}
+
+start_waybar
+
+# Two seconds is enough to notice a dead waybar or a blanked display, and short
+# enough that a blanked display gets its bar back quickly.
+while sleep 2; do
+    if ! kill -0 "$waybar_pid" 2>/dev/null; then
+        wait "$waybar_pid" 2>/dev/null
+        status=$?
+        lived=$(( $(date +%s) - waybar_started ))
+        waybar_pid=
+
+        if (( lived < CRASH_WINDOW )); then
+            fail_streak=$((fail_streak + 1))
+            (( fail_streak > MAX_STREAK )) && fail_streak=$MAX_STREAK
+        else
+            fail_streak=0
+        fi
+
+        if (( fail_streak > 0 )); then
+            delay=$(( 1 << (fail_streak - 1) ))
+            log_msg "waybar exited with status $status after ${lived}s (crash $fail_streak), retrying in ${delay}s"
+            sleep "$delay"
+        else
+            log_msg "waybar exited with status $status after ${lived}s, restarting"
+        fi
+
+        start_waybar
+        continue
+    fi
+
+    (( $(date +%s) < grace_until )) && continue
+
+    if waybar_missing; then
+        restart_waybar
+    fi
+done
