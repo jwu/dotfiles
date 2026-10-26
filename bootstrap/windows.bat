@@ -49,6 +49,7 @@ call :DO "clink: register clink-completions" :CLINK_SCRIPTS
 call :DO "pi-config checkout" :ENSURE_PI_CONFIG
 call :DO "Herdr daemon (upstream installer)" :HERDR_DAEMON
 call :DO "Herdr UI (upstream installer)" :HERDR_UI
+call :DO "tailscale (only the client; joining stays manual)" :INSTALL_TAILSCALE
 
 call :REQUIRE "chezmoi init --apply" :CHEZMOI_APPLY || goto :ABORT
 
@@ -193,6 +194,38 @@ if exist "%LOCALAPPDATA%\Programs\Herdr UI\herdr-gpui.exe" (
 )
 powershell -ExecutionPolicy Bypass -c "irm https://herdrui.dev/install.ps1 ^| iex"
 exit /b %errorlevel%
+
+:INSTALL_TAILSCALE
+:: Only the client is provisioned; joining a tailnet is an interactive browser
+:: login, the same split bootstrap/arch.sh and bootstrap/macos.sh use. What
+:: differs is that there is no policy step to go with it: the Windows client
+:: ships no Tailscale SSH server -- 'tailscale set --ssh=true' exits 1 with
+:: "not supported on windows" -- so the root forwarding path docs/tailscale.md
+:: is built around does not exist on this platform.
+::
+:: This is the one step here that raises a UAC prompt. The MSI is per-machine
+:: and scoop's tailscale is portable: it registers no service, and the CLI needs
+:: a Wintun adapter either way, which is also elevation.
+set "TS=%ProgramFiles%\Tailscale\tailscale.exe"
+if exist "%TS%" (
+  echo     Tailscale is already installed
+  exit /b 0
+)
+where winget >nul 2>&1
+if errorlevel 1 (
+  echo     winget is required to install Tailscale; skipping 1>&2
+  exit /b 1
+)
+echo     installing Tailscale with winget ^(accept the UAC prompt^)...
+winget install --id Tailscale.Tailscale -e --silent --accept-source-agreements --accept-package-agreements
+:: The MSI appends %ProgramFiles%\Tailscale to the machine PATH, which this
+:: process started before, so look for the file rather than on PATH.
+if not exist "%TS%" (
+  echo     Tailscale is still not on disk; install it manually and re-run 1>&2
+  exit /b 1
+)
+echo     installed; run 'tailscale up' once to join the tailnet
+exit /b 0
 
 :ENSURE_PI_CONFIG
 :: pi loads extensions/ live from the checkout, so the settings.json chezmoi

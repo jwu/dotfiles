@@ -17,16 +17,30 @@ Tailscale 的真源在控制面，不在磁盘上：
 状态」「fcitx5 的运行时边界」是同一类问题。想真正把 ACL 当代码管，那是 Terraform 的
 `tailscale` provider，不是 chezmoi 这一层的事。
 
-## 三层落点
+## 落点
 
 | 层 | 位置 | 内容 |
 | --- | --- | --- |
 | 装机 | `bootstrap/arch.sh` 的 `PACKAGES` + `install_tailscale` | `tailscale`、`openssh` 两个包，`systemctl enable --now tailscaled` |
 | 装机 | `bootstrap/macos.sh` 的 `CASKS` | `tailscale` 这一个 cask |
+| 装机 | `bootstrap/windows.bat` 的 `INSTALL_TAILSCALE` | winget 装 MSI，注册 `Tailscale` 服务 |
 | 策略 | `run_onchange_after_15-tailscale.sh.tmpl`（仅 darwin） | `tailscale set --ssh=false` |
 
 **加入 tailnet 不在任何一层里**：`tailscale up` 要开浏览器走 SSO，产出的是这台机器独有的节点
 身份。它必须人工做一次，脚本只负责在它已经做过之后把策略钉住。
+
+**Windows 没有策略层**，因为那层要防的东西在这个客户端上根本不存在。1.104.2 实测：
+
+```
+$ tailscale set --ssh=true
+The Tailscale SSH server is not supported on windows          ← exit 1
+$ tailscale debug prefs | grep RunSSH
+  "RunSSH": false                                              ← 字段在，恒为 false
+$ tailscale set --ssh=false                                   ← exit 0，但只是 no-op
+```
+
+所以 `bootstrap/windows.bat` 只装不钉。**不要为了和另两处对称而补一行 `set --ssh=false`**：
+它不会失败，但会让下一个读这个文件的人以为这条策略在 Windows 上需要维护。
 
 ### 为什么 Linux 侧的 set 在 bootstrap 而不在 run 脚本
 
@@ -68,6 +82,7 @@ Tailscale SSH」。
 | --- | --- | --- | --- |
 | `macbook-m3` | 100.125.255.124 | macOS 27 | 基准机 |
 | `archlinux-com` | 100.121.5.100 | Arch Linux | 直连 `10.30.40.109:41641`，`tailscale ping` **6ms** |
+| `jwu-home-win11` | — | Windows 11 | 2026-10-27 装好客户端与服务，尚未 join |
 
 Tailnet 名 `jwu.github`（GitHub 身份登录，MagicDNS 后缀 `tail0886d3.ts.net`）。两台都在公司网
 但跨子网（`10.41.x.x` / `10.30.40.x`），Tailscale 仍然打出了直连。家里那几台尚未加入。
@@ -86,6 +101,19 @@ Nearest DERP: sfo 165ms / lax 169ms / hkg 179ms
 治，只有两条路：国内 VPS 自建 DERP，或者两边都有 IPv6。
 
 ## 踩过的坑
+
+### Windows：全程只有一处需要提权
+
+`winget install --id Tailscale.Tailscale -e` 装的是 per-machine MSI，会弹一次 UAC。这是
+`bootstrap/windows.bat` 里**唯一**需要管理员的一步——脚本其余部分（scoop、Nerd Font、Herdr）
+都落在 `%LOCALAPPDATA%`。宁可破一次这条边界，也不引入第二条安装路径：
+
+- scoop 的 `extras/tailscale` 是便携版，**不注册服务**，开机自启和路由都会缺
+- 即便只用 CLI，它也要创建 Wintun 虚拟网卡，那同样需要提权
+
+装完 MSI 会把 `C:\Program Files\Tailscale` 追加到**机器级** PATH，但当前进程的 PATH 是启动时的
+快照，`where tailscale` 依然为空。所以脚本里用 `%ProgramFiles%\Tailscale\tailscale.exe` 的
+全路径判断是否存在，而不是查 PATH；只有新开的终端才看得见 `tailscale` 这个命令。
 
 ### `hostnamectl set-hostname` 不会更新 tailnet 里的设备名
 
