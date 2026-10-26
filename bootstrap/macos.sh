@@ -62,6 +62,10 @@ CASKS=(
   # `herdr` daemon is a separate program, installed by
   # run_onchange_before_14-herdr.sh.tmpl. See docs/herdr.md.
   "penso/tap/herdr-gpui"
+  # Only the app is provisioned: joining a tailnet is an interactive browser
+  # login, and the login item is registered by the app itself, not by this
+  # script. See docs/tailscale.md.
+  "tailscale"
 )
 
 FAILED_STEPS=()

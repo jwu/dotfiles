@@ -82,6 +82,11 @@ PACKAGES=(
   "pkgconf"
   "gtk3"
   "git"
+  # tailscaled is enabled by install_tailscale below; joining a tailnet is
+  # interactive, so it stays out of this script. openssh is the sshd that
+  # Tailscale SSH is deliberately not. See docs/tailscale.md.
+  "tailscale"
+  "openssh"
   # Rust is installed per-user by run_onchange_before_12-dev-runtimes.sh.tmpl;
   # see docs/dev-env.md.
 )
@@ -388,6 +393,22 @@ enable_mihomo() {
   sudo systemctl enable --now mihomo
 }
 
+# Joining a tailnet is `tailscale up`, which opens a browser and mints a
+# per-machine node identity: not something a bootstrap can decide. Only the
+# policy part is set here, and it needs root -- `chezmoi apply` stays root-free,
+# so this cannot live in run_onchange_after_15-tailscale.sh.tmpl. That script
+# does the same thing on macOS, where the CLI needs no privileges.
+install_tailscale() {
+  sudo systemctl enable --now tailscaled || return 1
+  # Tailscale SSH runs as root and its forwarding path is the attack surface
+  # described in docs/tailscale.md; the system sshd is used instead.
+  if sudo tailscale status --peers=false > /dev/null 2>&1; then
+    sudo tailscale set --ssh=false
+  else
+    echo "    not joined yet; after 'sudo tailscale up' run: sudo tailscale set --ssh=false"
+  fi
+}
+
 # voxtype: hold-to-talk dictation driven by the keyboard's evdev events. The AUR
 # package ships every binary variant and points /usr/bin/voxtype at the
 # Whisper-only one; SenseVoice and Paraformer need the ONNX build. See
@@ -484,6 +505,7 @@ step_required "clone/update dotfiles" ensure_repo
 step_required "configure chezmoi sourceDir" write_chezmoi_config
 
 step "pacman packages" install_packages
+step "tailscale service (Tailscale SSH kept off)" install_tailscale
 step "yay (AUR helper for xwayland-satellite-git)" ensure_yay
 step "xwayland-satellite-git (AUR)" install_xwayland_satellite
 step "Herdr UI (native client for herdr)" install_herdr_ui
