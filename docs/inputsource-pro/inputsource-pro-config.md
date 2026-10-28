@@ -15,7 +15,7 @@ Input Source Pro 是一个 macOS 输入法自动切换工具。
 所以本仓库只存应用**自己导出的 JSON**，并用它官方的 URL scheme 做一次性恢复，
 见「新机器恢复」。
 
-本文的界面描述依据 2.9.0 (605) 的截图；落地时机器上是 2.12.0。
+本文的界面描述依据 2.9.0 (605) 的截图；落地时机器上是 2.13.2 (1171)。
 
 ## 安装方法
 
@@ -47,7 +47,7 @@ Google Chrome   Logseq   Neovide   Numbers 表格   Obsidian   WezTerm   Zed
 屏幕共享   微信   日历   访达   音乐   预览   飞书
 ```
 
-而 2.12.0 的 `ZAPPRULE` 表里只有 6 条：
+而 2.13.2 的 `ZAPPRULE` 表里有 8 条：
 
 | 应用 | 固定输入法 |
 | --- | --- |
@@ -57,16 +57,18 @@ Google Chrome   Logseq   Neovide   Numbers 表格   Obsidian   WezTerm   Zed
 | Zed | `ABC` |
 | Obsidian | 简体拼音 |
 | Neovide | `ABC` |
+| Ghostty | `ABC` |
+| Herdr | `ABC` |
 
 也就是这个页面的价值在于**例外**：列出来的是要单独定的应用，其余走全局规则。清单本身会
 随时间变，所以真正需要留档的是这条判据，不是某一版列表。
 
 右侧详情里是每个应用的默认输入法、功能键（「使用全局设置」）、输入法恢复策略。恢复策略
-多数是默认（总是切换至默认输入法），但 **Chrome 与 Obsidian 的 `doRestoreKeyboard` 是
-`true`**，即这两个应用用「恢复上次使用的输入法」。「隐藏输入法提示」与「强制使用英文标
+多数是默认（总是切换至默认输入法），但 **Chrome、Obsidian、Ghostty、Herdr 的
+`doRestoreKeyboard` 是 `true`**，即这几个应用用「恢复上次使用的输入法」。「隐藏输入法提示」与「强制使用英文标
 点符号」都不勾。底部「添加运行中的应用」保持勾选。
 
-另外「颜色方案」页不在截图里，但 2.12.0 的 `ZKEYBOARDCONFIG` 把
+另外「颜色方案」页不在截图里，但 2.13.2 的 `ZKEYBOARDCONFIG` 把
 `com.apple.keylayout.ABC`、简体拼音、`im.rime.inputmethod.Squirrel.Hans` 都设成了黑底
 白字（`000000ff` / `ffffffff`）。
 
@@ -77,6 +79,12 @@ Google Chrome   Logseq   Neovide   Numbers 表格   Obsidian   WezTerm   Zed
 1. **老机器**：用应用界面里的「导出设置」导出一份 JSON。
 2. 把该文件放进仓库：`dot_config/inputsourcepro/settings.json`（**已放入**，它是本文界面
    描述的权威版本），它会部署到 `~/.config/inputsourcepro/settings.json`。
+
+   应用只认 `inputsourcepro://import`，没有导出用的 CLI。仓库里这份在 2.13.2 上是按
+   `ZAPPRULE` 与 plist 手工补录的（新增 Ghostty、Herdr 两条规则与
+   `isDetectSpotlightLikeApp`），同时把 `app` / `exportedAt` 头部改到当前版本。补录时
+   只做增量：JSON 的格式由 Foundation 的 pretty-print 决定（`"key" : value`、空容器占
+   一个空行、2 空格缩进、无末尾换行），整份重新序列化也必须逐字节一致。
 3. **新机器**：`chezmoi apply` 时由 `run_once_after_80-inputsourcepro.sh.tmpl` 调官方
    URL scheme 导入：
 
@@ -103,7 +111,9 @@ chezmoi state delete-bucket --bucket=scriptState   # 清掉记账再 apply
 
 导出的 JSON 顶层是 `schemaVersion` / `exportedAt` / `appRules` / `browserRules` /
 `keyboardConfigs` 等。`exportedAt` 每次导出都会变，所以「重新导出」本身就是一次真实的
-diff。本仓库是公开的，提交前值得看一眼导出的内容——`appRules` 只有 bundle id 与输入法
+diff。回收 home 侧改动时注意 `chezmoi status` **看不到**这些漂移：真身在 Core Data 与
+plist 里，源里只有导出快照。要比对就得读库（先连同 `-wal` / `-shm` 拷到 `/tmp`，
+别在应用运行时直接打开），`ZCREATEDAT` 是 2001-01-01 起的秒数。本仓库是公开的，提交前值得看一眼导出的内容——`appRules` 只有 bundle id 与输入法
 id，但 `browserRules` 按 schema 带 URL 与样本值，将来加了浏览器规则就可能带出域名。
 
 ## 隐藏顶部语言栏（可选）
