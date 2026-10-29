@@ -139,7 +139,16 @@ install_bun() {
   # are already in dot_zshrc.tmpl. The completions it would have written come
   # from the explicit call below. bash, not sh: Debian's /bin/sh is dash and the
   # installer uses bash-only syntax. See docs/ecs.md.
-  BUN_INSTALL="$HOME/.bun" SHELL=/bin/sh bash -c "$installer" || return 1
+  #
+  # The installer fetches the binary from GitHub releases, which some networks
+  # accept the connection for and then stall. `timeout` caps that; stock macOS
+  # has no timeout command, so the installer gets no cap there and the step is
+  # still optional.
+  if command -v timeout > /dev/null 2>&1; then
+    BUN_INSTALL="$HOME/.bun" SHELL=/bin/sh timeout 180 bash -c "$installer" || return 1
+  else
+    BUN_INSTALL="$HOME/.bun" SHELL=/bin/sh bash -c "$installer" || return 1
+  fi
   "$HOME/.bun/bin/bun" completions > "$HOME/.bun/_bun" || return 1
   echo "    bun: installed at $HOME/.bun/bin/bun"
 }
