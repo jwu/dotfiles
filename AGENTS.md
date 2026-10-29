@@ -131,6 +131,12 @@ dotfiles/
   里造出 `~/bootstrap/arch.sh` 这类文件。
 - 严禁跳过比对直接 `apply` 到一台尚未接入的机器：`apply` 会让 home 目录匹配源，源里那份可能更旧。
 - 严禁把个人身份写进仓库：邮箱、姓名、工作目录。git 的个人层在 `~/.gitconfig`，每台机器手工维护。
+- 严禁把凭据写进仓库：API key、token、password、私钥、cookie、session。要举例时写占位符
+  （`sk-xxxx`、`<token>`、`<password>`），或指向存放位置（环境变量名、`~/.config/…`）。
+- 严禁把真实网络地址写进仓库：公网 IP 写 `47.112.x.x`，MagicDNS 后缀写 `tailxxxx.ts.net`，
+  云实例 ID 不写。内网网段（`10/8`、`172.16/12`、`192.168/16`）、tailnet 私有地址
+  （`100.64.0.0/10`）与主机名都不可路由，可以照写。这是 public repo，泄漏一旦进了历史就只能
+  重写历史才能收回；文档要抄命令或报错时，只替换地址与凭据那一截，其余照原样。
 - 严禁为了「整齐」去翻译用户可见的字符串：`dot_config/waybar/**` 的 `format` /
   `tooltip-format`、`gpu-watch.c` 的 `emit_off()` 消息、`update-rime-dict.sh` 的 `--help`、
   图标里的「中」字、Rime 的选项名。改这些就改了用户看到的东西。
