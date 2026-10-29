@@ -42,7 +42,10 @@ summary() {
 }
 
 install_oh_my_zsh() {
-  if [ -d "$HOME/.oh-my-zsh" ]; then
+  # Test the entry point, not the directory: zsh-autosuggestions creates
+  # ~/.oh-my-zsh/custom/ when it runs first, and a failed install leaves the
+  # directory behind without oh-my-zsh.sh.
+  if [ -s "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]; then
     echo "    Oh My Zsh is already installed."
     return 0
   fi
@@ -50,8 +53,15 @@ install_oh_my_zsh() {
   # Fetch first: `sh -c "$(curl ...)"` would swallow a failed download and run an
   # empty script, silently leaving Oh My Zsh uninstalled.
   local installer
-  installer="$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" || return 1
-  sh -c "$installer" "" --unattended || return 1
+  if installer="$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"; then
+    sh -c "$installer" "" --unattended || return 1
+    return 0
+  fi
+  # raw.githubusercontent.com is not reachable from every network (the ECS
+  # resets it) while GitHub itself is: the installer only clones this repo and
+  # rewrites .zshrc, and chezmoi owns ~/.zshrc anyway. See docs/ecs.md.
+  echo "    installer download failed; cloning the repo directly" >&2
+  git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh "$HOME/.oh-my-zsh" || return 1
 }
 
 install_zsh_autosuggestions() {

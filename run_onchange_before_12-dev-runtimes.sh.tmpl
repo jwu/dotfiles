@@ -47,6 +47,24 @@ summary() {
   return 1
 }
 
+# Optional tools: a failure leaves a gap the user can fill in later, so it must
+# not abort the apply. chezmoi is fail-fast, and a download its network cannot
+# reach would otherwise block every run_ script after this one. See docs/ecs.md.
+step_optional() {
+  local name="$1"
+  shift
+  local rc=0
+  echo ""
+  echo ">>> $name (optional)"
+  "$@" || rc=$?
+  if [ "$rc" -eq 0 ]; then
+    echo "    ok"
+  else
+    echo "    skipped (exit $rc); install it by hand if you need it" >&2
+  fi
+  return 0
+}
+
 install_rustup() {
   if ! command -v rustup > /dev/null 2>&1; then
     local installer
@@ -119,8 +137,9 @@ install_bun() {
   # bun has no --no-modify-path: it appends to ~/.zshrc whenever $SHELL says
   # zsh. An unrecognized shell makes it print the two lines instead, and those
   # are already in dot_zshrc.tmpl. The completions it would have written come
-  # from the explicit call below.
-  BUN_INSTALL="$HOME/.bun" SHELL=/bin/sh sh -c "$installer" || return 1
+  # from the explicit call below. bash, not sh: Debian's /bin/sh is dash and the
+  # installer uses bash-only syntax. See docs/ecs.md.
+  BUN_INSTALL="$HOME/.bun" SHELL=/bin/sh bash -c "$installer" || return 1
   "$HOME/.bun/bin/bun" completions > "$HOME/.bun/_bun" || return 1
   echo "    bun: installed at $HOME/.bun/bin/bun"
 }
@@ -130,7 +149,7 @@ echo ">>> developer runtimes (root-free, per-user)"
 step "rustup + stable toolchain" install_rustup
 step "nvm + Node LTS" install_nvm
 step "uv" install_uv
-step "bun" install_bun
+step_optional "bun" install_bun
 
 summary
 {{ end -}}
