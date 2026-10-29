@@ -76,29 +76,169 @@ Tailscale SSH」。
 - **ACL 用 per-pair 而不是通配**：报告的实测里，写成单点对单点的授权规则自己就阻断了扩散。
   这是唯一能靠配置拿到的防护，比 `src: ["*"]` + `dst: ["*:*"]` 强得多。
 
-## 组网现状（2026-10 实测）
+## 组网现状（2026-10-29 实测）
 
-| 节点 | tailnet 地址 | 系统 | 连接 |
-| --- | --- | --- | --- |
-| `macbook-m3` | 100.125.255.124 | macOS 27 | 基准机 |
-| `archlinux-com` | 100.121.5.100 | Arch Linux | 直连 `10.30.40.109:41641`，`tailscale ping` **6ms** |
-| `jwu-home-win11` | — | Windows 11 | 2026-10-27 装好客户端与服务，尚未 join |
+Tailnet 名 `jwu`（GitHub 身份登录，MagicDNS 后缀 `tailxxxx.ts.net`）。下面是 **peer relay 上线前**
+`macbook-m3` 上的 `tailscale status` 与逐台 `tailscale ping`（当前状态见本文后面的「结果」）：
 
-Tailnet 名 `jwu.github`（GitHub 身份登录，MagicDNS 后缀 `tail0886d3.ts.net`）。两台都在公司网
-但跨子网（`10.41.x.x` / `10.30.40.x`），Tailscale 仍然打出了直连。家里那几台尚未加入。
-
-`tailscale netcheck` 在 `macbook-m3` 上的结果：
+```
+100.125.255.124  macbook-m3         macOS  基准机
+100.121.5.100    archlinux-com      Linux  直连 10.30.40.x:41641   13ms
+100.87.214.67    aliyun-ecs-sz      Linux  深圳 ECS，中继候选
+100.79.18.17     archlinux-macbook  Linux  relay sfo   1.2–2.2s
+100.65.139.110   archlinux-macmini  Linux  relay sfo   1.8–2.4s
+100.100.231.1    mac-mini-m4        macOS  relay sfo   0.75–2.4s
+100.77.166.83    jwu-home-win11     Windows relay sfo  1.2–3.0s
+100.114.57.30    iphone-15-pro      iOS    —
+```
+`tailscale netcheck` 在 `macbook-m3` 上：
 
 ```
 UDP: true
-IPv4: 218.107.213.115       IPv6: no
+IPv4: 110.86.x.x:59083    IPv6: no, but OS has support
 MappingVariesByDestIP: true          ← 对称 NAT
-Nearest DERP: sfo 165ms / lax 169ms / hkg 179ms
+PortMapping:                         ← 空：无 UPnP / NAT-PMP / PCP
+Nearest DERP: sfo 185.7ms / lax 188.5ms / hkg 188.6ms
 ```
 
-`MappingVariesByDestIP: true` 是对称 NAT，最难穿透的一类。家里宽带如果也是（光猫 + CGNAT 很
-常见），两端都是对称 NAT 时会全程走 DERP。SSH 能用，但 Herdr UI 的终端输入会有明显延迟。真要
-治，只有两条路：国内 VPS 自建 DERP，或者两边都有 IPv6。
+三个条件叠在一起，打洞注定失败：对称 NAT（对每个目标换源端口，双方都猜不到对端的）、路由器
+没开任何端口映射、`en0` 只有 `fe80::` 没有全局 IPv6。只有同 LAN 的 `archlinux-com` 能直连。
+
+剩下的全是 `relay sfo`，而秒级的 `tailscale ping` 不是 185ms 的 DERP RTT 能解释的——那条跨境
+链路有丢包与重排。要治只有三条路，见下节。
+
+## 中继：peer relay 优先，自建 DERP 是兜底
+
+### 三条路
+
+| 方案 | 本机往返 | 控制面改什么 | 主机要准备什么 |
+| --- | --- | --- | --- |
+| peer relay | **31.8ms**（实测 `ping`，0% 丢包） | 一条 `tailscale.com/cap/relay` grant | tailscale + 一个 UDP 端口 |
+| 自建 derper | 同 | `derpMap` 里手写 region 900–999 | tailscale + Go + 域名 + 证书 + 80/443 |
+| 等 IPv6 | 最优（可直连） | 无 | 运营商下发前缀 |
+
+官方文档的排序也是这个：`custom DERP servers` 页面开头就写「DERP 中继慢时，通常应该先查为什么
+打不通，或者改用 peer relay」，并且自定义 DERP 至今标注 **alpha**、需要自己编译及维护。
+
+### 落点：深圳阿里云 ECS
+
+`aliyun-ecs-sz`（`47.112.x.x`，Debian 13，2 核 / 1.7G）：本机 `ping` **31.8ms**、0% 丢包，
+比 sfo 的 185ms 好一个数量级。它已经加入 tailnet，`tailscale ip -4` = `100.87.214.67`。
+
+这台机器的坑在于**阿里云是 1:1 NAT**：`eth0` 只有内网 `172.28.x.x`，公网地址在网关。
+tailscaled 自报的 endpoint 因此没有公网地址，别的设备连不上它的中继端口。必须显式广告：
+
+```sh
+sudo tailscale set \
+  --relay-server-port=40000 \
+  --relay-server-static-endpoints=47.112.x.x:40000
+```
+
+`tailscale debug prefs` 会回显 `RelayServerPort: 40000` 与 `RelayServerStaticEndpoints`，
+`ss -lnup` 能看到 tailscaled 在 `0.0.0.0:40000` 上收发。
+
+#### 装上 tailscale 后阿里云控制台的「远程连接」失效
+
+2026-10-29 实测踩到。tailscale 默认 `--netfilter-mode=on`，会在 `INPUT` 头部挂 `ts-input` 链，
+其中一条是
+
+```
+ip saddr 100.64.0.0/10 iifname != "tailscale0" drop
+```
+
+阿里云的元数据（`100.100.100.200`）、内网 DNS（`100.100.2.136` / `100.100.2.138`）、云助手 agent
+全在 `100.100.0.0/16`，正好落在 `100.64.0.0/10` ��个 CGNAT 段里。于是它们的回包被当成“伪造的
+tailnet 源地址”丢掉：云助手掉线 → 控制台远程连接不可用。
+
+迷惑之处在于**只有内部服务受影响**：公网 SSH 照旧、出网 HTTP 照旧、DNS 因 systemd-resolved
+缓存命中也看不出问题。定位靠两个数字，不需要 tcpdump：
+
+```sh
+curl -s --max-time 5 -w ' [%{http_code}]\n' http://100.100.100.200/latest/meta-data/instance-id
+# 装之前 200；装之后 000
+sudo nft list chain ip filter ts-input | grep drop
+# counter 在持续上涨
+```
+
+修复是把这个自动管理关掉：
+
+```sh
+sudo tailscale set --netfilter-mode=off
+# Warning: netfilter=off; configure iptables yourself.
+```
+
+规则立即移除，元数据恢复 `[200]`，`iptables -S` 回到只剩默认策略。代价是 tailscale 不再替这台
+机器管防火墙：伪造源地址的入向包不再被丢，但它们要进 `tailscale0` 仍得通过 WireGuard 解密，
+公网暴露面由云安全组兑底。想保留其余规则的话，另一种写法是保持 `on` 并在 `INPUT` 顶部插一条
+`-s 100.100.0.0/16 -j ACCEPT` 加 `netfilter-persistent` 持久化——多一套机制，收益不大。
+
+配套两件事：
+
+1. **安全组**放行入向 `UDP 40000`。没放行时包到不了 `eth0`——可以不用 tcpdump，比对
+   `/proc/net/snmp` 里 `Udp: InDatagrams` 的计数即可：发包前后不涨就是没通。
+2. **ACL grant**（`grants` 数组，`src` 必须含发起方，否则分配不到 relay binding）：
+
+```json
+{
+  "src": ["100.125.255.124/32", "100.121.5.100/32", "100.79.18.17/32",
+          "100.65.139.110/32", "100.100.231.1/32", "100.77.166.83/32"],
+  "dst": ["100.87.214.67/32"],
+  "app": { "tailscale.com/cap/relay": [] }
+}
+```
+
+**`src` 不能写裸主机名**。写成 `"src": ["macbook-m3"]` 会被拒：
+`Error: src="macbook-m3": invalid address`——ACL 里用名字引用设备必须先在顶层 `hosts` 里
+定义别名，否则只认 IP/CIDR、`tag:`、`autogroup:`。
+
+### 结果（2026-10-29）
+
+改完后 `tailscale status` 里四台原本走 DERP 的节点全部切成 peer relay：
+
+```
+archlinux-macbook  active; peer-relay 47.112.x.x:40000:vni:1
+mac-mini-m4        active; peer-relay 47.112.x.x:40000:vni:2
+archlinux-macmini  active; peer-relay 47.112.x.x:40000:vni:3
+jwu-home-win11     active; peer-relay 47.112.x.x:40000:vni:4
+```
+
+`tailscale ping` 从 0.75–3.0s 降到 **52–76ms**（mac-mini-m4 60–76ms、archlinux-macmini
+53–57ms、jwu-home-win11 52–57ms）。`archlinux-com` 依旧直连，不受影响。
+
+### 排查时别被 `Hostinfo.PeerRelay` 骗了
+
+实测踩到：relay 已经生效、`tailscaled` 日志里已经在 `allocated endpoint vni=…`，但
+`tailscale debug netmap` 里 `SelfNode.Hostinfo.PeerRelay` 与对端看到的这个字段**都是空的**，
+`CollectServices` 也一直是 `false`。两者都不代表失败——判断标准只看 `tailscale status` 的连接
+类型和 `tailscale ping` 的 `via peer-relay`。
+
+真正能证明 relay server 在干活的是它自己的日志：
+
+```sh
+sudo journalctl -u tailscaled | grep relayserver
+# relayserver: listening on udp4:40000 sockets=2
+# relayserver: allocated endpoint vni=1 lamportID=1 disco[0]=d:… disco[1]=d:…
+```
+
+其中的 `disco[1]` 就是发起方节点的 disco key。
+
+代价与回滚：中继流量走 ECS 出网，按流量计费，且受它的带宽上限约束——SSH / Herdr 这种交互
+流量没问题，成 GB 的文件传输会既慢又贵。回滚只要 `sudo tailscale set --relay-server-port=""`
+并删掉那条 grant。
+
+### 如果 peer relay 不生效：自建 derper 的额外代价
+
+先说明它不是更好的方案，只是 peer relay 走不通时的备选：
+
+- **非 443 端口会降级成 HTTP**。`derper` 的 `-a` 说明写着「Serves HTTPS if the port is 443
+  and/or -certmode is manual」——想用 8443 绕开备案，就必须自己提供证书并走
+  `--certmode=manual --certdir=<dir>`，证书文件名是 `<hostname>.crt` / `<hostname>.key`。
+- **证书**：`--certmode=letsencrypt` 要 ACME 能访问 80 端口，大陆 ECS 对未备案域名会拦；
+  所以现实路径是 DNS-01 签好再喂给 manual 模式。
+- **没有官方二进制**，只能 `go install tailscale.com/cmd/derper@<tag>`；开
+  `--verify-clients` 时 derper 与旁边 tailscaled 必须同一 revision，否则拒连。
+- **不能反代、不能负载均衡**，DERP 在 TLS 内做协议切换；一个 region 放一个节点即可。
+- 机房里这台是 1:1 NAT，derper 能工作（源地址不被改写），但必须绑 `0.0.0.0` 而不是公网 IP。
 
 ## 踩过的坑
 
@@ -164,7 +304,7 @@ defaults write io.tailscale.ipn.macsys HideDockIcon -bool true
 
 ```
 # macbook-m3
-Host archlinux-com 100.121.5.100 10.30.40.109
+Host archlinux-com 100.121.5.100 10.30.40.x
     User jwu
     IdentityFile ~/.ssh/id_ed25519_jwu
 
