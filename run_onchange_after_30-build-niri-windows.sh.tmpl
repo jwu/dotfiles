@@ -18,6 +18,13 @@ set -uo pipefail
 echo "not Linux; skipping the niri-windows module"
 exit 0
 {{ end }}
+{{ if index . "headless" -}}
+# The module is a waybar CFFI plugin for niri; a headless box has neither, and
+# the rebuild would also clone the fork only to fail wnmw_missing_tools.
+# See docs/ecs.md.
+echo "headless; skipping the niri-windows module"
+exit 0
+{{ end }}
 SRC="{{ .chezmoi.sourceDir }}"
 
 if [ ! -f "$SRC/scripts/waybar-niri-windows.sh" ]; then

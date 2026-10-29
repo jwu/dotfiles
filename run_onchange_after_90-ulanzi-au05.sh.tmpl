@@ -13,6 +13,12 @@ set -uo pipefail
 
 SRC="{{ .chezmoi.sourceDir }}"
 
+{{ if index . "headless" -}}
+# The AU05 is a USB macro pad; no headless host has one, and the user service
+# needs a running user manager. See docs/ecs.md.
+echo "headless; skipping the AU05 keepalive"
+exit 0
+{{ end }}
 if ! command -v gcc &> /dev/null; then
   echo "gcc is missing; skipping the AU05 keepalive build (the device will keep reconnecting)." >&2
   exit 1

@@ -17,6 +17,13 @@ exit 0
 {{ end }}
 SRC="{{ .chezmoi.sourceDir }}"
 
+{{ if index . "headless" -}}
+# gpu-watch feeds waybar's GPU modules, and a headless box runs neither waybar
+# nor a session bus. Exit 0 rather than compile a binary nothing will call.
+# See docs/ecs.md.
+echo "headless; skipping gpu-watch"
+exit 0
+{{ end }}
 if ! command -v gcc &> /dev/null; then
   echo "gcc is missing; skipping the gpu-watch build (the waybar GPU modules will show 'off')." >&2
   exit 1

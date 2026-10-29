@@ -95,6 +95,42 @@ Library
 # Whole subtree: ignoring the files alone still makes chezmoi create the empty
 # parent directories. See docs/chezmoi-notes.md.
 .local
+{{- end }}
+
+{{ if index . "headless" -}}
+# A Linux box without a GUI reads none of the desktop targets either. `headless`
+# is opt-in per machine ([data] headless = true in chezmoi.toml) and a missing key
+# means a desktop, so the three GUI machines keep their exact target set. The
+# list mirrors the Linux-only block above, plus the GUI terminals and editors;
+# TUI programs (nvim, yazi, gitui, glow) stay. .local goes wholesale because
+# every script under ~/.local/bin here belongs to niri, Wayland or Chrome, and
+# .config/systemd holds only the Ulanzi unit. Keep the two lists in sync.
+# See docs/ecs.md.
+.config/autostart
+.config/chrome-flags.conf
+.config/chromium-flags.conf
+.config/environment.d
+.config/fcitx5
+.config/flameshot
+.config/fontconfig
+.config/gtk-4.0
+.config/ghostty
+.config/hypr
+.config/mimeapps.list
+.config/niri
+.config/niri-session-mng
+.config/satty
+.config/sunshine
+.config/swaylock
+.config/systemd
+.config/voxtype
+.config/waybar
+.config/wireplumber
+.config/xdg-desktop-portal
+.config/alacritty
+.config/neovide
+.config/zed
+.local
 {{ end }}
 
 # The Vulkan-vs-video workaround and its launcher only make sense on an
