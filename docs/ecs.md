@@ -45,6 +45,8 @@ headless = true
 | `fd` | `fd` | 包 `fd-find`，命令 `fdfind` |
 | `bat` | `bat` | 包 `bat`，命令 `batcat` |
 | delta | `git-delta` | `git-delta`（命令仍是 `delta`） |
+| yazi / gitui | 仓库包 | **没有包**，`cargo install yazi-fm yazi-cli gitui` |
+| glow | 仓库包 | `glow`（apt 有） |
 
 `dot_zshrc.tmpl` 直接调 `fd` 与 `bat`（`FZF_DEFAULT_COMMAND`、`FZF_CTRL_T_OPTS`、
 `MANPAGER`），而 `~/bin` 在 PATH 最前面：
@@ -59,6 +61,10 @@ ln -sf "$(command -v batcat)" ~/bin/bat
 
 `~/bin` 不在 chezmoi 的源里（源里只有 `dot_local/bin`，且 headless 下整块 `.local` 被排除），
 所以这些链接不会被 apply 回收。
+
+cargo / rustup 不需要这样嵌：`dot_zshrc.tmpl` 末段本来就有 `export PATH=~/.cargo/bin:$PATH`，
+而 rustup 用 `--no-modify-path` 安装，两边正好对上。代价是它们**只在交互式 zsh 里可见**：
+`ssh host 'cargo --version'` 拿到的是 `command not found`，因为非交互 shell 不读 `.zshrc`。
 
 ## 网络：哪些通、哪些不通
 
@@ -83,13 +89,17 @@ ln -sf "$(command -v batcat)" ~/bin/bat
 
   ```bash
   # dev machine (has GitHub access)
+  ver=$(gh release view --repo twpayne/chezmoi --json tagName -q .tagName)   # v2.73.3
   curl -fsSL -o /tmp/chezmoi_linux_amd64.tar.gz \
-    https://github.com/twpayne/chezmoi/releases/latest/download/chezmoi_linux_amd64.tar.gz
+    "https://github.com/twpayne/chezmoi/releases/download/$ver/chezmoi_${ver#v}_linux_amd64.tar.gz"
   scp /tmp/chezmoi_linux_amd64.tar.gz <host>:/tmp/
   # ECS
   tar -xzf /tmp/chezmoi_linux_amd64.tar.gz -C /tmp chezmoi
   install -m 0755 /tmp/chezmoi ~/.local/bin/chezmoi
   ```
+
+  注意 asset 名带版本号（`chezmoi_2.73.3_linux_amd64.tar.gz`），`releases/latest/download/...`
+  那种写法在这里既被墙、也会 404。
 
   `bootstrap/debian.sh` 认 `CHEZMOI_BIN=/tmp/chezmoi` 这个入口。
 - **`raw.githubusercontent.com` 上的安装脚本不能当作可靠依赖。** `run_once_before_10-shell-tools`
@@ -100,6 +110,31 @@ ln -sf "$(command -v batcat)" ~/bin/bat
   `codeload` 的源码构建。
 - **scrapling 会顺带下载 Chromium**（playwright 的 CDN），国内速度未知，第一次 apply 时留出
   时间；失败也不阻塞后面的脚本。
+
+## 首次安装用的镜像变量
+
+下面四个镜像**不进仓库**：另外三台机器不需要，硬编码进去反而会把它们的下载绕到国内。
+只在 ECS 的 shell 里 export（或写进本机 `~/.config/uv/uv.toml`），首次安装用一次；
+`run_onchange_` 的脚本内容不变就不会重跑，所以不需要常驻。
+
+| 工具 | 变量 / 文件 | 值 | 实测 |
+| --- | --- | --- | --- |
+| rustup | `RUSTUP_DIST_SERVER` | `https://mirrors.aliyun.com/rustup` | 官方源 30 分钟只下 33 MB，镜像 1.9 MB/s |
+| rustup | `RUSTUP_UPDATE_ROOT` | `https://mirrors.aliyun.com/rustup/rustup` | 同上 |
+| nvm 的 Node | `NVM_NODEJS_ORG_MIRROR` | `https://mirrors.aliyun.com/nodejs-release` | **不要带尾斜杠**，nvm 会再拼 `/`，双斜杠 404 |
+| uv / PyPI | `~/.config/uv/uv.toml` 的 `[[index]]` | `https://mirrors.aliyun.com/pypi/simple/` | 官方 PyPI 直连时 `uv tool install scrapling` 跑了 1h45m 未完成 |
+| playwright | `PLAYWRIGHT_DOWNLOAD_HOST` | `https://cdn.npmmirror.com/binaries/playwright` | 官方 CDN 15 分钟无字节，镜像 120 MiB 分钟级 |
+
+`uv.toml` 的形状：
+
+```toml
+[[index]]
+url = "https://mirrors.aliyun.com/pypi/simple/"
+default = true
+```
+
+PyPI 的**索引**不是瓶颈（三个源都是 0.2–1.1 s），慢的是包体下载与 playwright 的 Chromium，
+所以 uv 镜像的必要性要等真的卡住才看得出来。
 
 ## 接入顺序
 
@@ -130,13 +165,14 @@ chezmoi diff --include=files   # 必须为空
 
 | 脚本 | 在 ECS 上 |
 | --- | --- |
-| `10-shell-tools` | Oh My Zsh 走 `raw.githubusercontent.com`，可能失败；失败不阻塞 |
-| `12-dev-runtimes` | rustup / uv 通；nvm 的脚本同样走 raw；bun 装不了（见上） |
-| `13-scrapling` | 走 PyPI，通；Chromium 下载看运气 |
+| `10-shell-tools` | `raw.githubusercontent.com` 被重置时回退到 `git clone`（这次改造加的）；实测它曾把 `~/.oh-my-zsh/custom/` 当成「已安装」，现在看 `oh-my-zsh.sh` |
+| `12-dev-runtimes` | rustup 需要 `RUSTUP_DIST_SERVER`，Node 需要 `NVM_NODEJS_ORG_MIRROR`；bun 的二进制在 GitHub release 上，被 `timeout` 截断后按 optional 跳过 |
+| `13-scrapling` | 需要 uv 的 PyPI 镜像 **和** `PLAYWRIGHT_DOWNLOAD_HOST`，两者都上才跑通 |
 | `14-herdr` | 已装（herdr daemon 在这台机上跑着），`command -v herdr` 命中后跳过 |
 | `20` / `30` / `90` | headless 短路，`exit 0` |
 | `40-fcitx5` | 没装 fcitx5，脚本自己 `exit 0` |
 | `60-zed-cli` | 没有 zeditor，脚本自己 `exit 0` |
+| `50-pi-config` | npm 走 `registry.npmjs.org`（通），`~/bin/pi-config` 早已存在 |
 | `70-aerospace` / `80-inputsourcepro` | darwin 专属，Linux 上渲染为空 |
 
 失败的 `run_*` 会被记进 `scriptState` 且**不会重试**，修好后：

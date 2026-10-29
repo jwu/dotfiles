@@ -43,12 +43,16 @@ PACKAGES=(
   "jq"
   "unzip"
   "tmux"
+  "glow"
   # pi-webfetch's YouTube/Bilibili route; scrapling itself is per-user, see
   # run_onchange_before_13-scrapling.sh.tmpl and docs/pi-webfetch.md.
   "yt-dlp"
   # gcc keeps the run_* scripts that compile helpers from aborting an apply;
   # make is here for language toolchains installed later.
   "build-essential"
+  # yazi and gitui have no Debian package; the deployed configs sit unused until
+  # `cargo install yazi-fm yazi-cli gitui` runs (rust arrives via
+  # run_onchange_before_12-dev-runtimes.sh). See docs/ecs.md.
 )
 
 FAILED_STEPS=()
