@@ -39,6 +39,7 @@
 bootstrap/
 ├── arch.sh        Linux：装 chezmoi → clone 到 ~/bin/dotfiles → pacman/yay 装包（sudo）→ chezmoi init --apply
 ├── macos.sh       macOS：装 chezmoi → clone 到 ~/bin/dotfiles → brew 装包（无需 sudo）→ chezmoi init --apply
+├── debian.sh      Debian/Ubuntu：装 chezmoi → clone → apt 装终端包（sudo）→ chezmoi init --apply；`HEADLESS=1` 时写 `headless = true`
 └── windows.bat    Windows：装 chezmoi（winget→scoop）→ clone → scoop 装工具与字体 → 用户环境变量 → chezmoi init --apply
 ```
 
@@ -64,6 +65,13 @@ curl -fsSL https://raw.githubusercontent.com/jwu/dotfiles/main/bootstrap/windows
 
 macOS 那份的用法写 `bash -c` 而不是 `sh -c`：系统的 `/bin/sh` 是 POSIX 模式的 bash 3.2，
 不支持数组和 `local`，而脚本两者都用。同理它全文没有 bash 4 才有的 `&>` 重定向。
+
+`bootstrap/debian.sh` 是第四份，只装终端包：Debian 在这里是**无 GUI 的服务器**（阿里云
+ECS），桌面目标由 chezmoi.toml 里的 `[data] headless = true` 排除，而 `run_*` 里三个依赖
+waybar / niri / USB 设备的脚本在 headless 下短路。它与另外两份还有一处结构性差别：
+**Debian 没有 chezmoi 包，GitHub release 在这台机器上被墙**，所以它认 `CHEZMOI_BIN` 这个
+离线入口。实测数据、包名差异（`fdfind` / `batcat`）与逐条网络结论在
+[`ecs.md`](ecs.md)。
 
 `bootstrap/windows.bat` 是 Windows 对应物，起点是 `jwu/configs` 的
 「clone → `win/install.bat` → `win/config.bat` → 终端拉起 `init.bat`」。现在的分层完全不同：

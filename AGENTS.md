@@ -10,7 +10,7 @@
 - `README.md` —— 项目简介、快速上手与文档索引；给人读
 - `docs/design.md` —— 仓库的完整设计推导，**遇到结构性问题先读它**
 - `docs/onboarding-a-machine.md` —— 新机器接入说明，给那台机器上运行的 agent 读
-- `bootstrap/arch.sh`、`bootstrap/macos.sh`、`bootstrap/windows.bat` —— 装机入口，唯一需要 root 或终端的一层（Windows 那份两者都不需要）
+- `bootstrap/arch.sh`、`bootstrap/macos.sh`、`bootstrap/debian.sh`、`bootstrap/windows.bat` —— 装机入口，唯一需要 root 或终端的一层（Windows 那份两者都不需要）
 - `run_*.sh` —— chezmoi 在 apply 期间执行的动作脚本
 - `.chezmoiignore` —— 决定哪些源文件**不**落到 home 目录
 
@@ -41,6 +41,7 @@ dotfiles/
   ├── bootstrap/              # 装机入口：唯一需要 root / 终端的层
   │   ├── arch.sh
   │   ├── macos.sh
+  │   ├── debian.sh
   │   └── windows.bat
   ├── run_*.sh                # chezmoi 动作脚本，按前缀决定触发时机
   ├── scripts/                # run_* 的辅助文件与被编译的源码，不部署到 home 目录

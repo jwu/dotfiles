@@ -1,7 +1,8 @@
 # Dotfiles
 
-我的终端环境。一份 [chezmoi](https://www.chezmoi.io/) 源，描述三台机器——Arch Linux 的桌面
-工作站、macOS、Windows——`git pull` 之后一条 `chezmoi apply`，它们就变成这里描述的样子。
+我的终端环境。一份 [chezmoi](https://www.chezmoi.io/) 源，描述四台机器——Arch Linux 的桌面
+工作站、macOS、Windows、一台 Debian 云服务器——`git pull` 之后一条 `chezmoi apply`，
+它们就变成这里描述的样子。
 
 ## 配了什么
 
@@ -34,7 +35,13 @@
 - **编辑器**：Neovim + Neovide、Zed
 - **共用**：yazi、gitui、glow
 
-### 三台共用
+### Debian（阿里云 ECS）—— 只装终端层
+
+没有桌面，所以桌面配置一个都不落：`.chezmoiignore` 按 `headless` 开关排除 niri / waybar /
+fcitx5 / Ghostty / Alacritty，只留 zsh、starship、zoxide、fzf、Neovim、git、yazi、gitui、glow
+与 pi / herdr。细节见 [`docs/ecs.md`](docs/ecs.md)。
+
+### 四台共用
 
 pi 的 agent 配置（`agents` / `skills` / `prompts` / `themes` / 键位）、git 的公共设置
 （delta、OneHalfDark、`gh` 凭据助手）、FiraMono Nerd Font 与 One Dark 配色。
@@ -53,6 +60,9 @@ sh -c "$(curl -fsLS https://raw.githubusercontent.com/jwu/dotfiles/main/bootstra
 
 # macOS（Homebrew 要先装好）
 bash -c "$(curl -fsLS https://raw.githubusercontent.com/jwu/dotfiles/main/bootstrap/macos.sh)"
+
+# Debian / Ubuntu 服务器（无 GUI；桌面机不设 HEADLESS）
+HEADLESS=1 bash -c "$(curl -fsLS https://raw.githubusercontent.com/jwu/dotfiles/main/bootstrap/debian.sh)"
 ```
 
 ```bat
@@ -61,8 +71,7 @@ curl -fsSL https://raw.githubusercontent.com/jwu/dotfiles/main/bootstrap/windows
 "%TEMP%\dotfiles-bootstrap.bat"
 ```
 
-三个脚本做同一件事：装 chezmoi → clone 到 `~/bin/dotfiles`（Windows 是 `%USERPROFILE%\bin\dotfiles`）
-→ 写下 chezmoi 的 `sourceDir` → 装工具 → `chezmoi init --apply`。Windows 那份还负责三个用户级环境变量
+四个脚本做同一件事：装 chezmoi → clone 到 `~/bin/dotfiles`（Windows 是 `%USERPROFILE%\bin\dotfiles`）→ 写下 chezmoi 的 `sourceDir` → 装工具 → `chezmoi init --apply`。Windows 那份还负责三个用户级环境变量
 （Clink 由终端执行 `session.cmd` 注入，不写 cmd 的 AutoRun）。
 
 Linux 与 macOS 的 bootstrap 是各自平台上**唯一**需要 root 或终端的地方（`chsh` 走 PAM、
@@ -141,6 +150,7 @@ chezmoi 的源路径与目标路径不一定逐字对应：`dot_` 加前置点�
 
 - [`docs/design.md`](docs/design.md) — 仓库的设计推导与实施记录。遇到结构性问题先读它。
 - [`docs/onboarding-a-machine.md`](docs/onboarding-a-machine.md) — 在一台新机器上接入的完整流程，给那台机器上的 agent 读。
+- [`docs/ecs.md`](docs/ecs.md) — 阿里云 ECS（Debian 13，无 GUI）：`headless` 开关的形状、`fdfind` / `batcat` 命名差异、GitHub release 被墙时 chezmoi 怎么装、各脚本在无桌面机器上的行为。
 - [`docs/chezmoi-notes.md`](docs/chezmoi-notes.md) — chezmoi 的坑：目标路径匹配、双向排除、空父目录、目录权限、脚本记账，以及**home 目录里不纳入源的清单**。
 - [`docs/chezmoi-migration.md`](docs/chezmoi-migration.md) — chezmoi 方案成型之前的评估记录：边界划分、源目录布局、四处模板化。
 - [`docs/alacritty.md`](docs/alacritty.md) — Alacritty 与 Ghostty 的逐项对齐，以及 Wayland 下的窗口装饰。

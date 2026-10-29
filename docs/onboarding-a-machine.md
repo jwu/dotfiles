@@ -73,9 +73,12 @@ chezmoi diff --include=files      # 先看会改什么
 ## 3. 步骤
 
 > **捷径**：全新机器不用照下面手工来，直接跑 `bootstrap/arch.sh` / `bootstrap/macos.sh` /
-> `bootstrap/windows.bat`。它们已经把 §3.1–3.3 与装包做完了。但**§3.4 的比对与 §3.6 的验证
+> `bootstrap/debian.sh` / `bootstrap/windows.bat`。它们已经把 §3.1–3.3 与装包做完了。但**§3.4 的比对与 §3.6 的验证
 > 仍要自己做**——那才是这个任务的核心，bootstrap 不替你做。下面保留手工步骤，用于排查
 > bootstrap 到底干了什么，或者它的步骤不适合这台机器时。
+>
+> Debian 服务器（无 GUI）多一层主机开关，见 [`ecs.md`](ecs.md)：`[data] headless = true`
+> 会让桌面目标不进 home 目录，三台 GUI 机器不受影响。
 
 ### 3.1 安装 chezmoi
 
