@@ -3,6 +3,7 @@
     "blender": {
       "command": "uvx",
       "args": ["blender-mcp"],
+      "enabled": false,
       "exposure": "codemode",
       "description": "Blender 3D: scene objects, materials, rendering, animation, and addon status checks."
     },
@@ -14,8 +15,9 @@
         "--wsEndpoint",
         "ws://127.0.0.1:9222/devtools/browser/pi-agent"
       ],
+      "enabled": false,
       "exposure": "codemode",
-      "description": "Control an attached Chrome browser: navigate pages, inspect DOM, analyze network and performance."
+      "description": "Control an attached Chrome browser: navigate pages, inspect DOM, analyze network and performance. Disabled by default; enable from /mcp when a task needs a real Chrome."
     },
     "chrome-devtools-alt": {
       "command": "npx",
@@ -41,7 +43,8 @@
         "-y",
         "rea-agents@latest",
         "mcp"
-      ]
+      ],
+      "enabled": false
     }
   }
 }

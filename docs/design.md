@@ -937,7 +937,7 @@ home 目录文件，所以那几份文件原样留在家中，只是不再由 ch
 | 源 | 目标 | 说明 |
 | --- | --- | --- |
 | `private_dot_pi/private_agent/create_settings.json.tmpl` | `~/.pi/agent/settings.json` | `extensions` 按 `.chezmoi.os` 分支 |
-| `private_dot_pi/private_agent/create_mcp.json` | `~/.pi/agent/mcp.json` | 内置 MCP 的 server 定义。取本机现状：chrome-devtools 用 `--wsEndpoint ws://127.0.0.1:9222/devtools/browser/pi-agent`，另有 `enabled: false` 的 `chrome-devtools-alt` 作 `--autoConnect` fallback |
+| `private_dot_pi/private_agent/create_mcp.json` | `~/.pi/agent/mcp.json` | 内置 MCP 的 server 定义。取本机现状：chrome-devtools 用 `--wsEndpoint ws://127.0.0.1:9222/devtools/browser/pi-agent`；`blender` / `chrome-devtools` / `chrome-devtools-alt` / `rea` 全部 `enabled: false`，需要时从 `/mcp` 启用。每个启用的 server 在**每个会话**里都常驻一份，实测 rea 410M、chrome-devtools 250M、blender 100M，pi 本体 250M——多开几个会话就是几 G。`chrome-devtools-alt` 是 `--autoConnect` fallback，需要终端拿 Full Disk Access |
 
 `create_` 只在目标不存在时写一次，于是：
 
