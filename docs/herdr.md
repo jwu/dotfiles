@@ -87,6 +87,9 @@ chezmoi 托管同名文件只会和上游版本打架。改为由 `run_after_52-
 dot_config/herdr/config.toml
   → ~/.config/herdr/config.toml                        (三平台)
 
+dot_config/herdr/themes/one-dark
+  → ~/.config/herdr/themes/one-dark                    (Linux / macOS)
+
 dot_config/herdr/private_config-gpui.local.toml.tmpl
   → ~/.config/herdr/config-gpui.local.toml             (Linux / macOS)
 
@@ -117,6 +120,29 @@ daemon 的 `config.toml` 全平台托管在 `~/.config/herdr/`。Herdr UI 的 ov
 macOS 那套沿用这台 Mac 的 Ghostty：`font-size = 16`、中文回退 `PingFang SC`（见 `dot_config/ghostty/config`）。
 
 字体键的可用性是 GPUI 的，macOS 与 Linux 一样；下面的实测数值来自 Linux 那台。
+
+## 主题：为什么 Herdr 里要自带一份
+
+Herdr 内置的 `Atom One Dark` 主题，终端背景是 `#21252b`（从 Herdr 0.9.5 二进制里的主题定义读出，
+与 Ghostty 的 `Atom One Dark` 同名同色）。pi 的自定义主题 `one-dark` 里 `toolSuccessBg = bg_d =
+#21252b`，于是工具执行块的背景与 Herdr 的终端背景逐字节相同、看上去像是丢了背景。
+
+Ghostty 那边背景是 `#282c34`（`dot_config/ghostty/config` 覆盖了 `One Half Dark` 的底），所以同
+一个 pi 主题在 Ghostty 里工具块有可见底色。差异来自终端，不在 pi。
+
+因此 herdr 侧自带一份主题 `dot_config/herdr/themes/one-dark`：
+
+- 格式是 Ghostty 主题格式（`background` / `foreground` / `cursor-*` / `selection-*` /
+  `palette = N=#...`），没有 Herdr 私有字段
+- 取值抄 Ghostty 实际生效的那套：`One Half Dark` + `dot_config/ghostty/config` 里的 OneDark 覆盖，
+  `background = #282c34`
+- 配置里写 `~/` 路径而不是主题名。文档只保证「Ghostty theme name、绝对路径、`~/` 路径」三种写法，
+  没有写明 `herdr/themes` 搜索目录究竟落在 `$XDG_CONFIG_HOME` 还是 `$XDG_DATA_HOME`，用路径无歧义
+
+改主题颜色时 Herdr UI 会热重载 `config-gpui.local.toml`，不需要重启；pi 的工具块颜色不用动。
+
+Windows 那份 `config-gpui.local.toml` 尚未同步这套主题：Herdr 在 Windows 上是否把 `~/` 展成
+`%USERPROFILE%`、主题文件该放哪里，都没有实机验证过，暂时保留内置的 `Atom One Dark`。
 
 ## Shift+Enter：为什么要取消默认的 `[pane_keys]`
 
