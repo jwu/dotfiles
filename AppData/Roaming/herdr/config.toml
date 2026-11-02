@@ -1,0 +1,13 @@
+onboarding = false
+
+[theme]
+name = "one-dark"
+auto_switch = false
+
+# Windows: over SSH/ConPTY, Ctrl+C never reaches a pwsh pane as a signal, so
+# stop the pane's child process tree through the API instead.
+[[keys.command]]
+key = "prefix+shift+c"
+type = "shell"
+command = 'powershell -NoProfile -ExecutionPolicy Bypass -File %APPDATA%\herdr\stop-pane.ps1 -PaneId %HERDR_ACTIVE_PANE_ID% >> %TEMP%\herdr-stop.log 2>&1'
+description = "stop the focused pane's running command"

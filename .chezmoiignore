@@ -43,12 +43,14 @@ Library
 # zed). Their Windows paths live under AppData/.
 # starship is the exception: it reads ~/.config/starship.toml on Windows too, so
 # dot_config/starship.toml.tmpl stays one target for all three platforms.
-# Herdr is a split case: the daemon's config.toml stays in ~/.config/herdr on every
-# platform, but Herdr UI reads its overrides from %APPDATA%\herdr on Windows.
+# Herdr is a split case: on Windows the daemon reads %APPDATA%\herdr\config.toml
+# and Herdr UI reads its overrides from %APPDATA%\herdr; elsewhere both live under
+# ~/.config/herdr.
 {{ if eq .chezmoi.os "windows" }}
 .zshrc
 .config/alacritty
 .config/herdr/config-gpui.local.toml
+.config/herdr/config.toml
 .config/ghostty
 .config/gitui
 .config/glow

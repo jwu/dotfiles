@@ -61,17 +61,19 @@ chezmoi 托管同名文件只会和上游版本打架。改为由 `run_after_52-
 
 ## 配置文件
 
-`~/.config/herdr/` 下只有两个文件该进版本控制：
+两个程序的配置各管一处：
 
-| 文件 | 权限 | 谁写 |
-| --- | --- | --- |
-| `config.toml` | 0644 | daemon：`herdr config reset-keys`、Settings 面板 |
-| `config-gpui.local.toml` | 0600 | GUI：Settings 保存时自动写，保存即热重载 |
+| 文件 | 权限 | 位置 | 谁写 |
+| --- | --- | --- | --- |
+| `config.toml` | 0644 | Unix `~/.config/herdr/`；Windows `%APPDATA%\herdr\` | daemon：`herdr config reset-keys`、Settings 面板 |
+| `config-gpui.local.toml` | 0600 | Unix `~/.config/herdr/`；Windows `%APPDATA%\herdr\` | GUI：Settings 保存时自动写，保存即热重载 |
 
-`~/.config/herdr/` 这个路径对 daemon 三平台都成立，Herdr UI 不是：Windows 上它把托管默认值刷进
+**daemon 的路径也分平台**：`src/config/io.rs` 的 `platform_config_dir()` 在 Windows 用
+`APPDATA`，所以 `~/.config/herdr/config.toml` 在 Windows 上没人读。这条是实测出来的——先把
+键位写进 `~/.config/herdr/config.toml`，`herdr config check` 照样通过，但按键不生效；改到
+`%APPDATA%\herdr\config.toml` 后重载 client 才起作用。GUI 同理：Windows 上它把托管默认值刷进
 `%APPDATA%\herdr\config-gpui.toml`，overrides 也读 `%APPDATA%\herdr\config-gpui.local.toml`。
-实测本机 `%APPDATA%\herdr\` 里有 73 KB 的 `config-gpui.toml`、`.local.toml` 与两个 `.lock`，
-而 `~/.config/herdr/` 那份 overrides 在 Windows 上根本不被读。
+实测本机 `%APPDATA%\herdr\` 里有 73 KB 的 `config-gpui.toml`、`.local.toml` 与两个 `.lock`。
 
 其余全是运行时产物：
 
@@ -85,7 +87,13 @@ chezmoi 托管同名文件只会和上游版本打架。改为由 `run_after_52-
 
 ```
 dot_config/herdr/config.toml
-  → ~/.config/herdr/config.toml                        (三平台)
+  → ~/.config/herdr/config.toml                        (Linux / macOS)
+
+AppData/Roaming/herdr/config.toml
+  → %APPDATA%\herdr\config.toml                        (仅 Windows)
+
+AppData/Roaming/herdr/stop-pane.ps1
+  → %APPDATA%\herdr\stop-pane.ps1                      (仅 Windows)
 
 dot_config/herdr/themes/one-dark
   → ~/.config/herdr/themes/one-dark                    (Linux / macOS)
@@ -99,13 +107,49 @@ AppData/Roaming/herdr/private_config-gpui.local.toml
 
 `config-gpui.local.toml` 在原机上是 0600，所以带 `private_` 前缀。
 
+## Windows：Ctrl+C 停不掉 pane 里的服务
+
+Windows 上 pane 的 shell 是 pwsh、机器又是通过 `sshd` 连进来时（`sshd → pwsh → herdr`），
+Ctrl+C 停不掉 `npm run dev` 这类前台服务。实测 0.9.5：
+
+- 按 Ctrl+C，pane 里只出现字母 `c`。vite 的 `c` 是「清屏」快捷键，于是服务继续跑、屏幕被清空。
+- `herdr pane send-keys <pane> ctrl+c` 写裸 `0x03`，同样无效；pwsh 里的 `ping.exe` 照跑。
+- 同样的 `0x03` 写进 Git Bash（MSYS）pane 能中断原生子进程（`ping.exe` 打印 `Control-C` 退出），
+  但那是 MSYS 自己把 `0x03` 转成了 SIGINT，与 pwsh 无关。
+
+根因分两层：
+
+1. SSH/ConPTY 把 Ctrl+C 作为裸字节 `0x03` 注入，ConPTY 合成出的 `KEY_EVENT_RECORD` 没有 Ctrl
+   修饰位。Herdr 的 `translate_semantic_key_event`（`src/client/input/windows_vti.rs`）先过滤
+   控制字符，再回退到 `windows_virtual_key_to_char_code`，`vk + 32` 得到 `Char('c')`。所以键
+   绑定 `key = "ctrl+c"` 也匹配不到——它拿到的是无修饰的 `c`。
+2. pwsh 的 ConPTY 不把 `0x03` 变成 `CTRL_C_EVENT`，所以往 PTY 里写控制字节也不会中断前台进程。
+
+结论：这条链路上没有「发一个信号」的配置解。可用的办法是按 pane 的 `shell_pid` 杀子进程树：
+
+```toml
+# %APPDATA%\herdr\config.toml
+[[keys.command]]
+key = "prefix+shift+c"
+type = "shell"
+command = 'powershell -NoProfile -ExecutionPolicy Bypass -File %APPDATA%\herdr\stop-pane.ps1 -PaneId %HERDR_ACTIVE_PANE_ID% >> %TEMP%\herdr-stop.log 2>&1'
+```
+
+`stop-pane.ps1` 用 `herdr pane process-info` 拿 `shell_pid`，再对它的直接子进程 `taskkill /F /T`。
+验证：在跑服务的 pane 按 `ctrl+b` 然后 `Shift+C`，`netstat -ano | findstr :5173` 应为空；
+失败看 `%TEMP%\herdr-stop.log`。
+
+注意这是「杀进程树」，不是优雅中断（vite 不会打印汇总）；在 pi 的 pane 里按会打断它正在跑的
+命令，所以只在服务 pane 里按。
+
 `~/.agents/skills/herdr-gpui-browser/SKILL.md` 也不托管：文件头带 `herdr-gpui-managed-skill` 标记，Herdr UI 会自己刷新它，纳进来只会制造 diff。
 
 ## 平台分派
 
-daemon 的 `config.toml` 全平台托管在 `~/.config/herdr/`。Herdr UI 的 overrides 在 Windows 上落在
-`%APPDATA%\herdr\`，所以源有两份：`.chezmoiignore` 让 `~/.config/herdr/config-gpui.local.toml`
-只在非 Windows 生效，Windows 那份是 `AppData/Roaming/herdr/private_config-gpui.local.toml`。
+daemon 和 Herdr UI 的配置都要分平台：`.chezmoiignore` 在 Windows 上排除
+`~/.config/herdr/config.toml` 与 `~/.config/herdr/config-gpui.local.toml`，Windows 的两份在
+`AppData/Roaming/herdr/`（`config.toml`、`private_config-gpui.local.toml`，再加
+`stop-pane.ps1`）。
 
 字体值三家都不同：Linux 那台对齐的是 Ghostty，macOS 跟系统字体，Windows 只收了 Herdr UI 首次
 启动时自己写下的值（没有第二个 Windows 参照物，没做过对齐实测）。于是 Unix 那份是模板，按
