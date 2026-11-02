@@ -7,7 +7,7 @@
 # New installs start with the roomy rounded sidebar. Remove this line for
 # the managed default, or pick another layout listed in config-gpui.toml.
 layout = "comfortable-rounded"
-theme = "Atom One Dark"
+theme = "Follow Herdr"
 status_icons = "braille"
 
 # Herdr UI rewrites Shift-Enter to Alt-Enter for every pane by default (PR #518).

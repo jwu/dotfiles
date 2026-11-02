@@ -185,8 +185,18 @@ Ghostty 那边背景是 `#282c34`（`dot_config/ghostty/config` 覆盖了 `One H
 
 改主题颜色时 Herdr UI 会热重载 `config-gpui.local.toml`，不需要重启；pi 的工具块颜色不用动。
 
-Windows 那份 `config-gpui.local.toml` 尚未同步这套主题：Herdr 在 Windows 上是否把 `~/` 展成
-`%USERPROFILE%`、主题文件该放哪里，都没有实机验证过，暂时保留内置的 `Atom One Dark`。
+Windows 走另一条路。Herdr UI 在 Windows 上把主题设成只读（Settings 里只给 This app /
+Follow Herdr，提示原文是 “Herdr's themes are read-only on this platform”），不加载外部主题文件，
+所以 `dot_config/herdr/themes/one-dark` 在 Windows 上是死文件。改用：
+
+```toml
+# AppData/Roaming/herdr/private_config-gpui.local.toml
+theme = "Follow Herdr"
+```
+
+跟随 daemon 的内置 `one-dark`。它的 `panel_bg` 是 `#282c34`（`src/app/state.rs` 的
+`one_dark()`），和 Ghostty 一致，pi 的 `toolSuccessBg = #21252b` 仍然可见。daemon 侧只需
+`%APPDATA%\herdr\config.toml` 里保留 `[theme] name = "one-dark"`，不需要自定义主题文件。
 
 ## Shift+Enter：为什么要取消默认的 `[pane_keys]`
 

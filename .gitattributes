@@ -17,3 +17,8 @@ private_dot_pi/private_agent/**/*.md text eol=lf
 # LF works there.
 AppData/Local/clink/*.lua text eol=lf
 AppData/Local/clink/clink_settings text eol=lf
+
+# Herdr's Windows-only files are read by herdr and powershell, which accept LF;
+# autocrlf would flip the worktree to CRLF on every checkout and make chezmoi
+# rewrite them unchanged, the same trap as the clink files above.
+AppData/Roaming/herdr/* text eol=lf
