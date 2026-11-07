@@ -223,7 +223,7 @@ install_packages() {
   return 1
 }
 
-# yay: the AUR helper used for xwayland-satellite-git. yay-bin ships a prebuilt
+# yay: the AUR helper used by the AUR steps below. yay-bin ships a prebuilt
 # x86_64 binary, so bootstrapping the helper needs no Go/Rust toolchain and no
 # long compile. This has to run before install_xwayland_satellite(), which skips
 # itself when no helper is on PATH.
@@ -276,6 +276,21 @@ install_xwayland_satellite() {
     sudo pacman -R --noconfirm "$XWS_PKG" || return 1
   fi
   yay -S --needed --noconfirm "$XWS_AUR_PKG" || return 1
+}
+
+# Review-first diff viewer. Only the AUR carries it on Arch: `hunk-bin` is the
+# upstream prebuilt release, while `hunk` is a source build that needs bun from
+# the per-user dev runtimes. See https://hunk.dev.
+install_hunk() {
+  if command -v hunk &> /dev/null; then
+    echo "    Already installed: $(hunk --version 2> /dev/null | head -1)"
+    return 0
+  fi
+  if ! command -v yay &> /dev/null; then
+    echo "    yay is required for hunk-bin; skipping" >&2
+    return 1
+  fi
+  yay -S --needed --noconfirm hunk-bin || return 1
 }
 
 # Herdr UI, the native GPUI client for the herdr daemon. Upstream ships no
@@ -506,8 +521,9 @@ step_required "configure chezmoi sourceDir" write_chezmoi_config
 
 step "pacman packages" install_packages
 step "tailscale service (Tailscale SSH kept off)" install_tailscale
-step "yay (AUR helper for xwayland-satellite-git)" ensure_yay
+step "yay (AUR helper)" ensure_yay
 step "xwayland-satellite-git (AUR)" install_xwayland_satellite
+step "hunk (AUR)" install_hunk
 step "Herdr UI (native client for herdr)" install_herdr_ui
 step "default shell (zsh)" set_default_shell
 step "TTY font (vconsole)" set_tty_font

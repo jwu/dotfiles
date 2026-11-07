@@ -34,6 +34,9 @@ PACKAGES=(
   "fd"
   "bat"
   "git-delta"
+  # Review-first diff viewer. Packaged for all three platforms here, so it needs
+  # no per-user installer; see https://hunk.dev.
+  "hunk"
   "jq"
   "just"
   "cocogitto"
