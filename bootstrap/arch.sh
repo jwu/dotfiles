@@ -374,6 +374,15 @@ install_apple_suspend_fix() {
   sudo "$SRC_DIR/scripts/apple-macbook-suspend-fix.sh"
 }
 
+# applespi can come out of resume parsing the multitouch-init reply as touchpad
+# data, after which it drops every packet as corrupted and the touchpad stays
+# dead until the driver is re-probed. This installs a systemd-sleep hook that
+# rebinds it after resume (plus the `applespi-reset` helper for manual use).
+# Skipped when applespi is not loaded. See docs/suspend.md.
+install_applespi_resume_fix() {
+  sudo "$SRC_DIR/scripts/applespi-resume-fix.sh"
+}
+
 # mihomo ships as an AUR package, but two things around it are local policy: the
 # loopback-only controller and the overlay that re-pins what the subscription may
 # not change. The web panel is not ours to deploy -- mihomo downloads it itself
@@ -530,6 +539,7 @@ step "TTY font (vconsole)" set_tty_font
 step "drivetemp module" load_drivetemp
 step "passwordless sudo window for unattended tooling" install_sudo_window
 step "Alpine Ridge fix + lid lock (T1 MacBook Pro)" install_apple_suspend_fix
+step "applespi resume hook (Apple SPI touchpad)" install_applespi_resume_fix
 step "mihomo (kernel + geodata)" install_mihomo
 step "mihomo service overrides" install_mihomo_overlay
 step "enable mihomo" enable_mihomo

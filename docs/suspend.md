@@ -67,6 +67,31 @@ $ cat /sys/bus/pci/devices/0000:01:00.0/d3cold_allowed
 Omarchy 的 20 秒 lid-suspend 延迟（S3 resume ~7s，快速合盖再打开会睡在盖子已开的
 状态）没有搬过来，见下面「遗留」。
 
+## 恢复后触控板失效（applespi）
+
+另一条由唤醒触发、但和 Alpine Ridge 无关的问题：内置触控板在恢复后失效——指针不动，
+光标也不出现（niri 的 `hide-after-inactive-ms` 让看不见的指针更像个死掉的鼠标）。
+2026-11-08 那次就是这样，触控板一直坏到手动重绑驱动。
+
+- **症状**：`journalctl -k` 在恢复后开始刷
+  `applespi spi-APP000D:00: Received corrupted packet (invalid message length 8 -
+  num-fingers 0, tp-len 48)`。此时 `fuser /dev/input/event10` 显示 niri 抓着设备、
+  niri 自己一条错都不报——所以很容易误判成 niri 的输入配置问题。
+- **不是 SPI 读坏了**：`drivers/input/keyboard/applespi.c` 里这条告警在
+  `applespi_verify_crc()` **通过之后**才报，是包里的 `length` 与
+  `number_of_fingers` 对不上。`applespi_resume()` 只重开 SPI、重发
+  `want_mt_init_cmd`；初始化应答与数据包一旦交错，后续每个包都进不了
+  `PACKET_DEV_TPAD` 分支的校验，全部被丢弃直到重新 probe。
+- **恢复**：`sudo applespi-reset`（unbind + bind，重新 probe，状态机归零）。不要用
+  `modprobe -r applespi`——niri 抓着设备时它返回 `-EBUSY`。
+- **预防**：`scripts/applespi-resume-fix.sh` 装 `/usr/local/bin/applespi-reset` 与
+  `/usr/lib/systemd/system-sleep/applespi-reset`：恢复后等 2 秒再自动重绑。延时是故意的
+  ——重绑会让内置键盘闪断一下，锁屏界面上丢掉前几次按键比多看两秒触控板更糟。
+
+顺带排除的两条假线索：`/sys/module/applespi/parameters/touchpad_dimensions` 显示
+`-6243x-170+12992+7855` 是**正常的**（`applespi_tp_models` 表给 MB14,2 的坐标原点本来就是
+负的）；当时并发编译造成的 `kswapd0: page allocation failure` 也与此无关。
+
 ## 实测（2026-09-29）：挂死修好了，自动唤醒没修好
 
 八次手动挂起（`systemctl suspend` / `rtcwake -m mem`）实测：
@@ -193,7 +218,9 @@ hibernate 恢复会**把系统时间还原**成休眠前的值，所以「命令
 | --- | --- |
 | `scripts/apple-macbook-suspend-fix.sh` | root 安装器：DMI 判 `MacBookPro13,[123]` / `MacBookPro14,[123]`，装 udev 规则与 service，改 GRUB 参数 |
 | `scripts/apple-alpine-ridge-wakeup.sh` | 部署到 `/usr/local/bin/apple-alpine-ridge-wakeup`，boot oneshot 的实际动作 |
-| `bootstrap/arch.sh` | `install_apple_suspend_fix` step：sudo 调用安装器 |
+| `scripts/applespi-resume-fix.sh` | root 安装器：装 `applespi-reset` 与 systemd-sleep post hook |
+| `scripts/applespi-reset.sh` | 部署到 `/usr/local/bin/applespi-reset`，重绑 SPI 驱动 |
+| `bootstrap/arch.sh` | `install_apple_suspend_fix` / `install_applespi_resume_fix` step：sudo 调用两个安装器 |
 
 非 MacBook 的机器上安装器直接 `exit 0`（DMI 不匹配），所以 mac mini 跑同一份
 bootstrap 不会受影响。
