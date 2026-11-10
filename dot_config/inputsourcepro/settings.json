@@ -90,7 +90,7 @@
       "url" : "file:///Applications/Ghostty.app/"
     },
     {
-      "bundleId" : "so.pen.herdr-gpui",
+      "bundleId" : "dev.herdr.app",
       "bundleName" : "Herdr",
       "createdAt" : "2026-10-28T02:17:58Z",
       "doNotRestoreKeyboard" : false,

@@ -47,9 +47,7 @@ call :DO "rustup + stable toolchain" :DEV_RUSTUP
 call :DO "user environment variables" :WRITE_ENV
 call :DO "clink: register clink-completions" :CLINK_SCRIPTS
 call :DO "pi-config checkout" :ENSURE_PI_CONFIG
-call :DO "Herdr daemon (upstream installer)" :HERDR_DAEMON
 call :DO "Herdr app (upstream installer)" :HERDR_APP
-call :DO "Sheprd (upstream installer)" :SHEPRD
 call :DO "tailscale (only the client; joining stays manual)" :INSTALL_TAILSCALE
 
 call :REQUIRE "chezmoi init --apply" :CHEZMOI_APPLY || goto :ABORT
@@ -174,41 +172,16 @@ git clone "%REPO_HTTPS%" "%SRC_DIR%"
 if errorlevel 1 exit /b 1
 exit /b 0
 
-:HERDR_DAEMON
-:: Upstream's own per-user installer: it downloads the stable release into
-:: %LOCALAPPDATA% and appends that directory to the user PATH. No elevation.
-:: herdr update is the upgrade path once it is there. See docs/herdr.md.
-where herdr >nul 2>&1
-if not errorlevel 1 (
-  echo     herdr is already installed; upgrades come from 'herdr update'
-  exit /b 0
-)
-powershell -ExecutionPolicy Bypass -c "irm https://herdr.dev/install.ps1 ^| iex"
-exit /b %errorlevel%
-
 :HERDR_APP
-:: Herdr app is the newer window on herdr-core, a separate program from the
-:: herdr TUI daemon above. Upstream's own per-user installer puts it under
-:: %LOCALAPPDATA%\Programs\herdr-app and adds that to the user PATH. No
-:: elevation. Its in-app updater is the upgrade path once it is there.
-:: See docs/herdr.md.
+:: Herdr app is the newer window on herdr-core. Upstream's own per-user
+:: installer puts it under %LOCALAPPDATA%\Programs\herdr-app and adds that to
+:: the user PATH. No elevation. Its in-app updater is the upgrade path once it
+:: is there. See docs/herdr.md.
 if exist "%LOCALAPPDATA%\Programs\herdr-app\herdr-app.exe" (
   echo     Herdr app is already installed; updates come from its own updater
   exit /b 0
 )
 powershell -ExecutionPolicy Bypass -c "irm https://releases.herdr.dev/app/install.ps1 ^| iex"
-exit /b %errorlevel%
-
-:SHEPRD
-:: Sheprd (formerly Herdr UI / herdr-gpui) is the native client that draws the
-:: herdr daemon's panes. Its upstream script installs into
-:: %LOCALAPPDATA%\Programs\Herdr UI (the folder name did not change with the
-:: rename), per-user and without elevation. See docs/herdr.md.
-if exist "%LOCALAPPDATA%\Programs\Herdr UI\sheprd.exe" (
-  echo     Sheprd is already installed; updates come from its own updater
-  exit /b 0
-)
-powershell -ExecutionPolicy Bypass -c "irm https://sheprd.org/install.ps1 ^| iex"
 exit /b %errorlevel%
 
 :INSTALL_TAILSCALE

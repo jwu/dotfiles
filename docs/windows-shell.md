@@ -211,26 +211,16 @@ profile 复刻了：
 - **cmd 方言**。`%VAR%`、`&` 串联、`dir /b`、`set`、`.bat` 脚本在 pwsh 里全是另一套语法，
   这也是「默认不动」的主要理由。
 
-Sheprd 不走 `launch_menu`：它的 pane 默认就是 pwsh（本机 `herdr pane list` 的
-`terminal_title` 就是 `C:\Program Files\PowerShell\7\pwsh.exe`），也没有选 shell 的配置键——
-`config-gpui.toml` 的 `[terminal]` 段只有字体、行高、字重、padding，daemon 侧同样没有。
-所以 wezterm / alacritty 是 cmd + Clink，Sheprd 是 pwsh + 这份 profile，两边并存。
+有些 GUI 客户端的 pane 直接起系统里的 pwsh，不走 `launch_menu`，也没有选 shell 的配置键。
+所以 wezterm / alacritty 自己是 cmd + Clink，那些 pane 里是 pwsh + 这份 profile，两边并存。
 
 本机曾有两份 pwsh：32 位的 `PowerShell 7-x86` 7.4.2 在 `Program Files (x86)`，64 位的
-7.6.7 在 `Program Files`，而 PATH 先命中 32 位那份——Sheprd 的 pane 起的就是它。
+7.6.7 在 `Program Files`，而 PATH 先命中 32 位那份——那些 pane 起的就是它。
 32 位那份已于 2026-10-25 用 `msiexec /x {60C67960-C617-4FBA-B42A-E90597E0EE79}` 卸载，
 `where pwsh` 现在只剩一条。装第二份时留意这个先后顺序。
 
-Herdr 的 pane 在 Windows 上**换不了 shell**（下面这几条 0.9.5 实测）：
-
-- `[terminal] default_shell` 是官方键，但把它写成 `"cmd.exe"` 或绝对路径
-  `"C:/Windows/System32/cmd.exe"` 都不生效，新 pane 的 `terminal_title` 仍是 `pwsh.exe`；
-  重启一个独立命名 session 的 server 也一样。而且文档写明它是 *"an executable name or
-  path, not a shell command line"*，即使生效也给不了 `cmd /s /k session.cmd` 的参数。
-- `herdr pane split` 没有 `--shell` / `--command`；`herdr config check` 也不校验未知键。
-
-Clink 那套能在 Herdr 里跑，但入口只能是一个命令。实测：把 AutoRun 写成
-`call "%LOCALAPPDATA%\clink\session.cmd"`，在 Herdr 的 ConPTY pane 里敲 `cmd`，提示符就是
+Clink 那套在 GUI 终端的 ConPTY pane 里也能跑，但入口只能是一个命令。实测：把 AutoRun 写成
+`call "%LOCALAPPDATA%\clink\session.cmd"`，在那样的 pane 里敲 `cmd`，提示符就是
 starship，`ver` 与 `echo %COMSPEC%` 都落在 cmd 里，`clink info` 显示已注入、console codepage
 65001。这修正了上文「AutoRun 已弃用」的结论：失效的是 `clink.bat inject --autorun`
 （Clink 内部注入，`os.setenv` 不落 cmd 环境块），而 `call session.cmd` 是 cmd 自己执行脚本，

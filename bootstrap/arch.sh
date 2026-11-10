@@ -293,22 +293,6 @@ install_hunk() {
   yay -S --needed --noconfirm hunk-bin || return 1
 }
 
-# Sheprd (formerly Herdr UI / herdr-gpui), the native GPUI client for the herdr
-# daemon. Upstream ships no pacman package: its installer picks the Arch package
-# for this architecture, checks it against the release's published SHA-256, and
-# installs it with sudo, so it cannot live in a run_ script. The installed
-# package is still named herdr-gpui and provides both `sheprd` and
-# `/usr/bin/herdr-gpui`. Updates afterwards come from the app's own updater,
-# which drives pacman through PolicyKit. The daemon itself is root-free and
-# installed by run_onchange_before_14-herdr.sh.tmpl; see docs/herdr.md.
-install_sheprd() {
-  if command -v sheprd &> /dev/null; then
-    echo "    Already installed: $(command -v sheprd)"
-    return 0
-  fi
-  sh -c "$(curl -fsSL https://sheprd.org/install.sh)" || return 1
-}
-
 # chsh rejects an empty -s argument with "shell must be a full path name", which
 # says nothing about the real cause: zsh was never installed because the pacman
 # step above failed. It also asks for the user's own password via PAM, which is
@@ -534,7 +518,6 @@ step "tailscale service (Tailscale SSH kept off)" install_tailscale
 step "yay (AUR helper)" ensure_yay
 step "xwayland-satellite-git (AUR)" install_xwayland_satellite
 step "hunk (AUR)" install_hunk
-step "Sheprd (native client for herdr)" install_sheprd
 step "default shell (zsh)" set_default_shell
 step "TTY font (vconsole)" set_tty_font
 step "drivetemp module" load_drivetemp

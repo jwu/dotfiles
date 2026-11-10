@@ -1,7 +1,7 @@
-# Windows 的 sshd：让别的机器用 `herdr machine add` 进来
+# Windows 的 sshd：让别的机器用 `hc machine add` 进来
 
 这台 Windows 默认只有 OpenSSH **客户端**（`C:\Windows\System32\OpenSSH\`，9.5p2，随系统自带），
-服务端是另一个能力，默认 `NotPresent`。`herdr` 的 SSH machine（`herdr machine add <target>`）
+服务端是另一个能力，默认 `NotPresent`。`hc` 的 SSH machine（`hc machine add <target>`）
 要求远端有可达的 shell，所以服务端得自己装。
 
 ## 安装（一次性，要管理员）
@@ -47,11 +47,11 @@ icacls C:\ProgramData\ssh\administrators_authorized_keys /inheritance:r `
 
 用 SID 而不是组名：中文系统的组名显示不一定是 `Administrators`。
 
-## 公钥不是可选项：herdr 输不了密码
+## 公钥不是可选项：hc 输不了密码
 
-只配密码时，`herdr machine add` 会**静默悬停**：屏幕上只有那一行 `/bin/sh` 探测噪声，之后既无输出
+只配密码时，`hc machine add` 会**静默悬停**：屏幕上只有那一行 `/bin/sh` 探测噪声，之后既无输出
 也退不出。看着像网络问题，实际在等一个永远不会出现的密码——`remote/attach.rs` 给每条 ssh 都加了
-`SSH_ASKPASS_REQUIRE=never`，密码提示只能走 `/dev/tty`，而 herdr 的 TUI 把它吞掉了。
+`SSH_ASKPASS_REQUIRE=never`，密码提示只能走 `/dev/tty`，而 hc 的 TUI 把它吞掉了。
 
 判据在 sshd 自己的认证日志里（Event Log 不需要提权）：
 
@@ -83,7 +83,7 @@ Add-Content -LiteralPath C:\ProgramData\ssh\administrators_authorized_keys -Valu
 
 ## 坑：scoop 的 `current` 是挂载点，提权令牌穿不过去
 
-症状——本地 pwsh 一切正常，一 ssh 就刷出一屏错误，把 `herdr` 的输出解析搅乱：
+症状——本地 pwsh 一切正常，一 ssh 就刷出一屏错误，把 `hc` 的输出解析搅乱：
 
 ```
 &: C:\Users\<user>\Documents\PowerShell\Microsoft.PowerShell_profile.ps1:14
@@ -110,13 +110,13 @@ Shim: Could not create process with command '"...\apps\zoxide\current\zoxide.exe
 绕开 `current`，按 `apps\<name>\<version>\<name>.exe` 找实体目录。
 
 - 版本目录按 `LastWriteTime` 降序取最新一个。字符串排序不可用：`1.9.0` 会排在 `1.26.0` 后面。
-- 解不出路径时静默跳过，宁肯退化到默认 `PS>` 提示符，也不往会话里打错误——`herdr` 之类的
+- 解不出路径时静默跳过，宁肯退化到默认 `PS>` 提示符，也不往会话里打错误——`hc` 之类的
   工具会解析 ssh 的输出。
 - 路径来源优先 `$env:SCOOP`，否则 `%USERPROFILE%\scoop`。
 
-## 已知噪声：`herdr machine add` 会先试 `/bin/sh -s`
+## 已知噪声：`hc machine add` 会先试 `/bin/sh -s`
 
-从别的机器 `herdr machine add` 到这台时，终端里会先出现一行：
+从别的机器 `hc machine add` 到这台时，终端里会先出现一行：
 
 ```
 /bin/sh: 术语 '/bin/sh' 不会被识别为 cmdlet、函数、脚本文件或可执行程序的名称。
@@ -171,10 +171,10 @@ ssh <user>@<host> whoami                                  # 不应出现任何 s
 ssh <user>@<host> 'if ($function:prompt) { "starship" }'  # 远端仍是 starship 提示符
 ```
 
-`herdr machine add` 自己会下载并启动远端 herdr server；它只在 ssh 输出干净时才能正确判定。
-认证类型可以在同一份日志里确认：`Accepted publickey` 才是 herdr 可用的状态。
+`hc machine add` 自己会下载并启动远端 herdr-core；它只在 ssh 输出干净时才能正确判定。
+认证类型可以在同一份日志里确认：`Accepted publickey` 才是 hc 可用的状态。
 
 ## 没做的
 
-- 端口仍是 22，密码认证没关（公钥配好后 herdr 走公钥，密码只是保留给人手登录）。
+- 端口仍是 22，密码认证没关（公钥配好后 hc 走公钥，密码只是保留给人手登录）。
 - sshd 属于系统层，不进本仓库的源；这里只记下装法与几个坑。

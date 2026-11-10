@@ -63,12 +63,7 @@ CASKS=(
   # Its config is a managed target, so the app has to exist on a new machine.
   # See docs/pixpin.md.
   "pixpin"
-  # Sheprd (formerly Herdr UI / herdr-gpui) draws the herdr daemon's panes; its
-  # fonts and theme are managed targets as well. The cask lives in its own tap,
-  # so the fully qualified name is the install command. See docs/herdr.md.
-  "sheprd-labs/tap/sheprd"
-  # Herdr app is the newer window on herdr-core, a separate program from the
-  # herdr TUI daemon that run_onchange_before_14-herdr.sh.tmpl installs. The
+  # Herdr app is the newer window on herdr-core. The
   # upstream cask is arm64-only, so an Intel Mac has to build it from source.
   "herdr-app"
   # Only the app is provisioned: joining a tailnet is an interactive browser
@@ -256,7 +251,7 @@ step_required "clone/update dotfiles" ensure_repo
 step_required "configure chezmoi sourceDir" write_chezmoi_config
 
 step "Homebrew formulae" install_formulae
-step "Homebrew casks (Neovide, Input Source Pro, FiraMono Nerd Font, PixPin, Sheprd, Herdr app)" install_casks
+step "Homebrew casks (Neovide, Input Source Pro, FiraMono Nerd Font, PixPin, Herdr app)" install_casks
 step "default shell (zsh)" set_default_shell
 
 step_required "chezmoi init --apply" chezmoi init --apply

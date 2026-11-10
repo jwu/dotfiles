@@ -27,10 +27,11 @@ headless = true
   key 返回 nil，落到 else 分支，也就是「缺省 = 有桌面」。三台 GUI 机器因此完全不受影响。
 - 它排除的目标写在 `.chezmoiignore` 的 headless 块里：Linux-only 桌面清单的一份镜像，外加
   GUI 终端与编辑器（alacritty、ghostty、neovide、zed）。TUI 程序（nvim、yazi、gitui、glow）
-  与 starship / zoxide / git / herdr / pi 全部保留。
-- 它跳过三个 `run_*` 脚本：`20-build-gpu-watch`（waybar 的 GPU 模块）、
-  `30-build-niri-windows`（waybar 的 CFFI 插件）、`90-ulanzi-au05`（USB 小键盘的用户服务）。
-  `40-fcitx5` 与 `60-zed-cli` 不用改：它们本来就 `command -v` 探测后再决定，缺程序时 `exit 0`。
+  与 starship / zoxide / git / herdr-app / pi 全部保留。
+- 它跳过四个 `run_*` 脚本：`20-build-gpu-watch`（waybar 的 GPU 模块）、
+  `30-build-niri-windows`（waybar 的 CFFI 插件）、`90-ulanzi-au05`（USB 小键盘的用户服务）、
+  `14-herdr`（`herdr-app` 是窗口程序，headless 上没有东西可看）。`40-fcitx5` 与 `60-zed-cli`
+  不用改：它们本来就 `command -v` 探测后再决定，缺程序时 `exit 0`。
 
 判断清单本身**重复了一份**而不是抽成模板变量。抽出来试过：`{{ $x := list ... }}` 定义行会
 给 `.chezmoiignore` 的渲染结果多塞一个空行，而这份文件的空白是逐字节比对过的。24 行重复
@@ -152,7 +153,7 @@ git -C ~/bin/dotfiles pull --ff-only
 
 # 3. 写 ~/.config/chezmoi/chezmoi.toml：sourceDir + [data] headless = true
 
-# 4. 比对。这台机器上 ~/.config 只有 herdr，`chezmoi diff` 应该全是新增
+# 4. 比对。这台机器上 ~/.config 几乎是空的，`chezmoi diff` 应该全是新增
 chezmoi diff --include=files
 
 # 5. 应用，然后二次确认 no-op
@@ -168,7 +169,7 @@ chezmoi diff --include=files   # 必须为空
 | `10-shell-tools` | `raw.githubusercontent.com` 被重置时回退到 `git clone`（这次改造加的）；实测它曾把 `~/.oh-my-zsh/custom/` 当成「已安装」，现在看 `oh-my-zsh.sh` |
 | `12-dev-runtimes` | rustup 需要 `RUSTUP_DIST_SERVER`，Node 需要 `NVM_NODEJS_ORG_MIRROR`；bun 的二进制在 GitHub release 上，被 `timeout` 截断后按 optional 跳过 |
 | `13-scrapling` | 需要 uv 的 PyPI 镜像 **和** `PLAYWRIGHT_DOWNLOAD_HOST`，两者都上才跑通 |
-| `14-herdr` | 已装（herdr daemon 在这台机上跑着），`command -v herdr` 命中后跳过 |
+| `14-herdr` | 只装 `herdr-app`；非 Linux 与 headless 都在开头 `exit 0`，这台不会去下载窗口程序 |
 | `20` / `30` / `90` | headless 短路，`exit 0` |
 | `40-fcitx5` | 没装 fcitx5，脚本自己 `exit 0` |
 | `60-zed-cli` | 没有 zeditor，脚本自己 `exit 0` |

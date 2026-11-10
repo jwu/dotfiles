@@ -151,8 +151,6 @@ sourceDir = "/Users/<user>/bin/dotfiles"
 | `~/.config/Thunar/uca.xml` | 还是 Thunar 自带的示例动作，且它会写回 |
 | `~/.config/godot/editor_settings-*.tres` | 编辑器设置，含窗口布局 |
 | `~/.config/warp-terminal/user_preferences.json` | Warp 自行重写 |
-| `~/.config/herdr/config-gpui.toml` | Sheprd 每次启动刷新的全量默认值，文件头写明 DO NOT EDIT，见 `herdr.md` |
-| `~/.agents/skills/herdr-gpui-browser/` | Sheprd 自动维护的 skill，文件头带 managed 标记 |
 | `~/.config/herdr-app/AGENTS.md` | Herdr app 每次启动重写，文件头写明 Edits here are overwritten |
 | `~/.config/uv/uv-receipt.json` | uv 的 cargo-dist 安装器写的收据，含本机 `install_prefix` |
 
@@ -170,8 +168,7 @@ sourceDir = "/Users/<user>/bin/dotfiles"
 | `~/.config/pulse/` | PulseAudio 的 `<machine-id>-runtime` cookie |
 | `~/.config/{btop,go,nautilus,systemd,yay}/` | 空目录，工具首次运行才填 |
 | `~/.config/comfy-cli/**` | `recent_workspace` 之类由 comfy-cli 写回，且含本机路径 |
-| `~/.config/herdr/*.log`、`*.sock*`、`*.lock`、`session.json`、`session-snapshots/`、`~/.local/state/herdr/` | herdr 的日志、socket、会话与窗口状态 |
-| `~/.config/herdr-app/{mods,layouts,frame,keys.json,view.json,shared.json,data,seen.json,installed.json,window.json}`、`~/.config/herdr-app/herdr-app.sock`、`~/.local/state/herdr/` | Herdr app 的生成物、点击状态、mod 运行时数据与 socket，见 `herdr.md` |
+| `~/.config/herdr-app/{mods,layouts,frame,keys.json,view.json,shared.json,data,seen.json,installed.json,window.json}`、`~/.config/herdr-app/herdr-app.sock` | Herdr app 的生成物、点击状态、mod 运行时数据与 socket，见 `herdr.md` |
 
 ### 构建产物 / 下载物
 
