@@ -14,6 +14,27 @@ MODS="$HOME/.config/herdr-app/mods"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
+# shared.json is the app's click state, so the layout cannot live in the source
+# tree. Seed it once instead: without this a new machine stays on the built-in
+# `main` and the modded sidebar looks missing. The marker keeps later applies
+# from undoing a layout the user picked by hand. See docs/herdr.md.
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/herdr-sidebar-mods"
+MARK="$STATE/layout-initialized"
+SHARED="$HOME/.config/herdr-app/shared.json"
+if [ ! -e "$MARK" ] && [ -f "$SHARED" ] && command -v jq >/dev/null 2>&1; then
+  if layout="$(jq -r '.layout // empty' "$SHARED" 2>/dev/null)"; then
+    if [ "$layout" = main ] && jq '.layout = "main-mine"' "$SHARED" >"$TMP/shared.json"; then
+      mv "$TMP/shared.json" "$SHARED"
+      # A running window keeps the layout in memory and would write `main` back.
+      if [ -S "$HOME/.config/herdr-app/herdr-app.sock" ] && command -v herdr-app >/dev/null 2>&1; then
+        herdr-app do layout.switch --name main-mine >/dev/null 2>&1 || true
+      fi
+    fi
+    mkdir -p "$STATE"
+    : >"$MARK"
+  fi
+fi
+
 # codeload serves the archive directly; github.com/.../archive/... only 302s to
 # it, and that first hop is blocked on some networks. See docs/herdr.md.
 # This runs on every apply, so a slow network must not hold the apply for long.

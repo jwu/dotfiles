@@ -79,8 +79,9 @@ dot_config/herdr-app/layouts/main-mine.json
 ```
 
 `main-mine` 是 `main` 的 clone，把 sidebar 的 spaces/agents 指向 `sidebar-spaces`、
-`sidebar-agents` 两个 mod。新机器 apply 之后用 `ctrl-shift-l` 或 Settings 切到
-`Main Mine` 一次；当前用哪份 layout 记在 `shared.json`（点击状态），不归源管。
+`sidebar-agents` 两个 mod。当前用哪份 layout 记在 `shared.json`（点击状态），不归源管，
+但 `run_after_16-herdr-mods.{sh,ps1}.tmpl` 会在第一次 apply 时把它从 `main` 补成
+`main-mine`（见下），所以新机器不用再手动切。
 
 ## Sidebar mods：真源在它们自己的仓库
 
@@ -131,6 +132,20 @@ chezmoi execute-template < run_after_16-herdr-mods.sh.tmpl | bash
 
 本机正在开发这一版时，直接把仓库里的 `mods/sidebar-*` cp 到
 `~/.config/herdr-app/mods/` 覆盖即可；下一次 apply 会用远端 `main` 把本地覆盖回去。
+
+## 让 layout 自己切过去
+
+`shared.json` 混着 `layout`、`space.colors`、`workspace.panels`、`frame.welcomed` 这些
+点击状态，app 每次操作都整份回写。所以它不能进源：托管会让每次 apply 都撤销 GUI 里的
+改动，`chezmoi diff` 也永远非空。代价是源里没有声明式的位置说「这台机器用 `main-mine`」，
+新机器就停在 app 默认的 `main`，定制侧栏看起来像没装。
+
+两个 mod 脚本在拉包之前先补这一次：`shared.json` 存在、`layout` 为 `main`、且
+`~/.local/state/herdr-sidebar-mods/layout-initialized` 不存在时，把 `layout` 改成
+`main-mine` 并建标记。窗口正开着时还会走 `herdr-app do layout.switch`，否则它内存里的
+`main` 会把文件盖回去。标记保证只做一次——之后你在 GUI 里切到 `terminals`、`win98` 或切回
+`main`，apply 都不会再动它。`shared.json` 还不存在（app 首次启动前）时不写、也不建标记，
+留给下一次 apply；读不懂 JSON 或 `jq` 缺失同样不建标记，失败也不影响装包。
 
 ## Herdr app：settings.json 与主题
 
@@ -207,7 +222,7 @@ clone。`win98` 不 clone，配色就是那套皮肤本身。
 `theme`，优先级高于 layout 与 `settings.json`，而且是永久的：一旦在那里留了值，源里的
 `theme` 对这层就不再生效，直到把那个键删掉。所以源里不留点击状态，靠 `settings.json` 与
 clone 的 layout 决定外观。`shared.json` 的 `layout`（当前用哪份）同样是点击状态、不托管，
-新机器落在 `main`。
+新机器落在 `main`；只有 `run_after_16-herdr-mods` 的那一次初始化会把它补成 `main-mine`。
 
 ## 平台分派
 

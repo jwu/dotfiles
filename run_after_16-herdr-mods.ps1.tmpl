@@ -18,6 +18,36 @@ $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ('herdr-mods-' + [guid]::NewG
 $curl = Join-Path $env:SystemRoot 'System32\curl.exe'
 $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
 
+# shared.json is the app's click state, so the layout cannot live in the source
+# tree. Seed it once instead: without this a new machine stays on the built-in
+# `main` and the modded sidebar looks missing. The marker keeps later applies
+# from undoing a layout the user picked by hand. See docs/herdr.md.
+$state = Join-Path $HOME '.local\state\herdr-sidebar-mods'
+$mark = Join-Path $state 'layout-initialized'
+$shared = Join-Path $HOME '.config\herdr-app\shared.json'
+if (-not (Test-Path -LiteralPath $mark) -and (Test-Path -LiteralPath $shared)) {
+  try {
+    # Rewrite only this key: the file also carries click state, and a JSON round
+    # trip through Windows PowerShell 5.1 can reshape it.
+    $raw = [System.IO.File]::ReadAllText($shared)
+    if ($raw -match '"layout"\s*:\s*"main"') {
+      $raw = $raw -replace '"layout"\s*:\s*"main"', '"layout":"main-mine"'
+      [System.IO.File]::WriteAllText($shared, $raw)
+      # A running window keeps the layout in memory and would write `main` back.
+      $app = Get-Command herdr-app -ErrorAction SilentlyContinue
+      if ($app) {
+        & $app.Source status *> $null
+        if ($LASTEXITCODE -eq 0) { & $app.Source do layout.switch --name main-mine *> $null }
+      }
+    }
+    New-Item -ItemType Directory -Force -Path $state | Out-Null
+    New-Item -ItemType File -Force -Path $mark | Out-Null
+  }
+  catch {
+    Write-Warning "herdr sidebar mods: could not seed the layout ($($_.Exception.Message))"
+  }
+}
+
 # Which step failed decides whether an installed copy may stay: a network
 # failure is waited out, a broken archive is not.
 $stage = 'fetch'
