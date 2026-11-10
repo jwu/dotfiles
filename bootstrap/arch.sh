@@ -282,8 +282,10 @@ install_xwayland_satellite() {
 # upstream prebuilt release, while `hunk` is a source build that needs bun from
 # the per-user dev runtimes. See https://hunk.dev.
 install_hunk() {
-  if command -v hunk &> /dev/null; then
-    echo "    Already installed: $(hunk --version 2> /dev/null | head -1)"
+  # Probe the package, not `command -v`: upstream's curl installer drops a
+  # binary in ~/.hunk/bin that would make this skip the pacman install.
+  if pacman -Q hunk-bin &> /dev/null; then
+    echo "    Already installed: $(pacman -Q hunk-bin)"
     return 0
   fi
   if ! command -v yay &> /dev/null; then
