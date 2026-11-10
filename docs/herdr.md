@@ -45,16 +45,17 @@ Linux 那份走 `run_onchange_before_14-herdr.sh.tmpl`，与 scrapling、dev-run
 | --- | --- | --- | --- |
 | `settings.json` | 0644 | 三平台 `~/.config/herdr-app/` | Herdr app：Settings 保存时自动写，保存即热重载 |
 | `themes/<name>.json` | 0644 | 三平台 `~/.config/herdr-app/themes/` | 自己写；`atom-one-dark.json`、`win98.json` 由 app 重写 |
-| `layouts/<name>.json` | 0644 | 三平台 `~/.config/herdr-app/layouts/` | 内置的 `main`、`terminals`、`win98` 每次启动整份替换；`terminals-one-half-dark.json` 是源里的 clone |
+| `layouts/<name>.json` | 0644 | 三平台 `~/.config/herdr-app/layouts/` | 内置的 `main`、`terminals`、`win98` 每次启动整份替换；`terminals-one-half-dark.json`、`main-mine.json` 是源里的 clone |
+| `mods/<name>/main.js`、`mods/<name>/mod.json` | 0644 | 三平台 `~/.config/herdr-app/mods/` | 自己 clone 再改的 mod（`spaces-mine`、`agents-mine`）；上游 mod 每次启动整份替换 |
 
 其余的运行时产物不托管：
 
 - `~/.local/state/herdr-core/` —— daemon 的会话与 agent 检测状态
-- `~/.config/herdr-app/` 下的 `AGENTS.md`、`mods/`、`keys.json`、`frame/`、`view.json`、
+- `~/.config/herdr-app/` 下的 `AGENTS.md`、`keys.json`、`frame/`、`view.json`、
   `shared.json`、`data/`、`seen.json`、`installed.json`、`window.json`、`windows.json`
   —— 生成物或点击状态。`layouts/.state/<name>.json` 记的是尺寸、显示/隐藏与**主题选择**，
-  文档原文是 don't edit those files。`layouts/` 下除内置的那几份，只有
-  `terminals-one-half-dark.json` 是源托管的
+  文档原文是 don't edit those files。`mods/` 下只有源里那几份 clone 的自定义 mod 托管；
+  `mods/<name>/gpui-kit.d.ts`（每次启动重写）与 `jsconfig.json`（首次生成）由 app 写，不进源
 
 受管文件由程序回写：Herdr app 的 Settings 与主题选择器写 `settings.json` 和 `layouts/.state/`。
 所以 `chezmoi apply` 覆盖掉 GUI 里的改动是正常现象——**要留下的设置必须写回源**：在 GUI 里
@@ -71,7 +72,20 @@ dot_config/herdr-app/themes/one-half-dark.json
 
 dot_config/herdr-app/layouts/terminals-one-half-dark.json
   → ~/.config/herdr-app/layouts/terminals-one-half-dark.json   (三平台)
+
+dot_config/herdr-app/layouts/main-mine.json
+  → ~/.config/herdr-app/layouts/main-mine.json         (三平台)
+
+dot_config/herdr-app/mods/spaces-mine/{main.js,mod.json}
+  → ~/.config/herdr-app/mods/spaces-mine/              (三平台)
+
+dot_config/herdr-app/mods/agents-mine/{main.js,mod.json}
+  → ~/.config/herdr-app/mods/agents-mine/              (三平台)
 ```
+
+`main-mine` 是 `main` 的 clone，把 sidebar 的 spaces/agents 指向 `spaces-mine`、
+`agents-mine` 两个 clone mod。新机器 apply 之后用 `ctrl-shift-l` 或 Settings 切到
+`Main Mine` 一次；当前用哪份 layout 记在 `shared.json`（点击状态），不归源管。
 
 ## Herdr app：settings.json 与主题
 
