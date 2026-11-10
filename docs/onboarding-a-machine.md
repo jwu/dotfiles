@@ -274,6 +274,12 @@ GTK 标题栏 CSS / `niri-*` 脚本（约 50 个文件）仍然是 managed 状�
 `{{ if ne .chezmoi.os "windows" -}} ... {{ end -}}`，Windows 上渲染为空字符串。
 **新增 `run_*` 脚本时记得同一套外壳**，否则 `chezmoi apply` 会立刻中止。
 
+需要**只在 Windows 上做**的动作则反过来写：`run_*.ps1.tmpl` 加最外层
+`{{ if eq .chezmoi.os "windows" -}} ... {{ end -}}`。chezmoi 按脚本扩展名查自己的
+interpreters 表，`.ps1` 会用 PATH 上的 `pwsh`，没有就回退到系统自带的
+`powershell.exe 5.1`——所以这条路不需要 bash。`run_onchange_after_16-herdr-mods.ps1.tmpl`
+是第一个例子。注意解释器按**渲染后的目标名**选，`.ps1.tmpl` 去掉 `.tmpl` 后仍是 `.ps1`。
+
 **(c) Windows 的 shell 层已不再有手写脚本。** 入口是 `bootstrap/windows.bat`：装 chezmoi
 （winget→scoop）→ clone → scoop 装工具与 per-user Nerd Font → 写三个用户环境变量 →
 `chezmoi init --apply`。**不需要管理员**。codepage 与别名在

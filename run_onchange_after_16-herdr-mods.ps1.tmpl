@@ -1,0 +1,52 @@
+{{ if eq .chezmoi.os "windows" -}}
+#Requires -Version 5.1
+# The sidebar mods for the Herdr app live in their own public repository
+# (jwu/herdr-sidebar-mods); this script only installs the commit pinned in
+# .chezmoidata.toml, which the bash installer reads too. The layout that points
+# at them is dot_config/herdr-app/layouts/. See docs/herdr.md.
+$ErrorActionPreference = 'Stop'
+
+$rev = '{{ .herdr.sidebarModsRev }}'
+$mods = Join-Path $HOME '.config\herdr-app\mods'
+$names = @('sidebar-spaces', 'sidebar-agents')
+$tmp = Join-Path ([System.IO.Path]::GetTempPath()) ('herdr-mods-' + [guid]::NewGuid().ToString('N'))
+
+try {
+  New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+  $archive = Join-Path $tmp 'mods.tar.gz'
+
+  # curl.exe and tar.exe ship with Windows 10 1803+; the bootstrap needs curl
+  # anyway.
+  # codeload serves the archive directly; github.com/.../archive/... only 302s
+  # to it, and that first hop is blocked on some networks. See docs/herdr.md.
+  & curl.exe -fsSL "https://codeload.github.com/jwu/herdr-sidebar-mods/tar.gz/$rev" -o $archive
+  if ($LASTEXITCODE -ne 0) { throw "curl exited $LASTEXITCODE" }
+  & tar.exe -xzf $archive -C $tmp
+  if ($LASTEXITCODE -ne 0) { throw "tar exited $LASTEXITCODE" }
+
+  $src = Join-Path $tmp "herdr-sidebar-mods-$rev\mods"
+  foreach ($name in $names) {
+    if (-not (Test-Path -LiteralPath (Join-Path $src "$name\main.js"))) {
+      throw "archive is missing $name/main.js"
+    }
+  }
+
+  New-Item -ItemType Directory -Force -Path $mods | Out-Null
+  foreach ($name in $names) {
+    $dest = Join-Path $mods $name
+    if (Test-Path -LiteralPath $dest) { Remove-Item -LiteralPath $dest -Recurse -Force }
+    Copy-Item -LiteralPath (Join-Path $src $name) -Destination $dest -Recurse -Force
+  }
+
+  # Names these replaced before they moved to the shared repository.
+  foreach ($name in @('spaces-mine', 'agents-mine')) {
+    $old = Join-Path $mods $name
+    if (Test-Path -LiteralPath $old) { Remove-Item -LiteralPath $old -Recurse -Force }
+  }
+
+  Write-Host "installed sidebar mods at $rev"
+}
+finally {
+  Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
+}
+{{ end -}}

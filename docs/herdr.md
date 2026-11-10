@@ -54,8 +54,8 @@ Linux 那份走 `run_onchange_before_14-herdr.sh.tmpl`，与 scrapling、dev-run
   `shared.json`、`data/`、`seen.json`、`installed.json`、`window.json`、`windows.json`
   —— 生成物或点击状态。`layouts/.state/<name>.json` 记的是尺寸、显示/隐藏与**主题选择**，
   文档原文是 don't edit those files。`mods/` 整个目录都不在源里：上游 mod 每次启动整份
-  替换，自定义的那两个由 `run_onchange_after_16-herdr-mods.sh.tmpl` 从它们自己的仓库装
-  （见下）；`mods/<name>/gpui-kit.d.ts`（每次启动重写）与 `jsconfig.json`（首次生成）由 app 写
+  替换，自定义的那两个由 `run_onchange_after_16-herdr-mods.{sh,ps1}.tmpl` 从它们自己的
+  仓库装（见下）；`mods/<name>/gpui-kit.d.ts`（每次启动重写）与 `jsconfig.json`（首次生成）由 app 写
 
 受管文件由程序回写：Herdr app 的 Settings 与主题选择器写 `settings.json` 和 `layouts/.state/`。
 所以 `chezmoi apply` 覆盖掉 GUI 里的改动是正常现象——**要留下的设置必须写回源**：在 GUI 里
@@ -92,12 +92,25 @@ dot_config/herdr-app/layouts/main-mine.json
 | `sidebar-spaces` | 机器头的 CPU sparkline / 内存 meter、工作区的 git tail（branch ▸ remote）、状态图标、紫色选中 |
 | `sidebar-agents` | 状态图标前置、2px 行距、同样的紫色选中 |
 
-本仓库只固定机器跑哪个 commit：`run_onchange_after_16-herdr-mods.sh.tmpl` 里的 `REV`
-是仓库 SHA，从 `archive/<REV>.tar.gz` 解开后落到 `~/.config/herdr-app/mods/`，并删掉
-早先的 `spaces-mine` / `agents-mine`。改这个文件里的 `REV`，下一次 apply 就升级；
-headless 机器与 Windows 跳过。
+本仓库只固定机器跑哪个 commit：`.chezmoidata.toml` 的 `herdr.sidebarModsRev` 是仓库 SHA，
+两个安装器都读它——`run_onchange_after_16-herdr-mods.sh.tmpl` 管 macOS / Linux，
+`run_onchange_after_16-herdr-mods.ps1.tmpl` 管 Windows。两者都从
+`codeload.github.com/jwu/herdr-sidebar-mods/tar.gz/<REV>` 取包，解开后落到
+`~/.config/herdr-app/mods/`，并删掉早先的 `spaces-mine` / `agents-mine`。改
+`sidebarModsRev` 一处，下一次 apply 两个平台一起升级；headless 机器跳过（没有窗口可画）。
 
-改 mod 的流程：在 `jwu/herdr-sidebar-mods` 里改、push、把新 SHA 填进 `REV`、`chezmoi apply`。
+不用 `github.com/.../archive/<REV>.tar.gz`：它只回一个 302，而某些网络下
+`github.com:443` 正好不通、`codeload.github.com` 通，于是同一条 URL 在一台机器上成功、
+另一台上 `curl: (28) Connection timed out`。codeload 的归档目录名仍是
+`herdr-sidebar-mods-<REV>/`，两个脚本的路径拼接不变。
+
+Windows 那一份走 `.ps1` 而不是 `bootstrap/windows.bat`：chezmoi 按脚本扩展名选解释器，
+PATH 上有 `pwsh` 就用它，否则回退到系统自带的 `powershell.exe 5.1`，所以不需要 bash，
+也不需要往装机脚本里再塞一份会漂移的拷贝。脚本内部用 Windows 10 1803+ 自带的
+`curl.exe` + `tar.exe` 取包，语义与 bash 那份一致：每次 apply 都能自愈。
+
+改 mod 的流程：在 `jwu/herdr-sidebar-mods` 里改、push、把新 SHA 填进
+`.chezmoidata.toml` 的 `sidebarModsRev`、`chezmoi apply`。
 本机想先试，直接把仓库 clone 到 `~/.config/herdr-app/mods/sidebar-*` 覆盖即可。
 
 ## Herdr app：settings.json 与主题
