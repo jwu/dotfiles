@@ -1,0 +1,30 @@
+{{ if and (ne .chezmoi.os "windows") (not (index . "headless")) -}}
+#!/bin/bash
+# The sidebar mods for the Herdr app live in their own public repository
+# (jwu/herdr-sidebar-mods), which is their source of truth; this script only
+# pins which commit a machine runs. Bump REV to update every machine on the
+# next apply. The layout that points at them is dot_config/herdr-app/layouts/.
+# See docs/herdr.md.
+set -euo pipefail
+
+REV="6e6c06f496ba6eede0a70b36916d18bf3541fb2b"
+
+MODS="$HOME/.config/herdr-app/mods"
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+
+curl -fsSL "https://github.com/jwu/herdr-sidebar-mods/archive/$REV.tar.gz" -o "$TMP/mods.tar.gz"
+tar -xzf "$TMP/mods.tar.gz" -C "$TMP"
+SRC="$TMP/herdr-sidebar-mods-$REV/mods"
+
+[ -f "$SRC/sidebar-spaces/main.js" ] && [ -f "$SRC/sidebar-agents/main.js" ]
+
+mkdir -p "$MODS"
+rm -rf "$MODS/sidebar-spaces" "$MODS/sidebar-agents"
+cp -R "$SRC/sidebar-spaces" "$SRC/sidebar-agents" "$MODS/"
+
+# Names these replaced before they moved to the shared repository.
+rm -rf "$MODS/spaces-mine" "$MODS/agents-mine"
+
+echo "installed sidebar mods at $REV"
+{{ end -}}

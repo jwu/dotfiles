@@ -29,7 +29,7 @@
               "id": "spaces",
               "type": "block",
               "content": {
-                "mod": "spaces-mine"
+                "mod": "sidebar-spaces"
               },
               "size": {
                 "weight": 1
@@ -40,7 +40,7 @@
               "id": "agents",
               "type": "block",
               "content": {
-                "mod": "agents-mine"
+                "mod": "sidebar-agents"
               },
               "size": {
                 "weight": 1
