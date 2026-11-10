@@ -1,16 +1,21 @@
 {{ if eq .chezmoi.os "windows" -}}
 #Requires -Version 5.1
 # The sidebar mods for the Herdr app live in their own public repository
-# (jwu/herdr-sidebar-mods); this script only installs the commit pinned in
-# .chezmoidata.toml, which the bash installer reads too. The layout that points
-# at them is dot_config/herdr-app/layouts/. See docs/herdr.md.
+# (jwu/herdr-sidebar-mods); this script installs the ref in .chezmoidata.toml on
+# every apply, so `main` keeps each machine on the latest push and a SHA pins
+# one. The bash installer reads the same value. The layout that points at them
+# is dot_config/herdr-app/layouts/. See docs/herdr.md.
 $ErrorActionPreference = 'Stop'
 
 $rev = '{{ .herdr.sidebarModsRev }}'
 $mods = Join-Path $HOME '.config\herdr-app\mods'
 $names = @('sidebar-spaces', 'sidebar-agents')
+$installed = Join-Path $mods 'sidebar-agents\main.js'
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ('herdr-mods-' + [guid]::NewGuid().ToString('N'))
 
+# Which step failed decides whether an installed copy may stay: a network
+# failure is waited out, a broken archive is not.
+$stage = 'fetch'
 try {
   New-Item -ItemType Directory -Force -Path $tmp | Out-Null
   $archive = Join-Path $tmp 'mods.tar.gz'
@@ -19,11 +24,13 @@ try {
   # anyway.
   # codeload serves the archive directly; github.com/.../archive/... only 302s
   # to it, and that first hop is blocked on some networks. See docs/herdr.md.
-  & curl.exe -fsSL "https://codeload.github.com/jwu/herdr-sidebar-mods/tar.gz/$rev" -o $archive
+  # This runs on every apply, so a slow network must not hold the apply for long.
+  & curl.exe -fsSL --connect-timeout 10 --max-time 90 "https://codeload.github.com/jwu/herdr-sidebar-mods/tar.gz/$rev" -o $archive
   if ($LASTEXITCODE -ne 0) { throw "curl exited $LASTEXITCODE" }
   & tar.exe -xzf $archive -C $tmp
   if ($LASTEXITCODE -ne 0) { throw "tar exited $LASTEXITCODE" }
 
+  $stage = 'archive'
   $src = Join-Path $tmp "herdr-sidebar-mods-$rev\mods"
   foreach ($name in $names) {
     if (-not (Test-Path -LiteralPath (Join-Path $src "$name\main.js"))) {
@@ -45,6 +52,14 @@ try {
   }
 
   Write-Host "installed sidebar mods at $rev"
+}
+catch {
+  # Offline: an installed copy stays as it is, and the apply still finishes.
+  if ($stage -eq 'fetch' -and (Test-Path -LiteralPath $installed)) {
+    Write-Warning "herdr sidebar mods: could not fetch $rev ($($_.Exception.Message)), keeping the installed copy"
+    return
+  }
+  throw
 }
 finally {
   Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue

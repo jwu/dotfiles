@@ -1,0 +1,46 @@
+{{ if and (ne .chezmoi.os "windows") (not (index . "headless")) -}}
+#!/bin/bash
+# The sidebar mods for the Herdr app live in their own public repository
+# (jwu/herdr-sidebar-mods), which is their source of truth; this script installs
+# the ref in .chezmoidata.toml on every apply, so `main` keeps each machine on
+# the latest push and a SHA pins one. The Windows installer reads the same
+# value. The layout that points at them is dot_config/herdr-app/layouts/.
+# See docs/herdr.md.
+set -euo pipefail
+
+REV="{{ .herdr.sidebarModsRev }}"
+
+MODS="$HOME/.config/herdr-app/mods"
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+
+# codeload serves the archive directly; github.com/.../archive/... only 302s to
+# it, and that first hop is blocked on some networks. See docs/herdr.md.
+# This runs on every apply, so a slow network must not hold the apply for long.
+if ! curl -fsSL --connect-timeout 10 --max-time 90 \
+    "https://codeload.github.com/jwu/herdr-sidebar-mods/tar.gz/$REV" -o "$TMP/mods.tar.gz" \
+  || ! tar -xzf "$TMP/mods.tar.gz" -C "$TMP"; then
+  # Offline: an installed copy stays as it is, and the apply still finishes.
+  if [ -f "$MODS/sidebar-agents/main.js" ]; then
+    echo "herdr sidebar mods: could not fetch $REV, keeping the installed copy" >&2
+    exit 0
+  fi
+  echo "herdr sidebar mods: could not fetch $REV" >&2
+  exit 1
+fi
+SRC="$TMP/herdr-sidebar-mods-$REV/mods"
+
+if [ ! -f "$SRC/sidebar-spaces/main.js" ] || [ ! -f "$SRC/sidebar-agents/main.js" ]; then
+  echo "herdr sidebar mods: $REV is missing a mod" >&2
+  exit 1
+fi
+
+mkdir -p "$MODS"
+rm -rf "$MODS/sidebar-spaces" "$MODS/sidebar-agents"
+cp -R "$SRC/sidebar-spaces" "$SRC/sidebar-agents" "$MODS/"
+
+# Names these replaced before they moved to the shared repository.
+rm -rf "$MODS/spaces-mine" "$MODS/agents-mine"
+
+echo "installed sidebar mods at $REV"
+{{ end -}}

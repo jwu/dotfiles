@@ -92,12 +92,17 @@ dot_config/herdr-app/layouts/main-mine.json
 | `sidebar-spaces` | 机器头的 CPU sparkline / 内存 meter、工作区的 git tail（branch ▸ remote）、状态图标、紫色选中 |
 | `sidebar-agents` | 状态图标前置、2px 行距、同样的紫色选中 |
 
-本仓库只固定机器跑哪个 commit：`.chezmoidata.toml` 的 `herdr.sidebarModsRev` 是仓库 SHA，
-两个安装器都读它——`run_onchange_after_16-herdr-mods.sh.tmpl` 管 macOS / Linux，
-`run_onchange_after_16-herdr-mods.ps1.tmpl` 管 Windows。两者都从
-`codeload.github.com/jwu/herdr-sidebar-mods/tar.gz/<REV>` 取包，解开后落到
-`~/.config/herdr-app/mods/`，并删掉早先的 `spaces-mine` / `agents-mine`。改
-`sidebarModsRev` 一处，下一次 apply 两个平台一起升级；headless 机器跳过（没有窗口可画）。
+机器装哪个版本由 `.chezmoidata.toml` 的 `herdr.sidebarModsRev` 决定，默认 `main`：
+每次 apply 都从 `codeload.github.com/jwu/herdr-sidebar-mods/tar.gz/<REV>` 取一次包，
+所以 push 之后下一次 apply 就跟上，几台机器始终同版。`run_after_16-herdr-mods.sh.tmpl`
+管 macOS / Linux，`run_after_16-herdr-mods.ps1.tmpl` 管 Windows；两者解开后落到
+`~/.config/herdr-app/mods/`，并删掉早先的 `spaces-mine` / `agents-mine`。headless
+机器跳过（没有窗口可画）。
+
+用 `run_` 而不是 `run_onchange_`：onchange 只在模板内容变化时执行，跟 `main` 就再也
+不会重跑。代价是每次 apply 走一次网络（curl `--connect-timeout 10 --max-time 90`）；
+连不上时脚本保留已装的副本、只打一行警告，apply 照常完成。想钉住某一版，把
+`sidebarModsRev` 填成 SHA 即可，机制不变。
 
 不用 `github.com/.../archive/<REV>.tar.gz`：它只回一个 302，而某些网络下
 `github.com:443` 正好不通、`codeload.github.com` 通，于是同一条 URL 在一台机器上成功、
@@ -109,9 +114,17 @@ PATH 上有 `pwsh` 就用它，否则回退到系统自带的 `powershell.exe 5.
 也不需要往装机脚本里再塞一份会漂移的拷贝。脚本内部用 Windows 10 1803+ 自带的
 `curl.exe` + `tar.exe` 取包，语义与 bash 那份一致：每次 apply 都能自愈。
 
-改 mod 的流程：在 `jwu/herdr-sidebar-mods` 里改、push、把新 SHA 填进
-`.chezmoidata.toml` 的 `sidebarModsRev`、`chezmoi apply`。
-本机想先试，直接把仓库 clone 到 `~/.config/herdr-app/mods/sidebar-*` 覆盖即可。
+改 mod 的流程：在 `jwu/herdr-sidebar-mods` 里改、push，之后任意机器下一次
+`chezmoi apply` 就装上那一版，不必再动本仓库。想立刻生效又不想跑整个 apply，可以
+只渲染并执行这个脚本：
+
+```sh
+cd ~/bin/dotfiles
+chezmoi execute-template < run_after_16-herdr-mods.sh.tmpl | bash
+```
+
+本机正在开发这一版时，直接把仓库里的 `mods/sidebar-*` cp 到
+`~/.config/herdr-app/mods/` 覆盖即可；下一次 apply 会用远端 `main` 把本地覆盖回去。
 
 ## Herdr app：settings.json 与主题
 
