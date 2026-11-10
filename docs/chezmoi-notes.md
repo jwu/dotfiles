@@ -120,6 +120,33 @@ chezmoi apply -v
 **`exit 0`**，而不是让它失败：`run_onchange_` 只按内容记账，一个注定失败的脚本会永远
 拖住后续每一次 apply。
 
+## Windows 上非空的 `.sh` 脚本无法执行
+
+chezmoi 的默认 interpreters 表（`bat`/`cmd`/`com`/`exe`/`nu`/`pl`/`ps1`/`py`/`rb`）里
+没有 `sh`/`bash`，Windows 又不认 shebang，所以它会 `exec` 脚本本身并报：
+
+```
+chezmoi: 14-herdr.sh: fork/exec ...\Temp\383917242.14-herdr.sh: %1 is not a valid Win32 application.
+```
+
+能用的写法只有一种：把 OS 门控放在模板**第一行**，让脚本在 Windows 上渲染成**空文件**——
+`TargetStateScript.Apply` 里的 `isEmpty(contents)` 会跳过执行、只记账：
+
+```
+{{ if ne .chezmoi.os "windows" -}}
+#!/bin/bash
+...
+{{ end -}}
+```
+
+脚本只对 Linux 有意义时用 `{{ if eq .chezmoi.os "linux" -}}`，效果相同。把门控写成脚本
+内部的 `exit 0`（`14-herdr.sh` 一度如此）在 Unix 上等价，在 Windows 上却会让 apply 直接
+失败：脚本非空，chezmoi 就去 `exec` 它。
+
+另一条路是在 `chezmoi.toml` 里写 `[interpreters] sh = { command = "bash" }`，但那是每台
+机器的配置、不由本仓库管理，而且工作区的 `.sh` 是 CRLF（`core.autocrlf=true`），
+跑起来要另外防 `\r`。本仓库一律用模板门控。
+
 ## `sourceDir` 必须显式写
 
 源在 `~/bin/dotfiles`，不是 chezmoi 的默认位置（`~/.local/share/chezmoi`），所以每台

@@ -1,3 +1,4 @@
+{{ if eq .chezmoi.os "linux" -}}
 #!/bin/bash
 # Herdr app (the newer window on herdr-core) ships no distro package: upstream's
 # installer is a per-user download that needs neither root nor a TTY, which is
@@ -6,10 +7,6 @@
 # uninstalled and are no longer managed. See docs/herdr.md.
 set -uo pipefail
 
-{{ if ne .chezmoi.os "linux" }}
-echo "not Linux; skipping herdr-app"
-exit 0
-{{ end }}
 {{ if index . "headless" -}}
 # A headless box has no window for herdr-app, and its installer would only add
 # a FAILED step to every apply. See docs/ecs.md.
@@ -76,3 +73,5 @@ install_herdr_app() {
 
 step "herdr-app" install_herdr_app
 summary
+
+{{ end -}}
