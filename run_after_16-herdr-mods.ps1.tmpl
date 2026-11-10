@@ -13,6 +13,11 @@ $names = @('sidebar-spaces', 'sidebar-agents')
 $installed = Join-Path $mods 'sidebar-agents\main.js'
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ('herdr-mods-' + [guid]::NewGuid().ToString('N'))
 
+# Git for Windows puts GNU tar ahead of the inbox one on PATH, and GNU tar reads
+# `C:\...` as a remote host. Pin both tools to System32. See docs/herdr.md.
+$curl = Join-Path $env:SystemRoot 'System32\curl.exe'
+$tar = Join-Path $env:SystemRoot 'System32\tar.exe'
+
 # Which step failed decides whether an installed copy may stay: a network
 # failure is waited out, a broken archive is not.
 $stage = 'fetch'
@@ -21,13 +26,13 @@ try {
   $archive = Join-Path $tmp 'mods.tar.gz'
 
   # curl.exe and tar.exe ship with Windows 10 1803+; the bootstrap needs curl
-  # anyway.
+  # anyway. Resolved from System32 above: PATH order is not reliable here.
   # codeload serves the archive directly; github.com/.../archive/... only 302s
   # to it, and that first hop is blocked on some networks. See docs/herdr.md.
   # This runs on every apply, so a slow network must not hold the apply for long.
-  & curl.exe -fsSL --connect-timeout 10 --max-time 90 "https://codeload.github.com/jwu/herdr-sidebar-mods/tar.gz/$rev" -o $archive
+  & $curl -fsSL --connect-timeout 10 --max-time 90 "https://codeload.github.com/jwu/herdr-sidebar-mods/tar.gz/$rev" -o $archive
   if ($LASTEXITCODE -ne 0) { throw "curl exited $LASTEXITCODE" }
-  & tar.exe -xzf $archive -C $tmp
+  & $tar -xzf $archive -C $tmp
   if ($LASTEXITCODE -ne 0) { throw "tar exited $LASTEXITCODE" }
 
   $stage = 'archive'

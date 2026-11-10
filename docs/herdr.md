@@ -114,6 +114,12 @@ PATH 上有 `pwsh` 就用它，否则回退到系统自带的 `powershell.exe 5.
 也不需要往装机脚本里再塞一份会漂移的拷贝。脚本内部用 Windows 10 1803+ 自带的
 `curl.exe` + `tar.exe` 取包，语义与 bash 那份一致：每次 apply 都能自愈。
 
+但那两个工具**不能按名字裸调**：从 Git Bash / MSYS 启动 chezmoi 时，PATH 上
+`C:\Program Files\Git\usr\bin\tar.exe`（GNU tar）排在 System32 之前，它把 `-C C:\Users\…`
+的盘符当成远程主机，直接报 `tar (child): Cannot connect to C: resolve failed`，解开的是
+半截空文件，脚本抛 `tar exited 2`。所以两边都写死成
+`Join-Path $env:SystemRoot 'System32\{curl,tar}.exe'`。
+
 改 mod 的流程：在 `jwu/herdr-sidebar-mods` 里改、push，之后任意机器下一次
 `chezmoi apply` 就装上那一版，不必再动本仓库。想立刻生效又不想跑整个 apply，可以
 只渲染并执行这个脚本：
