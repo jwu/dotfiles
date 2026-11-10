@@ -211,13 +211,13 @@ profile 复刻了：
 - **cmd 方言**。`%VAR%`、`&` 串联、`dir /b`、`set`、`.bat` 脚本在 pwsh 里全是另一套语法，
   这也是「默认不动」的主要理由。
 
-Herdr UI 不走 `launch_menu`：它的 pane 默认就是 pwsh（本机 `herdr pane list` 的
+Sheprd 不走 `launch_menu`：它的 pane 默认就是 pwsh（本机 `herdr pane list` 的
 `terminal_title` 就是 `C:\Program Files\PowerShell\7\pwsh.exe`），也没有选 shell 的配置键——
 `config-gpui.toml` 的 `[terminal]` 段只有字体、行高、字重、padding，daemon 侧同样没有。
-所以 wezterm / alacritty 是 cmd + Clink，Herdr UI 是 pwsh + 这份 profile，两边并存。
+所以 wezterm / alacritty 是 cmd + Clink，Sheprd 是 pwsh + 这份 profile，两边并存。
 
 本机曾有两份 pwsh：32 位的 `PowerShell 7-x86` 7.4.2 在 `Program Files (x86)`，64 位的
-7.6.7 在 `Program Files`，而 PATH 先命中 32 位那份——Herdr UI 的 pane 起的就是它。
+7.6.7 在 `Program Files`，而 PATH 先命中 32 位那份——Sheprd 的 pane 起的就是它。
 32 位那份已于 2026-10-25 用 `msiexec /x {60C67960-C617-4FBA-B42A-E90597E0EE79}` 卸载，
 `where pwsh` 现在只剩一条。装第二份时留意这个先后顺序。
 

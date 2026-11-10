@@ -1,4 +1,4 @@
-# Herdr UI overrides. Saved changes reload automatically.
+# Sheprd overrides. Saved changes reload automatically.
 # Unset keys inherit config-gpui.toml; tables merge key by key.
 
 # New installs start with the roomy rounded sidebar. Remove this line for
@@ -6,8 +6,11 @@
 layout = "comfortable-rounded"
 theme = "~/.config/herdr/themes/one-dark"
 status_icons = "braille"
+# New tabs run in herdr-core (Herdr 2), which Sheprd draws natively; Herdr 1 tabs
+# keep running beside them. Set in Settings > Tabs, kept here so apply keeps it.
+herdr_2_terminals = true
 
-# Herdr UI rewrites Shift-Enter to Alt-Enter for every pane by default (PR #518).
+# Sheprd rewrites Shift-Enter to Alt-Enter for every pane by default (PR #518).
 # Kitty-protocol panes such as pi then receive CSI 13;3u, which pi binds to
 # app.message.followUp, so Shift-Enter could not insert a newline.
 # An empty string cancels the mapping and passes Shift-Enter through unchanged.

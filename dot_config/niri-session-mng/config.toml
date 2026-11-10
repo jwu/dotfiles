@@ -56,7 +56,7 @@ project = true
 launch = ["blender"]
 spawn = "per_window"
 
-# Herdr UI, the native GPUI client. Each launch is a separate process with its own
+# Sheprd, the native GPUI client (formerly Herdr UI). Each launch is a separate process with its own
 # window (no single-instance handoff), so captured windows are spawned one by one.
 # What a window shows comes from the herdr daemon's own session; only its place in
 # the layout is restored here.

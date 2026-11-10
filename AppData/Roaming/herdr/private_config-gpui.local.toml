@@ -1,4 +1,4 @@
-# Herdr UI overrides. Saved changes reload automatically.
+# Sheprd overrides. Saved changes reload automatically.
 # Unset keys inherit config-gpui.toml; tables merge key by key.
 #
 # Windows reads this from %APPDATA%\herdr, not ~/.config/herdr like the daemon's
@@ -10,7 +10,7 @@ layout = "comfortable-rounded"
 theme = "Follow Herdr"
 status_icons = "braille"
 
-# Herdr UI rewrites Shift-Enter to Alt-Enter for every pane by default (PR #518).
+# Sheprd rewrites Shift-Enter to Alt-Enter for every pane by default (PR #518).
 # Kitty-protocol panes such as pi then receive CSI 13;3u, which pi binds to
 # app.message.followUp, so Shift-Enter could not insert a newline.
 # An empty string cancels the mapping and passes Shift-Enter through unchanged.

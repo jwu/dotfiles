@@ -66,7 +66,7 @@ port forwarding。所以它是「被攻陷后的横向移动 + 提权」，不�
 Tailscale SSH」。
 
 本仓库的取舍：不评估「默认 ACL + 允许转发」这种组合的风险收益，直接不用 Tailscale SSH。
-系统 sshd 本来就要装（`openssh`），功能是全集，`scp`/`sftp`/端口转发都正常——Herdr UI 的
+系统 sshd 本来就要装（`openssh`），功能是全集，`scp`/`sftp`/端口转发都正常——Sheprd 的
 文件复制依赖这些。
 
 顺带两条相关的取舍：

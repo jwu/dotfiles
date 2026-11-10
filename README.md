@@ -172,7 +172,7 @@ chezmoi 的源路径与目标路径不一定逐字对应：`dot_` 加前置点�
 - [`docs/ghostty-gl-version.md`](docs/ghostty-gl-version.md) — Intel HD 4000 上保住硬件渲染的 MESA override。
 - [`docs/gtk4.md`](docs/gtk4.md) — GTK4 全局 CSD 直角微调。
 - [`docs/fontconfig.md`](docs/fontconfig.md) — 字体渲染参数与中文回退：对齐 Ghostty 的 FreeType 默认、`hintstyle` 的取舍、为什么只能用 family 名改字体。
-- [`docs/herdr.md`](docs/herdr.md) — Herdr 与 Herdr UI：三平台的官方安装方式与落层（daemon 走 `run_*`、Linux 的 UI 走 `bootstrap/`）、两个二进制的配置分工、macOS / Linux 两套字体值的分派、四个字体 section 的能力差异、fontdb 的 nameID 16 规则、为什么 fontconfig 对它不生效。
+- [`docs/herdr.md`](docs/herdr.md) — Herdr 的三个程序（`herdr` TUI、Herdr app、改名后的 Sheprd）：三平台的官方安装方式与落层（per-user 的走 `run_*`、要 sudo 的 Sheprd 走 `bootstrap/`）、四份配置的分工、Herdr app 的 `settings.json` 与 `themes/*.json`、Sheprd 的 macOS / Linux 两套字体值、四个字体 section 的能力差异、fontdb 的 nameID 16 规则、为什么 fontconfig 对它不生效。
 - [`docs/tailscale.md`](docs/tailscale.md) — Tailscale 为什么没有配置文件可纳管、装机与策略各落哪一层、为什么一律关掉 Tailscale SSH（Tailworm 报告）、对称 NAT 与 DERP 的实测延迟。
 - [`docs/bluetooth.md`](docs/bluetooth.md) — BlueZ OBEX agent 单槽位与冲突诊断。
 - [`docs/audio.md`](docs/audio.md) — MacBook CS8409 内置音频：主线只支持 Dell，靠 AUR 的 DKMS 补丁出声。

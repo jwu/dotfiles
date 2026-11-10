@@ -2,8 +2,9 @@
 #!/bin/bash
 # The Herdr daemon ships no distro package: upstream's installer is a per-user
 # download into ~/.local/bin that needs neither root nor a TTY, which is what
-# keeps it out of bootstrap/. Herdr UI is a separate program with its own
-# installer and lives in bootstrap/ on Linux. See docs/herdr.md.
+# keeps it out of bootstrap/. Herdr app (the newer window on herdr-core) is
+# per-user on Linux too, so it joins the daemon here. Sheprd (formerly Herdr UI)
+# needs sudo on Linux and lives in bootstrap/. See docs/herdr.md.
 set -uo pipefail
 
 # The installer's target directory is not necessarily on PATH in the non-login
@@ -64,9 +65,28 @@ install_herdr() {
   echo "    herdr: $(herdr --version 2>/dev/null | head -1)"
 }
 
-echo ">>> herdr daemon (upstream installer, root-free, per-user)"
+echo ">>> herdr (upstream installers, root-free, per-user)"
 
 step "herdr" install_herdr
 
+{{ if eq .chezmoi.os "linux" }}
+# Herdr app draws herdr-core terminals and is a different program from the TUI
+# daemon above. On macOS its cask owns it; on Linux upstream's installer is
+# root-free too, so it lives here rather than in bootstrap/. See docs/herdr.md.
+install_herdr_app() {
+  if command -v herdr-app > /dev/null 2>&1; then
+    echo "    herdr-app: $(herdr-app --version 2>/dev/null | head -1); upgrades come from the app"
+    return 0
+  fi
+  sh -c "$(curl -fsSL https://releases.herdr.dev/app/install.sh)" || return 1
+  command -v herdr-app > /dev/null 2>&1 || {
+    echo "    herdr-app is still not on PATH after installing" >&2
+    return 1
+  }
+  echo "    herdr-app: $(herdr-app --version 2>/dev/null | head -1)"
+}
+
+step "herdr-app" install_herdr_app
+{{ end }}
 summary
 {{ end -}}
