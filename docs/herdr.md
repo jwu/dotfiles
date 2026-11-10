@@ -45,14 +45,16 @@ Linux 那份走 `run_onchange_before_14-herdr.sh.tmpl`，与 scrapling、dev-run
 | --- | --- | --- | --- |
 | `settings.json` | 0644 | 三平台 `~/.config/herdr-app/` | Herdr app：Settings 保存时自动写，保存即热重载 |
 | `themes/<name>.json` | 0644 | 三平台 `~/.config/herdr-app/themes/` | 自己写；`atom-one-dark.json`、`win98.json` 由 app 重写 |
+| `layouts/<name>.json` | 0644 | 三平台 `~/.config/herdr-app/layouts/` | 内置的 `main`、`terminals`、`win98` 每次启动整份替换；`terminals-one-half-dark.json` 是源里的 clone |
 
 其余的运行时产物不托管：
 
 - `~/.local/state/herdr-core/` —— daemon 的会话与 agent 检测状态
-- `~/.config/herdr-app/` 下的 `AGENTS.md`、`mods/`、`layouts/`、`keys.json`、`frame/`、
-  `view.json`、`shared.json`、`data/`、`seen.json`、`installed.json`、`window.json`、
-  `windows.json` —— 生成物或点击状态。`layouts/.state/<name>.json` 记的是尺寸、显示/隐藏与
-  **主题选择**，文档原文是 don't edit those files
+- `~/.config/herdr-app/` 下的 `AGENTS.md`、`mods/`、`keys.json`、`frame/`、`view.json`、
+  `shared.json`、`data/`、`seen.json`、`installed.json`、`window.json`、`windows.json`
+  —— 生成物或点击状态。`layouts/.state/<name>.json` 记的是尺寸、显示/隐藏与**主题选择**，
+  文档原文是 don't edit those files。`layouts/` 下除内置的那几份，只有
+  `terminals-one-half-dark.json` 是源托管的
 
 受管文件由程序回写：Herdr app 的 Settings 与主题选择器写 `settings.json` 和 `layouts/.state/`。
 所以 `chezmoi apply` 覆盖掉 GUI 里的改动是正常现象——**要留下的设置必须写回源**：在 GUI 里
@@ -66,6 +68,9 @@ dot_config/herdr-app/settings.json.tmpl
 
 dot_config/herdr-app/themes/one-half-dark.json
   → ~/.config/herdr-app/themes/one-half-dark.json      (三平台)
+
+dot_config/herdr-app/layouts/terminals-one-half-dark.json
+  → ~/.config/herdr-app/layouts/terminals-one-half-dark.json   (三平台)
 ```
 
 ## Herdr app：settings.json 与主题
@@ -124,6 +129,26 @@ dot_config/herdr-app/themes/one-half-dark.json
 popover）也跟着 One Dark。
 
 改主题颜色保存即热重载。GUI 里改完要 `chezmoi add` 回源，否则下一次 apply 会覆盖。
+
+### 内置 layout 与 `terminals-one-half-dark`
+
+`main`（Herdr）自己不带 look，所以 `settings.json` 的 `theme` 就是它的外观，新机器没有
+`layouts/.state/` 时也是它。`terminals` 与 `win98` 各带自己的主题：前者 `graphite` 外加
+一份 11 项 hex `colors`，后者是一整套 Win98 桌面（`#008080` 桌面底、`PxPlus IBM VGA 8x16`
+像素字体、`terminal_opacity 0`）。
+
+内置 layout 是只读的：每次启动整份替换，往 `layouts/terminals.json` 里写字会被挪成
+`terminals-edited` 再还原。源要管主题就只能自己 clone 一份。`terminals-one-half-dark.json`
+就是 `terminals` 的 clone（`cloned_from` 记着来源与版本）：结构不动，`theme` 换成
+`one-half-dark`，并删掉 layout 自带的 `colors` 与 `background`——那两处 hex 的优先级高于
+主题，留着的话换了 theme 也不变色。clone 不随上游升级：`terminals` 的结构变了要重新
+clone。`win98` 不 clone，配色就是那套皮肤本身。
+
+主题选择器（`app.theme`，或 Settings 里点）把值写进 `layouts/.state/<layout>.json` 的
+`theme`，优先级高于 layout 与 `settings.json`，而且是永久的：一旦在那里留了值，源里的
+`theme` 对这层就不再生效，直到把那个键删掉。所以源里不留点击状态，靠 `settings.json` 与
+clone 的 layout 决定外观。`shared.json` 的 `layout`（当前用哪份）同样是点击状态、不托管，
+新机器落在 `main`。
 
 ## 平台分派
 
