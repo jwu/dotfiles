@@ -1,8 +1,9 @@
 {{ if ne .chezmoi.os "windows" -}}
 #!/bin/bash
-# Per-user developer runtimes: rustup, nvm + Node LTS, uv, bun.
+# Per-user developer runtimes: rustup, nvm + Node LTS, uv, bun, and on Linux
+# killport.
 #
-# All four live under $HOME (.cargo, .nvm, .local/bin, .bun), so nothing here
+# All of them live under $HOME (.cargo, .nvm, .local/bin, .bun), so nothing here
 # needs root and none of it belongs in bootstrap/. "Missing, so install" is the
 # whole logic -- a machine that already has a tool keeps it, including nvm's
 # default alias, which is that machine's own choice rather than this repo's.
@@ -153,12 +154,28 @@ install_bun() {
   echo "    bun: installed at $HOME/.bun/bin/bun"
 }
 
+{{ if eq .chezmoi.os "linux" -}}
+# killport answers "who owns this port" and kills it. macOS gets the Homebrew
+# bottle from bootstrap/macos.sh; Arch has no package and the AUR entries are
+# unrelated forks, so the crate is the only source. ~/.cargo/bin is on PATH
+# already, and docs/ports.md records the comparison that picked it.
+install_killport() {
+  if command -v killport > /dev/null 2>&1; then
+    echo "    killport: $(killport --version)"
+    return 0
+  fi
+  cargo install --locked killport || return 1
+  echo "    killport: installed at $HOME/.cargo/bin/killport"
+}
+{{ end }}
 echo ">>> developer runtimes (root-free, per-user)"
 
 step "rustup + stable toolchain" install_rustup
 step "nvm + Node LTS" install_nvm
 step "uv" install_uv
 step_optional "bun" install_bun
-
+{{ if eq .chezmoi.os "linux" -}}
+step_optional "killport" install_killport
+{{ end }}
 summary
 {{ end -}}

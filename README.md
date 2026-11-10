@@ -156,6 +156,7 @@ chezmoi 的源路径与目标路径不一定逐字对应：`dot_` 加前置点�
 - [`docs/alacritty.md`](docs/alacritty.md) — Alacritty 与 Ghostty 的逐项对齐，以及 Wayland 下的窗口装饰。
 - [`docs/shell.md`](docs/shell.md) — zsh 配置里的两个坑：nvm 的两种装法与 Apple Silicon 的 MPS 变量。
 - [`docs/dev-env.md`](docs/dev-env.md) — 开发运行时（rustup / nvm + Node / uv / bun）的落点与取舍：为什么 per-user 而不是 pacman、installer 改写 shell 配置的坑、「缺失才装」的判据。
+- [`docs/ports.md`](docs/ports.md) — 端口 → 进程：`killport` 为什么胜过 `fuser -k`、Linux 侧为什么只能 `cargo install`、`--dry-run` 与退出码 2 的用法。
 - [`docs/pi-webfetch.md`](docs/pi-webfetch.md) — webfetch 三个外部 CLI 的落点：`scrapling` 为什么走 `uv tool`、上游 `scrapling install` 在 Arch 上必失败的原因、`[shell]` 与 `[fetchers]` 的区别。
 - [`docs/lightpanda.md`](docs/lightpanda.md) — 原生 headless 浏览器接进 pi 的内置 MCP：实测耗时、markdown 不抽正文的边界、CDP 与 `create_` 目标的同步方式。
 - [`docs/windows-shell.md`](docs/windows-shell.md) — Windows 的 shell 层：scoop、Clink 的 `session.cmd` 接线、用户环境变量、批处理必须 CRLF。

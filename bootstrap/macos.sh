@@ -39,6 +39,9 @@ PACKAGES=(
   "hunk"
   "jq"
   "just"
+  # Port-to-process lookup and kill. Linux has no package for it and builds the
+  # crate instead; see docs/ports.md.
+  "killport"
   "cocogitto"
   "yazi"
   "gitui"
