@@ -2,15 +2,16 @@
 Herdr app's own settings. Written by the app's Settings window too, so a change
 made there must be copied back here. See docs/herdr.md.
 
-Fonts follow the machine: macOS keeps PingFang SC for the panels, Linux uses the
-same FiraMono at Ghostty's 18px em (13.5pt at 96dpi), as the old UI's config did.
-Windows only swaps the panel font; herdr-app has not been measured there yet.
+Fonts follow the machine: the UI text takes the same face as Obsidian's
+interface font on each platform (PingFang SC, Noto Sans CJK SC, Microsoft
+YaHei UI); herdr-app has not been measured on Windows yet. Terminals stay
+FiraMono Nerd Font, at Ghostty's 18px em (13.5pt at 96dpi) on Linux.
 */ -}}
 {{- $fontSize := 16 -}}
 {{- $uiFont := "PingFang SC" -}}
 {{- if eq .chezmoi.os "linux" -}}
 {{- $fontSize = 18 -}}
-{{- $uiFont = "FiraMono Nerd Font" -}}
+{{- $uiFont = "Noto Sans CJK SC" -}}
 {{- else if eq .chezmoi.os "windows" -}}
 {{- $uiFont = "Microsoft YaHei UI" -}}
 {{- end -}}
