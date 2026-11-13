@@ -19,6 +19,11 @@
 - Window Management
   - MacOS
     - [AeroSpace](https://github.com/nikitabobko/AeroSpace)
+  - Linux
+    - [niri](https://github.com/YaLTeR/niri)
+    - [hyprland](https://hyprland.org/)
+- Status Bar
+  - [waybar](https://github.com/Alexays/Waybar)
 - System Tools
   - [7-Zip](https://www.7-zip.org/)
   - Windows
@@ -27,9 +32,14 @@
   - MacOS
     - [Input Source Pro](https://inputsource.pro/)
     - [AutoRise](https://autorie.app/)
+  - Linux
+    - [xwayland-satellite](https://github.com/Supreeeme/xwayland-satellite)
 - Screen Capture
   - [Snipaste](https://www.snipaste.com/)
     - [ShareX](https://getsharex.com/)
+  - [PixPin](https://pixpin.cn/)
+  - [flameshot](https://github.com/flameshot-org/flameshot)
+  - [satty](https://github.com/Satty-org/Satty)
 - Image Viewer
   - [PureRef](https://www.pureref.com/)
   - [IrfanView](https://www.irfanview.com/)
@@ -44,5 +54,8 @@
 - VPN
   - [Clash Verge](https://github.com/clash-verge-rev/clash-verge-rev)
     - [WgetCloud](https://wgetcloud.org/)
+  - [tailscale](https://tailscale.com/)
+- Voice
+  - [voxtype](https://github.com/peteonrails/voxtype)
 - Remote Desktop
   - [RustDesk](https://rustdesk.com/)
