@@ -114,6 +114,37 @@ Shim: Could not create process with command '"...\apps\zoxide\current\zoxide.exe
   工具会解析 ssh 的输出。
 - 路径来源优先 `$env:SCOOP`，否则 `%USERPROFILE%\scoop`。
 
+### profile 级 workaround 只救了提示符
+
+`Resolve-ScoopApp` 让 `& $starship init powershell` 能跑，所以提示符还在。但 zoxide 的
+`init powershell` 生成的 `z` 函数是**裸调 `zoxide`**，又落回 `PATH` 上的
+`shims\zoxide.exe` → `current` → 失败；其余 157 个 shim 同理（`fd`、`rg`、`bat`、`eza`、
+`git`、`chezmoi` ……）。症状因此很分裂：prompt 看着正常，随便敲个 `z` 或 `fd` 就报
+`Shim: Could not create process`。
+
+顺带一条容易误判的现象：提权会话里 starship 把用户名渲染成 `Administrator`
+（`show_always = false` 只在 root 时画 `$username`，而 Windows 上 elevated 就算 root）。
+这是显示，不是登录成了另一个账户——`$env:USERNAME` 仍是真实用户名。
+
+### 真正的解法：提权重连 `current`
+
+Windows 判定一个 mount point 可不可信，看的是**创建它的进程的完整性级别**，不是 ACL。
+实测对照：同一个 `apps\fd\` 下，提权会话新建的 junction 能枚举出 9 个文件，scoop 建的那个
+报「包含不受信任的装入点」；`chkdsk /scan` 干净，`fsutil reparsepoint query` 的
+SubstituteName 也完全正确。所以用管理员权限把这批 junction 删掉重建就行：
+
+```powershell
+# 普通终端里跑会弹一次 UAC
+pwsh -File scripts/relink-scoop-junctions.ps1
+```
+
+脚本对每个 `apps\<name>\current` 做：枚举 → 不可穿越则清掉 `ReadOnly` 位 →
+`Directory.Delete` → 重建 junction → 再枚举确认。正常的直接跳过，可以反复跑。
+
+- `scoop update` / `scoop install` 会以普通权限重建 junction，**之后要再跑一次**。
+- 别用 ACL 修：收紧 `apps\<name>` 会让 scoop 在普通终端里无法升级；判定依据也根本不是 ACL。
+- 删之前若 junction 带 `ReadOnly`，`Directory.Delete` 会报 access denied——先清属性。
+
 ## 已知噪声：`hc machine add` 会先试 `/bin/sh -s`
 
 从别的机器 `hc machine add` 到这台时，终端里会先出现一行：
