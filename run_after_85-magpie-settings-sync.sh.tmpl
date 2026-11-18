@@ -1,0 +1,39 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+set -uo pipefail
+
+settings="${XDG_CONFIG_HOME:-$HOME/.config}/magpie/settings.json"
+[[ -f "$settings" && ! -L "$settings" ]] || exit 0
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo '    magpie settings: jq not found; preferences not synced' >&2
+  exit 0
+fi
+
+# Keep app-owned state intact; see docs/design.md.
+preferences='{
+  "theme": "system",
+  "lang": "system",
+  "tray": "panel",
+  "textSize": 100
+}'
+if ! merged=$(jq -s --argjson preferences "$preferences" '
+  if length != 1 or (.[0] | type) != "object" then error("expected one settings object")
+  else .[0] | (. + $preferences) as $merged | select(. != $merged) | $merged
+  end
+' "$settings" 2>/dev/null); then
+  echo '    magpie settings: settings.json is unreadable or invalid; preferences not synced' >&2
+  exit 0
+fi
+[[ -n "$merged" ]] || exit 0
+
+if pgrep -U "$UID" -x magpie >/dev/null; then
+  echo '    magpie settings: quit Magpie and run chezmoi apply again to sync preferences' >&2
+  exit 0
+fi
+
+tmp=$(mktemp "$settings.XXXXXXXX") || exit 1
+trap 'rm -f -- "$tmp"' EXIT
+printf '%s\n' "$merged" > "$tmp" && mv -f -- "$tmp" "$settings" || exit 1
+echo '    magpie settings: synced preferences'
+{{ end -}}

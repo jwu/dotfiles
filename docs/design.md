@@ -977,6 +977,16 @@ defaultTools` 并复原；随后再 apply 两次，输出为空、文件 mtime �
 字符串（与其他 `run_*` 相同的 `{{ if ne .chezmoi.os "windows" }}` 写法），托管键不自动同步，
 `create_` 模板仍负责打底。
 
+### Magpie 偏好同步（macOS）
+
+`run_after_85-magpie-settings-sync.sh.tmpl` 在每次 `chezmoi apply` 时合并主题、语言、托盘样式
+和字号。首次启动 Magpie 生成 `~/.config/magpie/settings.json` 后即可同步，脚本也支持
+`XDG_CONFIG_HOME`。这四项有差异时，先退出 Magpie 再 apply，避免和应用同时写盘。
+
+脚本通过临时文件原子替换 JSON，四项一致时连 mtime 都不变。窗口位置等其他键由 Magpie
+维护，登录、provider 配置、备份和用量记录留在本机。配置文件由 Magpie 创建和维护，因此
+它的内容差异不会显示在 `chezmoi diff --include=files` 中。
+
 ### 开发运行时四个工具（2026-09-30）
 
 `rustup`、`nvm` + Node LTS、`uv`、`bun` 此前没有任何安装步骤：`arch.sh` 只装了 Arch 的
