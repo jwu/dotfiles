@@ -299,22 +299,24 @@ defaults write io.tailscale.ipn.macsys HideDockIcon -bool true
 
 ### 反向连接要各自对应用户名
 
-两台机器的本地用户名不同（macOS 是 `zyq`，Arch 是 `jwu`），所以 `~/.ssh/config` 得双向写：
+两台机器的本地用户名不同（macOS 是 `<mac-user>`，Arch 是 `<arch-user>`），所以 `~/.ssh/config`
+得双向写：
 
 ```
 # macbook-m3
 Host archlinux-com 100.121.5.100 10.30.40.x
-    User jwu
-    IdentityFile ~/.ssh/id_ed25519_jwu
+    User <arch-user>
+    IdentityFile ~/.ssh/id_ed25519_<arch-user>
 
 # archlinux-com
 Host macbook-m3 100.125.255.124
-    User zyq
+    User <mac-user>
     IdentityFile ~/.ssh/id_ed25519
 ```
 
 顺带一条：`ssh archlinux-com` 报 `Permission denied (publickey)` 时，先看是不是回落到当前
-本地用户名（`zyq`）而不是 config 里写的 `jwu`——`~/.ssh/config` 里没有匹配的 Host 块就会这样。
+本地用户名（`<mac-user>`）而不是 config 里写的 `<arch-user>`——`~/.ssh/config` 里没有匹配的
+Host 块就会这样。
 
 ### 国内网络的登录阶段
 
