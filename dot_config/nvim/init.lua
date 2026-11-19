@@ -111,19 +111,34 @@ if is_color16 then
   indent_char = '|'
 end
 
--- ssh settings
-if vim.env.SSH_TTY ~= nil then
+-- Herdr terminals can outlive the SSH connection and have no SSH_TTY.
+local herdr_terminal = vim.env.HC_TERMINAL_SOCKET ~= nil and vim.fn.has('linux') == 1 and not vim.g.neovide
+if vim.env.SSH_TTY ~= nil or herdr_terminal then
+  local osc52 = require('vim.ui.clipboard.osc52')
+  local copy_to_clipboard = osc52.copy('+')
   vim.g.clipboard = {
     name = 'OSC 52',
     copy = {
-      ['+'] = require('vim.ui.clipboard.osc52').copy('+'),
-      ['*'] = require('vim.ui.clipboard.osc52').copy('*'),
+      ['+'] = copy_to_clipboard,
+      ['*'] = osc52.copy('*'),
     },
     paste = {
-      ['+'] = require('vim.ui.clipboard.osc52').paste('+'),
-      ['*'] = require('vim.ui.clipboard.osc52').paste('*'),
+      ['+'] = osc52.paste('+'),
+      ['*'] = osc52.paste('*'),
     },
   }
+
+  if herdr_terminal then
+    vim.api.nvim_create_autocmd('TextYankPost', {
+      group = vim.api.nvim_create_augroup('herdr_clipboard', { clear = true }),
+      callback = function()
+        local event = vim.v.event
+        if event.operator == 'y' and event.regname == '' and not vim.tbl_contains(vim.opt.clipboard:get(), 'unnamedplus') then
+          copy_to_clipboard(event.regcontents, event.regtype)
+        end
+      end,
+    })
+  end
 end
 
 -- /////////////////////////////////////////////////////////////////////////////
