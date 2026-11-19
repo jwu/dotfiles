@@ -63,6 +63,9 @@ CASKS=(
   # Its config is a managed target, so the app has to exist on a new machine.
   # See docs/pixpin.md.
   "pixpin"
+  # Its preferences are synced by run_after_85-magpie-settings-sync.sh, which
+  # no-ops until the app has written its settings.json. See docs/design.md.
+  "magpie"
   # Herdr app is the newer window on herdr-core. The
   # upstream cask is arm64-only, so an Intel Mac has to build it from source.
   "herdr-app"
@@ -251,7 +254,7 @@ step_required "clone/update dotfiles" ensure_repo
 step_required "configure chezmoi sourceDir" write_chezmoi_config
 
 step "Homebrew formulae" install_formulae
-step "Homebrew casks (Neovide, Input Source Pro, FiraMono Nerd Font, PixPin, Herdr app)" install_casks
+step "Homebrew casks (Neovide, Input Source Pro, FiraMono Nerd Font, PixPin, Magpie, Herdr app)" install_casks
 step "default shell (zsh)" set_default_shell
 
 step_required "chezmoi init --apply" chezmoi init --apply

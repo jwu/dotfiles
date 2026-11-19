@@ -983,6 +983,9 @@ defaultTools` 并复原；随后再 apply 两次，输出为空、文件 mtime �
 和字号。首次启动 Magpie 生成 `~/.config/magpie/settings.json` 后即可同步，脚本也支持
 `XDG_CONFIG_HOME`。这四项有差异时，先退出 Magpie 再 apply，避免和应用同时写盘。
 
+应用本身是 Homebrew cask，列在 `bootstrap/macos.sh` 的 `CASKS` 里。少了这一步，新机器上
+脚本会因为 `settings.json` 不存在而一直静默跳过。
+
 脚本通过临时文件原子替换 JSON，四项一致时连 mtime 都不变。窗口位置等其他键由 Magpie
 维护，登录、provider 配置、备份和用量记录留在本机。配置文件由 Magpie 创建和维护，因此
 它的内容差异不会显示在 `chezmoi diff --include=files` 中。
