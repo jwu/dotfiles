@@ -18,7 +18,7 @@
 
 ```bash
 chezmoi diff --include=files     # 看配置层会改什么；判据是必须为空
-chezmoi apply -v                 # 应用；再跑一次必须零输出
+chezmoi apply -v                 # 应用；再跑一次检查退出码和脚本输出
 chezmoi status                   # A/M/D 与待跑脚本的紧凑视图
 chezmoi managed --include=files  # 源目前管着哪些目标
 chezmoi execute-template < f.tmpl | diff - ~/path   # 单独渲染一个模板并比对
@@ -57,7 +57,7 @@ dotfiles/
 
 ## 工作流程
 
-`改动源` → `chezmoi diff --include=files` → `apply` → 再 `apply` 确认 no-op → 提交。
+`改动源` → `chezmoi diff --include=files` → `apply` → 再 `apply` 检查脚本并确认文件 diff 为空 → 提交。
 
 任何改变仓库结构的改动，先看 `docs/design.md` 有没有对应章节需要同步——它是设计真源，
 文档与源不一致时以源为准，但要把文档修回来。
@@ -110,10 +110,11 @@ dotfiles/
 - 提交前必须：
 
   ```bash
-  chezmoi diff --include=files    # 必须为空
-  chezmoi apply -v                # 跑两次，第二次必须零输出
+  chezmoi apply -v                # 再跑一次，要求退出码为 0，检查脚本输出
+  chezmoi diff --include=files     # 必须为空
   ```
 
+- `run_after_` 脚本每次都会执行，`-v` 打印脚本内容属于正常输出。脚本报告失败或跳过同步时要检查原因。
 - `run_onchange_` 脚本内容一变就会重跑，这是刻意的。失败的脚本会被一并记进
   `scriptState` 而**不会**自动重试，修好后要先清记账：
 

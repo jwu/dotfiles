@@ -380,7 +380,7 @@ Linux / macOS / Windows 共用一份（见「脚本层」）。
 与上面那份 `~/.pi/agent/` 是两套互不相干的东西。它放两个方向相反的命令：
 
 - `prompts/apply.md` —— `/apply`，源 → home 目录：先把本地源同步到 `origin`，`diff` 比对 →
-  等确认 → `apply`，跑两次验证 no-op
+  等确认 → `apply`，再跑一次检查脚本退出码和输出，最后确认文件 diff 为空
 - `prompts/collect.md` —— `/collect`，home 目录 → 源：把 home 目录侧的改动回收进仓库
 
 `/apply` 比对前先 `git fetch --prune origin` 并同步：这仓库同时驱动多台机器，落在过期基线
@@ -727,8 +727,7 @@ Windows 上由 `bootstrap/windows.bat` 的 `:ENSURE_PI_CONFIG` 步骤 clone 到 
 | `60-zed-cli` | `~/.local/bin/zed -> /usr/bin/zeditor` |
 
 **再跑一次 `chezmoi apply -v`：退出码 0、输出 0 行**——文件层与脚本层都是彻底的 no-op
-（`diff --include=files` 与 `--include=scripts` 均为 0）。这就是最终稳态：日常 apply 只做配置
-同步，装包与重建只发生在首次、或相关源文件真的变化时。
+（`diff --include=files` 与 `--include=scripts` 均为 0）。这是当时的实测结果。现有 `run_after_` 脚本每次都会执行，当前验收见上文的 `/apply`。
 
 期间验证了整条技术链：`.tmpl` 的 `sourceDir` 渲染、`include | sha256sum` 的变更检测、脚本
 能 source 到被 `.chezmoiignore` 排除的 `scripts/` 辅助文件、`wnmw_*` 函数与网络比对。

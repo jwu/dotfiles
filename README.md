@@ -96,7 +96,7 @@ chezmoi apply -v
 | 命令 | 作用 |
 | --- | --- |
 | `chezmoi diff --include=files` | 配置层会改什么。干净的判据是**必须为空** |
-| `chezmoi apply -v` | 应用改动。再跑一次，第二次应当零输出 |
+| `chezmoi apply -v` | 应用改动。再跑一次，检查退出码和脚本输出 |
 | `chezmoi status` | A / M / D 与待跑脚本的紧凑视图 |
 | `chezmoi managed --include=files` | 源目前管着哪些目标 |
 | `chezmoi execute-template < f.tmpl \| diff - ~/path` | 单独渲染一个模板并比对 |
@@ -105,12 +105,13 @@ chezmoi apply -v
 改完配置源、准备提交之前：
 
 ```bash
-chezmoi diff --include=files    # 必须为空
-chezmoi apply -v                # 跑两次，第二次必须零输出
+chezmoi apply -v                # 再跑一次，要求退出码为 0，检查脚本输出
+chezmoi diff --include=files     # 必须为空
 ```
 
 `run_*` 脚本按前缀决定触发时机：`run_once_` 只跑一次，`run_onchange_` 在内容变化时重跑，
-`run_after_` 保证在所有文件落盘之后。一个**失败**的脚本也会被记进 `scriptState` 而不再重试，
+`run_after_` 在每次 apply 的文件落盘后执行，`-v` 会打印脚本内容。脚本报告失败或跳过同步时要检查原因。
+一个**失败**的脚本也会被记进 `scriptState` 而不再重试，
 修好之后要先清记账：
 
 ```bash

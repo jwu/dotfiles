@@ -59,11 +59,12 @@ git status -sb | head -1     # ## main...origin/main [ahead N, behind M]
 ## 3. 验证
 
 ```bash
-chezmoi apply -v                 # 必须零输出
+chezmoi apply -v                 # 退出码必须为 0，检查脚本输出
 chezmoi diff --include=files     # 必须为空
 ```
 
-两步任一不满足，回到第 1 步继续查。
+`run_after_` 脚本每次都会执行，`-v` 打印脚本内容属于正常输出。若脚本报告失败或跳过同步，
+即使退出码为 0 也要检查原因。验证未通过时，回到第 1 步继续查。
 
 ## 4. 汇报
 
