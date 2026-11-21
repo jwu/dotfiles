@@ -56,12 +56,17 @@ if [ ! -f "$SRC/sidebar-spaces/main.js" ] || [ ! -f "$SRC/sidebar-agents/main.js
   exit 1
 fi
 
+# Names these replaced before they moved to the shared repository.
+rm -rf "$MODS/spaces-mine" "$MODS/agents-mine"
+
+if diff -qr "$SRC/sidebar-spaces" "$MODS/sidebar-spaces" >/dev/null 2>&1 &&
+    diff -qr "$SRC/sidebar-agents" "$MODS/sidebar-agents" >/dev/null 2>&1; then
+  exit 0
+fi
+
 mkdir -p "$MODS"
 rm -rf "$MODS/sidebar-spaces" "$MODS/sidebar-agents"
 cp -R "$SRC/sidebar-spaces" "$SRC/sidebar-agents" "$MODS/"
-
-# Names these replaced before they moved to the shared repository.
-rm -rf "$MODS/spaces-mine" "$MODS/agents-mine"
 
 echo "installed sidebar mods at $REV"
 {{ end -}}

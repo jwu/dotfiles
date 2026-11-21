@@ -48,6 +48,26 @@ if (-not (Test-Path -LiteralPath $mark) -and (Test-Path -LiteralPath $shared)) {
   }
 }
 
+function Test-SameDirectory($source, $destination) {
+  if (-not (Test-Path -LiteralPath $destination -PathType Container)) { return $false }
+
+  $sourceEntries = @(Get-ChildItem -LiteralPath $source -Force)
+  $destinationEntries = @(Get-ChildItem -LiteralPath $destination -Force)
+  if ($sourceEntries.Count -ne $destinationEntries.Count) { return $false }
+
+  foreach ($entry in $sourceEntries) {
+    $other = Join-Path $destination $entry.Name
+    if ($entry.PSIsContainer) {
+      if (-not (Test-SameDirectory $entry.FullName $other)) { return $false }
+    }
+    elseif (-not (Test-Path -LiteralPath $other -PathType Leaf) -or
+        (Get-FileHash -LiteralPath $entry.FullName).Hash -ne (Get-FileHash -LiteralPath $other).Hash) {
+      return $false
+    }
+  }
+  return $true
+}
+
 # Which step failed decides whether an installed copy may stay: a network
 # failure is waited out, a broken archive is not.
 $stage = 'fetch'
@@ -73,17 +93,26 @@ try {
     }
   }
 
+  # Names these replaced before they moved to the shared repository.
+  foreach ($name in @('spaces-mine', 'agents-mine')) {
+    $old = Join-Path $mods $name
+    if (Test-Path -LiteralPath $old) { Remove-Item -LiteralPath $old -Recurse -Force }
+  }
+
+  $upToDate = $true
+  foreach ($name in $names) {
+    if (-not (Test-SameDirectory (Join-Path $src $name) (Join-Path $mods $name))) {
+      $upToDate = $false
+      break
+    }
+  }
+  if ($upToDate) { return }
+
   New-Item -ItemType Directory -Force -Path $mods | Out-Null
   foreach ($name in $names) {
     $dest = Join-Path $mods $name
     if (Test-Path -LiteralPath $dest) { Remove-Item -LiteralPath $dest -Recurse -Force }
     Copy-Item -LiteralPath (Join-Path $src $name) -Destination $dest -Recurse -Force
-  }
-
-  # Names these replaced before they moved to the shared repository.
-  foreach ($name in @('spaces-mine', 'agents-mine')) {
-    $old = Join-Path $mods $name
-    if (Test-Path -LiteralPath $old) { Remove-Item -LiteralPath $old -Recurse -Force }
   }
 
   Write-Host "installed sidebar mods at $rev"

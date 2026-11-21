@@ -97,8 +97,8 @@ dot_config/herdr-app/layouts/main-mine.json
 每次 apply 都从 `codeload.github.com/jwu/herdr-sidebar-mods/tar.gz/<REV>` 取一次包，
 所以 push 之后下一次 apply 就跟上，几台机器始终同版。`run_after_16-herdr-mods.sh.tmpl`
 管 macOS / Linux，`run_after_16-herdr-mods.ps1.tmpl` 管 Windows；两者解开后落到
-`~/.config/herdr-app/mods/`，并删掉早先的 `spaces-mine` / `agents-mine`。headless
-机器跳过（没有窗口可画）。
+`~/.config/herdr-app/mods/`。解包后比较两个模块目录，内容一致就跳过安装。
+成功取包后仍会清理早先的 `spaces-mine` / `agents-mine`。headless 机器跳过（没有窗口可画）。
 
 用 `run_` 而不是 `run_onchange_`：onchange 只在模板内容变化时执行，跟 `main` 就再也
 不会重跑。代价是每次 apply 走一次网络（curl `--connect-timeout 10 --max-time 90`）；
