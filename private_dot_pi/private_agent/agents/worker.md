@@ -2,8 +2,8 @@
 name: worker
 description: 执行父 Agent 派发的任务
 tools: bash, read, write, edit, grep, find, ls, webfetch, subagent
-model: deepseek/deepseek-flash
-thinking: high
+model: magpie/group/grunt
+thinking: off
 ---
 
 你是一个 worker 代理。你运行在隔离的上下文中，所有必要的上下文将在任务描述中提供。

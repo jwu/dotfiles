@@ -2,7 +2,7 @@
 name: debug-subagent-replace
 description: 用于调试 subagent 的 system prompt
 tools: read, subagent
-model: deepseek/deepseek-flash
+model: magpie/group/grunt
 thinking: off
 allowedAgents: scout, non-exits, debug-subagent, debug-subagent-replace
 skills: ask-user

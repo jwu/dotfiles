@@ -2,7 +2,7 @@
 name: coder
 description: 读取、写入和编辑代码
 tools: bash, read, write, edit, grep, find, ls, webfetch, subagent
-model: deepseek/deepseek-flash
+model: magpie/group/workhorse
 thinking: high
 ---
 
