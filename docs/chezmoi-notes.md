@@ -178,6 +178,7 @@ sourceDir = "/Users/<user>/bin/dotfiles"
 | `~/.config/godot/editor_settings-*.tres` | 编辑器设置，含窗口布局 |
 | `~/.config/warp-terminal/user_preferences.json` | Warp 自行重写 |
 | `~/.config/herdr-app/AGENTS.md` | Herdr app 每次启动重写，文件头写明 Edits here are overwritten |
+| `~/.config/herdr-app/{gpui-kit,herdr}.d.ts` | Herdr app 生成的 mod API 类型声明 |
 | `~/.config/uv/uv-receipt.json` | uv 的 cargo-dist 安装器写的收据，含本机 `install_prefix` |
 
 `~/.config/chezmoi/chezmoi.toml` 也在这里：由 `bootstrap/<platform>` 写，见上一节。
@@ -190,11 +191,16 @@ sourceDir = "/Users/<user>/bin/dotfiles"
 | `~/.config/obsidian/**` | Electron profile（Cookies、GPUCache、`obsidian-*.asar`、日志） |
 | `~/.config/dconf/user` | 二进制状态库 |
 | `~/.config/chezmoi/chezmoistate.boltdb` | chezmoi 记账库 |
+| `~/Library/Application Support/Input Source Pro/**`、`~/Library/Preferences/com.runjuu.Input-Source-Pro.plist` | 应用维护的 Core Data、备份与偏好；可迁移的设置写入应用导出 JSON，见 `inputsource-pro/inputsource-pro-config.md` |
 | `~/.config/{fcitx,ibus}/**` | dbus / socket 句柄 |
 | `~/.config/pulse/` | PulseAudio 的 `<machine-id>-runtime` cookie |
-| `~/.config/{btop,go,nautilus,systemd,yay}/` | 空目录，工具首次运行才填 |
+| `~/.config/{btop,eza,go,nautilus,systemd,yay}/` | 空目录，工具首次运行才填 |
 | `~/.config/comfy-cli/**` | `recent_workspace` 之类由 comfy-cli 写回，且含本机路径 |
 | `~/.config/herdr-app/{mods,layouts,frame,keys.json,view.json,shared.json,data,seen.json,installed.json,window.json}`、`~/.config/herdr-app/herdr-app.sock` | Herdr app 的生成物、点击状态、mod 运行时数据与 socket，见 `herdr.md` |
+| `~/.config/herdr-app/{settings,shared,view}.json.bak-*`、`sidebar-spaces.caffeine.pid`、`update-notes*` | 配置备份、进程标记与更新说明缓存 |
+| `~/.config/.DS_Store` | Finder 的目录视图状态 |
+| `~/.config/magpie/**` | 应用维护的偏好、插件状态、锁、缓存、用量、备份和本机账号数据；可同步的偏好由 chezmoi 脚本按键合并，见 `design.md` |
+| `~/.config/jwu/magpie-sync` | 本机 Magpie 同步使用的单值文件，未识别出可迁移的偏好 |
 
 ### 构建产物 / 下载物
 
