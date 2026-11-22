@@ -166,8 +166,8 @@
     "indicatorSize" : {
       "base" : 2
     },
-    "isActiveWhenFocusedElementChanges" : true,
-    "isActiveWhenLongpressLeftMouse" : true,
+    "isActiveWhenFocusedElementChanges" : false,
+    "isActiveWhenLongpressLeftMouse" : false,
     "isActiveWhenSwitchApp" : false,
     "isActiveWhenSwitchInputSource" : false,
     "isAlwaysDisplayIndicatorNearMouse" : false,
