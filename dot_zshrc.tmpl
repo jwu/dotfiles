@@ -6,22 +6,28 @@ if [[ -n $GHOSTTY_RESOURCES_DIR ]]; then
   source "$GHOSTTY_RESOURCES_DIR"/shell-integration/zsh/ghostty-integration
 fi
 
-{{ with index .herdr "logicalCwdLink" -}}
-# Herdr splits start from the OS-reported directory. Restore the configured link.
-if [[ -n $HC_TERMINAL_ID && -L "$HOME"/{{ . | shellQuote }} ]]; then
+# Herdr splits start from the OS-reported directory. Recover a home-directory symlink.
+if [[ -n $HC_TERMINAL_ID && $PWD == "${PWD:A}" ]]; then
   () {
-    local link="$HOME/$1" physical logical
-    physical=${link:A}
-    if [[ $PWD == "$physical" || $PWD == "$physical/"* ]]; then
-      logical="$link${PWD#"$physical"}"
-      if [[ $logical -ef . ]]; then
-        builtin cd -q -L -- "$logical"
+    local link target logical best_target='' best_path=''
+    for link in "$HOME"/*(ND@); do
+      [[ -d $link ]] || continue
+      target=${link:A}
+      [[ $target != / && ( $PWD == "$target" || $PWD == "$target/"* ) ]] || continue
+      logical="$link${PWD#"$target"}"
+      [[ $logical -ef . ]] || continue
+      if (( ${#target} > ${#best_target} )); then
+        best_target=$target
+        best_path=$logical
+      elif [[ $target == "$best_target" ]]; then
+        # The physical path cannot distinguish aliases for the same target.
+        best_path=''
       fi
-    fi
-  } {{ . | shellQuote }}
+    done
+    [[ -z $best_path ]] || builtin cd -q -L -- "$best_path"
+  }
 fi
 
-{{ end -}}
 # ------------------------------
 # env vars
 # ------------------------------
