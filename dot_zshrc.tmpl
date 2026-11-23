@@ -6,6 +6,22 @@ if [[ -n $GHOSTTY_RESOURCES_DIR ]]; then
   source "$GHOSTTY_RESOURCES_DIR"/shell-integration/zsh/ghostty-integration
 fi
 
+{{ with index .herdr "logicalCwdLink" -}}
+# Herdr splits start from the OS-reported directory. Restore the configured link.
+if [[ -n $HC_TERMINAL_ID && -L "$HOME"/{{ . | shellQuote }} ]]; then
+  () {
+    local link="$HOME/$1" physical logical
+    physical=${link:A}
+    if [[ $PWD == "$physical" || $PWD == "$physical/"* ]]; then
+      logical="$link${PWD#"$physical"}"
+      if [[ $logical -ef . ]]; then
+        builtin cd -q -L -- "$logical"
+      fi
+    fi
+  } {{ . | shellQuote }}
+fi
+
+{{ end -}}
 # ------------------------------
 # env vars
 # ------------------------------
