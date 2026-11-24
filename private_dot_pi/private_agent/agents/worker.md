@@ -2,7 +2,7 @@
 name: worker
 description: 执行父 Agent 派发的任务
 tools: bash, read, write, edit, grep, find, ls, webfetch, subagent
-model: magpie/group/grunt
+models: magpie/group/grunt
 thinking: off
 ---
 

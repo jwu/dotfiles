@@ -2,7 +2,7 @@
 name: scout
 description: 快速侦察 — 探索文件、查找模式、绘制架构
 tools: read, grep, find, ls, webfetch
-model: magpie/group/grunt
+models: magpie/group/grunt
 thinking: off
 ---
 
