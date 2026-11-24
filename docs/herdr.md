@@ -54,7 +54,7 @@ Linux 那份走 `run_onchange_before_14-herdr.sh.tmpl`，与 scrapling、dev-run
   `shared.json`、`data/`、`seen.json`、`installed.json`、`window.json`、`windows.json`
   —— 生成物或点击状态。`layouts/.state/<name>.json` 记的是尺寸、显示/隐藏与**主题选择**，
   文档原文是 don't edit those files。`mods/` 整个目录都不在源里：上游 mod 每次启动整份
-  替换，自定义的那两个由 `run_onchange_after_16-herdr-mods.{sh,ps1}.tmpl` 从它们自己的
+  替换，自定义的三个 mod 由 `run_after_16-herdr-mods.{sh,ps1}.tmpl` 从它们自己的
   仓库装（见下）；`mods/<name>/gpui-kit.d.ts`（每次启动重写）与 `jsconfig.json`（首次生成）由 app 写
 
 受管文件由程序回写：Herdr app 的 Settings 与主题选择器写 `settings.json` 和 `layouts/.state/`。
@@ -92,12 +92,13 @@ dot_config/herdr-app/layouts/main-mine.json
 | --- | --- |
 | `sidebar-spaces` | 机器头的 CPU sparkline / 内存 meter、工作区的 git tail（branch ▸ remote）、状态图标、紫色选中 |
 | `sidebar-agents` | 状态图标前置、2px 行距、同样的紫色选中 |
+| `pane-header` | pane 标题、可复制的终端 ID、工作目录和 Send back 按钮 |
 
 机器装哪个版本由 `.chezmoidata.toml` 的 `herdr.sidebarModsRev` 决定，默认 `main`：
 每次 apply 都从 `codeload.github.com/jwu/herdr-sidebar-mods/tar.gz/<REV>` 取一次包，
 所以 push 之后下一次 apply 就跟上，几台机器始终同版。`run_after_16-herdr-mods.sh.tmpl`
 管 macOS / Linux，`run_after_16-herdr-mods.ps1.tmpl` 管 Windows；两者解开后落到
-`~/.config/herdr-app/mods/`。解包后比较两个模块目录，内容一致就跳过安装。
+`~/.config/herdr-app/mods/`。解包后比较三个 mod 目录，内容一致就跳过安装。
 成功取包后仍会清理早先的 `spaces-mine` / `agents-mine`。headless 机器跳过（没有窗口可画）。
 
 用 `run_` 而不是 `run_onchange_`：onchange 只在模板内容变化时执行，跟 `main` 就再也
@@ -130,7 +131,7 @@ cd ~/bin/dotfiles
 chezmoi execute-template < run_after_16-herdr-mods.sh.tmpl | bash
 ```
 
-本机正在开发这一版时，直接把仓库里的 `mods/sidebar-*` cp 到
+本机正在开发这一版时，直接把仓库里的 `mods/sidebar-*` 和 `mods/pane-header` cp 到
 `~/.config/herdr-app/mods/` 覆盖即可；下一次 apply 会用远端 `main` 把本地覆盖回去。
 
 ## 让 layout 自己切过去

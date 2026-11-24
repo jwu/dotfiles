@@ -51,7 +51,8 @@ if ! curl -fsSL --connect-timeout 10 --max-time 90 \
 fi
 SRC="$TMP/herdr-sidebar-mods-$REV/mods"
 
-if [ ! -f "$SRC/sidebar-spaces/main.js" ] || [ ! -f "$SRC/sidebar-agents/main.js" ]; then
+if [ ! -f "$SRC/sidebar-spaces/main.js" ] || [ ! -f "$SRC/sidebar-agents/main.js" ] ||
+    [ ! -f "$SRC/pane-header/main.js" ]; then
   echo "herdr sidebar mods: $REV is missing a mod" >&2
   exit 1
 fi
@@ -60,13 +61,14 @@ fi
 rm -rf "$MODS/spaces-mine" "$MODS/agents-mine"
 
 if diff -qr "$SRC/sidebar-spaces" "$MODS/sidebar-spaces" >/dev/null 2>&1 &&
-    diff -qr "$SRC/sidebar-agents" "$MODS/sidebar-agents" >/dev/null 2>&1; then
+    diff -qr "$SRC/sidebar-agents" "$MODS/sidebar-agents" >/dev/null 2>&1 &&
+    diff -qr "$SRC/pane-header" "$MODS/pane-header" >/dev/null 2>&1; then
   exit 0
 fi
 
 mkdir -p "$MODS"
-rm -rf "$MODS/sidebar-spaces" "$MODS/sidebar-agents"
-cp -R "$SRC/sidebar-spaces" "$SRC/sidebar-agents" "$MODS/"
+rm -rf "$MODS/sidebar-spaces" "$MODS/sidebar-agents" "$MODS/pane-header"
+cp -R "$SRC/sidebar-spaces" "$SRC/sidebar-agents" "$SRC/pane-header" "$MODS/"
 
 echo "installed sidebar mods at $REV"
 {{ end -}}

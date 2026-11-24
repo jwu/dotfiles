@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 
 $rev = '{{ .herdr.sidebarModsRev }}'
 $mods = Join-Path $HOME '.config\herdr-app\mods'
-$names = @('sidebar-spaces', 'sidebar-agents')
+$names = @('sidebar-spaces', 'sidebar-agents', 'pane-header')
 $installed = Join-Path $mods 'sidebar-agents\main.js'
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ('herdr-mods-' + [guid]::NewGuid().ToString('N'))
 
