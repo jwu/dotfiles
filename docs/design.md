@@ -152,7 +152,7 @@ dot_pi/agent/
   APPEND_SYSTEM.md                     ← pi-config
   create_settings.json.tmpl            ← 新机器的初始 settings.json（`create_`；托管键另有 run_after 同步）
   create_mcp.json                      ← 新机器的初始 mcp.json（内置 MCP，同上）
-  extensions/eko24ive-pi-ask.json      ← pi-ask 设置（真源；在 /ask-settings 里改设置会被写回）
+  extensions/pi-ask.json              ← pi-ask 设置（真源；在 /ask-settings 里改设置会被写回）
   extensions/pi-tui-animations.json    ← pi-animations 设置（同上）
 # macOS 专有（本机不存在，从仓库搬入）
 dot_aerospace.toml                         ← desktop-settings: aerospace/.aerospace.toml
@@ -357,7 +357,7 @@ Linux / macOS / Windows 共用一份（见「脚本层」）。
 那样按 `.chezmoi.os` 分支），不能只写在一台机器上。出于同样的原因，在 pi 里临时 `pi install`
 的包会在下次 apply 时被源列表重排或删掉，想长期保留就得写进源。
 
-`extensions/` 下的两份配置（`eko24ive-pi-ask.json`、`pi-tui-animations.json`）按真源纳入，与
+`extensions/` 下的两份配置（`pi-ask.json`、`pi-tui-animations.json`）按真源纳入，与
 上面那组 `create_` 刻意不同：它们**只**在用户主动改设置时被回写——pi-ask 在 `/ask-settings`
 里切换开关，pi-animations 在其设置命令里 `persistConfig()`——不是 pi 每次会话都写，所以
 `apply` 不会持续和扩展抢同一份文件。代价是改过一次设置就会留下非空的 `chezmoi diff`，走
@@ -365,9 +365,9 @@ Linux / macOS / Windows 共用一份（见「脚本层」）。
 `"pi-ask: sync config back to schemaVersion 5"` 提交那次写回），2026-09 起改为按真源纳入。
 
 `packages` 里的 `@johnnywu/pi-ask` 是上游 `@eko24ive/pi-ask` 的本地 fork（仓库在
-`~/dev/pi-ask`），加了 `alt+a` 折叠 ask 面板等改动。fork 里的 `getAskConfigPath()` 有意
-保留 `eko24ive-pi-ask.json` 这个旧文件名：改名会让已有键位配置失联，也会多一处上游同步
-冲突。上游有更新时在 `~/dev/pi-ask` 里 `git fetch upstream && git rebase upstream/main`，
+`~/dev/pi-ask`），加了 `alt+a` 折叠 ask 面板等改动。当前版本优先读取
+`~/.pi/agent/extensions/pi-ask.json`，仓库沿用已有键位并跟随这个文件名。
+上游有更新时在 `~/dev/pi-ask` 里 `git fetch upstream && git rebase upstream/main`，
 再升版本发布到 npm，新机器就装到新版。
 
 `@johnnywu/pi-image-gen` 不同：它没有上游，就是本仓库作者写的扩展，仓库在

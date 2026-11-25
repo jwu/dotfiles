@@ -1,16 +1,6 @@
 {
   "schemaVersion": 6,
   "answer": {
-    "extractionModels": [
-      {
-        "provider": "deepseek",
-        "id": "deepseek-flash"
-      },
-      {
-        "provider": "openai-codex",
-        "id": "gpt-6-luna"
-      }
-    ],
     "extractionRetries": 1,
     "extractionTimeoutMs": 30000
   },
