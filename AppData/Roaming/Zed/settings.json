@@ -84,7 +84,7 @@
     "font_size": 13.5,
   },
   "theme": {
-    "mode": "dark",
+    "mode": "light",
     "light": "One Light",
     "dark": "One Dark Pro",
   },

@@ -7,6 +7,17 @@
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
+{{- if eq .chezmoi.os "darwin" }}
+  "context_servers": {
+    "magpie-artifacts": {
+      "command": "/Applications/magpie.app/Contents/MacOS/magpie",
+      "args": [
+        "mcp",
+        "artifacts"
+      ]
+    }
+  },
+{{- end }}
   // theme and icon_theme below come from one-dark-pro and material-icon-theme.
   "text_rendering_mode": "platform_default",
   "auto_install_extensions": {
@@ -84,7 +95,7 @@
     "font_size": 13.5,
   },
   "theme": {
-    "mode": "dark",
+    "mode": "light",
     "light": "One Light",
     "dark": "One Dark Pro",
   },

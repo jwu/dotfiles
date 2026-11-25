@@ -133,7 +133,7 @@ dot_config/
   swaylock/backgrounds/*.webp          ← configs: linux/backgrounds/（6 张）
   waybar/*                             ← configs: linux/.config/waybar/
   yazi/{yazi.toml,theme.toml}          ← configs: common/.config/yazi/
-  zed/settings.json                    ← desktop-settings: zed/settings.json
+  zed/settings.json.tmpl               ← desktop-settings: zed/settings.json
 dot_local/
   bin/executable_niri-clipboard-history  ← configs: linux/.local/bin/
   bin/executable_niri-lock
