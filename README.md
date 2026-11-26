@@ -102,6 +102,25 @@ chezmoi apply -v
 | `chezmoi execute-template < f.tmpl \| diff - ~/path` | 单独渲染一个模板并比对 |
 | `chezmoi cd` | 进入源目录 |
 
+### 批量更新其他机器
+
+从 dotfiles 源目录运行，需要本机的 `python3`、`ssh`、`curl`、`hc` 和监听在 `127.0.0.1:7890`
+的 HTTP 代理。机器清单来自 `hc machine ls`，`martin-vps` 和 `martin-vps-us` 始终排除。
+
+```bash
+python3 scripts/fleet-update.py --check
+python3 scripts/fleet-update.py --apply
+python3 scripts/fleet-update.py --apply macbook-m5 khadas.win11
+```
+
+默认是 `--check`，只探测 SSH、代理和已安装组件。`--apply` 依次快进 `jwu/dotfiles` 的 `main`、
+预览并应用 chezmoi、运行 `pi update --all`、更新 Magpie 和 Herdr Core。chezmoi 遇到本机文件冲突
+会报告错误，其他步骤仍会继续。Magpie 按它自己的更新流程等待正在处理的请求结束。
+
+代理用每次 SSH 连接的临时转发，可用 `--proxy-port` 改本机端口。若 Linux NAS 禁止反向转发，
+且仅安装了 Herdr Core，脚本通过本机代理下载、核验并转交官方 Herdr Core 二进制。Windows 需要
+PowerShell 7。组件缺失显示 `ABSENT`，离线、失败或无法获得结果会让整个命令返回非零，可指定机器重试。
+
 改完配置源、准备提交之前：
 
 ```bash
