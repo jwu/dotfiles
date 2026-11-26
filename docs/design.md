@@ -14,7 +14,7 @@
 因为它承载 pi 的 TypeScript 扩展工程与 npm 插件。
 
 由此产生一条硬约束：**本仓库的脚本不得出现对 `configs` / `desktop-settings` 的任何 clone、
-路径引用或依赖**。对 `pi-config` 的 clone 是允许且必要的，由本仓库的脚本负责触发。
+路径引用或依赖**。装机脚本仍允许 clone `pi-config`，扩展由 pi 从 npm 安装。
 
 ## 仓库边界
 
@@ -26,10 +26,8 @@
 | `pi-config` | **保留** | `extensions/*.ts`、`tests/`、`package.json`、`tsconfig.json` |
 | `install-arch` | **并入** `bootstrap/` | 它本质是「新机器第一步」，与 `configs` 一起退役 |
 
-保留它的理由只有一个：`settings.json` 的 `extensions` 字段要**活加载**这份 checkout 里的
-`extensions/*.ts`，所以仓库得待在固定路径上。那份 `settings.json` 本身现在由 chezmoi 的
-`create_settings.json.tmpl` 渲染（见「pi 的可变状态」），`pi-config` 侧从此只剩 `extensions/`
-与它的工程文件。
+`pi-config` 仓库保留扩展源码与工程文件。chezmoi 的 `create_settings.json.tmpl` 在
+`packages` 中声明 `npm:@johnnywu/pi-config`，由 pi 安装发布包和运行时依赖。
 
 ## 安装入口：`bootstrap/`
 
@@ -344,8 +342,8 @@ Linux / macOS / Windows 共用一份（见「脚本层」）。
 
 非托管键的取值仍是**新机器的初始值**：`create_settings.json.tmpl` 的 `defaultProvider` /
 `defaultModel` / `defaultThinkingLevel` 给新机器一个 deepseek 起点，之后跟着 `/model` 走。
-`extensions` 按 `.chezmoi.os` 渲染：Unix 是 `~/bin/pi-config/extensions`，Windows 是
-`c:/bin/pi-config/extensions`（pi 会展开 `~`，见 `dist/utils/paths.js` 的 `expandTilde`）。
+`extensions` 默认为空。`packages` 中的 `npm:@johnnywu/pi-config` 提供扩展，pi 安装发布包时
+也会安装其依赖 `@johnnywu/pi-agent-profiles`。日常用 `pi update --all` 一起更新 pi 与扩展包。
 内置 MCP 保持启用：`pi-mcp-adapter` 退役后 `/mcp` 归内核，server 定义落在
 `~/.pi/agent/mcp.json`（源 `create_mcp.json`），依据见 pi 文档 `mcp.md`。`extensions` 与
 `packages` 都是托管键的一部分，所以这条迁移对已有机器同样生效。细节见「pi-mcp-adapter
@@ -353,8 +351,7 @@ Linux / macOS / Windows 共用一份（见「脚本层」）。
 
 `packages` 自 2026-09-30 起是**托管键**，源里的列表就是每台机器上的列表：源里存的是 npm
 包名（`npm:@johnnywu/pi-filechanges` …），所以 macOS 那台开发机原先手工换成的 `~/dev/jwu/*`
-本地路径会被下一次 apply 覆盖回包名版；要保住本地路径，得把它们写进源（例如像 `extensions`
-那样按 `.chezmoi.os` 分支），不能只写在一台机器上。出于同样的原因，在 pi 里临时 `pi install`
+本地路径会被下一次 apply 覆盖回包名版；要保住本地路径，得把它们写进源（可按 `.chezmoi.os` 分支），不能只写在一台机器上。出于同样的原因，在 pi 里临时 `pi install`
 的包会在下次 apply 时被源列表重排或删掉，想长期保留就得写进源。
 
 `extensions/` 下的两份配置（`pi-ask.json`、`pi-tui-animations.json`）按真源纳入，与
@@ -583,7 +580,7 @@ plist 那份又被 `cfprefsd` 缓存，而且混着 `NSWindow Frame SUUpdateAler
 
 ### pi-config 的编排
 
-`pi-config` 是唯一被 clone 的外部仓库，由本仓库脚本触发：
+Unix 的现有装机脚本仍会准备 `pi-config` checkout：
 
 ```
 run_once_after_50-pi-config.sh.tmpl
@@ -593,12 +590,10 @@ run_once_after_50-pi-config.sh.tmpl
 ```
 
 它**不调用** `pi-config/install.sh`（该脚本已删除）：`settings.json` 与 `mcp.json` 都是 chezmoi
-的 `create_` 目标，再复制一遍就是两个所有者争同一份文件（见上节）。clone 目标仍是固定的
-`~/bin/pi-config`，因为 `create_settings.json.tmpl` 渲染出的 `extensions` 指向它。
-
-Windows 上由 `bootstrap/windows.bat` 的 `:ENSURE_PI_CONFIG` 步骤 clone 到 `C:\bin\pi-config`，
-模板按 OS 渲染对应的 `extensions` 路径；node 与 pi CLI 在那台机器上仍是手工装（bootstrap
-不碰 node）。
+的 `create_` 目标，再复制一遍就是两个所有者争同一份文件（见上节）。Windows 的
+`bootstrap/windows.bat` 仍通过 `:ENSURE_PI_CONFIG` 准备 `C:\bin\pi-config`。pi 从 npm 加载
+扩展，这两个 checkout 可用于本地开发。Windows 上已有的 `settings.json` 需要手工迁移：在
+`packages` 里加入 `npm:@johnnywu/pi-config`，并移除原来的 checkout 加载项。
 
 ## 退役计划
 

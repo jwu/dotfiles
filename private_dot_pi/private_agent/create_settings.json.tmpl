@@ -32,15 +32,10 @@
   "quietStartup": true,
   "enableInstallTelemetry": false,
   "defaultProjectTrust": "always",
-  "extensions": [
-{{- if eq .chezmoi.os "windows" }}
-    "c:/bin/pi-config/extensions"
-{{- else }}
-    "~/bin/pi-config/extensions"
-{{- end }}
-  ],
+  "extensions": [],
   "packages": [
     "npm:@johnnywu/pi-ask",
+    "npm:@johnnywu/pi-config",
     "npm:@johnnywu/pi-filechanges",
     "npm:@johnnywu/pi-herdr-agents",
     "npm:@johnnywu/pi-image-gen",

@@ -97,9 +97,7 @@ winget install twpayne.chezmoi
 
 ### 3.2 克隆到固定路径
 
-路径**不能随意选**：`create_settings.json.tmpl` 渲染出的 `extensions` 指向
-`~/bin/pi-config/extensions`（见 §5.3），而 `run_once_after_50-pi-config.sh.tmpl` 只会 clone 到
-`~/bin/pi-config`。
+下文使用 `~/bin/dotfiles` 作为源目录。目录选定后，把同一个路径写入 `sourceDir`。
 
 ```bash
 # macOS
@@ -290,16 +288,11 @@ Clink；这里**不能**改用 `clink autorun`：Clink 的 `os.setenv` 改不了
 [`windows-shell.md`](windows-shell.md)。**新增 `bootstrap/*.bat` 记得必须 CRLF**
 （`.gitattributes` 已用 `-text` 固定）。
 
-**(d) pi 的接线由 chezmoi 与 `bootstrap/windows.bat` 一起补。** `create_settings.json.tmpl` 渲染
-出的 `extensions` 在 Windows 上是 `c:/bin/pi-config/extensions`（pi 会展开 `~`，所以 Unix 那份
-写 `~/bin/pi-config/extensions` 就够）。clone 由 `bootstrap/windows.bat` 的 `:ENSURE_PI_CONFIG`
-步骤负责，目标是固定的 `C:\bin\pi-config`；**node 现在由同一份 bootstrap 的 scoop 步骤装上**
-（`nodejs-lts`），pi CLI 仍是手工装（`npm i -g @earendil-works/pi-coding-agent`），因为
-`run_once_after_50` 在 Windows 上渲染为空。见 [`dev-env.md`](dev-env.md)。
-
-`run_once_after_50-pi-config.sh.tmpl` 在 Windows 上渲染为空，所以 Windows 那条路径上的 clone
-完全靠 bootstrap。这台机器以前是手工 clone 到 `C:\dev\pi-config` 再让 `settings.json` 指向它，
-现在统一成 `C:\bin\pi-config`，新机器按 bootstrap 走即可，不必再补手工接线。
+**(d) pi 从 npm 加载 `pi-config`。** `bootstrap/windows.bat` 通过 Scoop 安装 `nodejs-lts`，
+pi CLI 用 `npm i -g @earendil-works/pi-coding-agent` 安装。新建的 `settings.json` 已在
+`packages` 中声明 `npm:@johnnywu/pi-config`。已有 Windows 配置需要手工加上这个包，并从
+`extensions` 或 `packages` 移除原来的本地 checkout 路径。启动 pi 后会安装发布包及其依赖。
+日常用 `pi update --all` 更新。见 [`dev-env.md`](dev-env.md)。
 
 ---
 
