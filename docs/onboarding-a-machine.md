@@ -215,8 +215,9 @@ exposure 与启用状态），但它们由 chezmoi 的 `create_` 目标落地—
 既留在源里，又不会被 `apply` 抹掉。代价是源与磁盘会漂移：改 MCP server 时要手工同步已有机器
 （`packages` 这类托管键由 `run_after_` 脚本自动同步）。见 `design.md` 的「pi 的可变状态」。
 
-`~/.pi/agent/extensions/*.json`（pi-ask、pi-animations 的设置）不属于这一类，它们按**真源**纳入：
-只有用户主动改设置时扩展才会写回，`apply` 不会持续覆盖，漂移出现时用 `/collect` 回收。
+`~/.pi/agent/extensions/` 下的 pi-ask、pi-animations 和 pi-filechanges 设置按**真源**纳入。
+pi-ask 和 pi-animations 只在用户主动改设置时回写，pi-filechanges 只读配置。
+本机配置与源不一致时，用 `/collect` 回收。
 
 ---
 

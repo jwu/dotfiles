@@ -354,11 +354,10 @@ Linux / macOS / Windows 共用一份（见「脚本层」）。
 本地路径会被下一次 apply 覆盖回包名版；要保住本地路径，得把它们写进源（可按 `.chezmoi.os` 分支），不能只写在一台机器上。出于同样的原因，在 pi 里临时 `pi install`
 的包会在下次 apply 时被源列表重排或删掉，想长期保留就得写进源。
 
-`extensions/` 下的两份配置（`pi-ask.json`、`pi-tui-animations.json`）按真源纳入，与
-上面那组 `create_` 刻意不同：它们**只**在用户主动改设置时被回写——pi-ask 在 `/ask-settings`
-里切换开关，pi-animations 在其设置命令里 `persistConfig()`——不是 pi 每次会话都写，所以
-`apply` 不会持续和扩展抢同一份文件。代价是改过一次设置就会留下非空的 `chezmoi diff`，走
-`/collect` 回收即可。这两份先前按「排除」处理（诱因是 `pi-config` 的
+`extensions/` 下的 `pi-ask.json`、`pi-tui-animations.json` 和 `pi-filechanges.json` 按真源纳入。
+pi-ask 和 pi-animations 只在用户通过各自的设置命令主动改设置时回写，pi-filechanges 只读取
+配置。扩展回写或手动编辑后，`chezmoi diff` 会显示差异，可用 `/collect` 回收。
+pi-ask 和 pi-animations 先前按「排除」处理（诱因是 `pi-config` 的
 `"pi-ask: sync config back to schemaVersion 5"` 提交那次写回），2026-09 起改为按真源纳入。
 
 `packages` 里的 `@johnnywu/pi-ask` 是上游 `@eko24ive/pi-ask` 的本地 fork（仓库在
