@@ -112,19 +112,22 @@ if is_color16 then
 end
 
 -- Herdr terminals can outlive the SSH connection and have no SSH_TTY.
-local herdr_terminal = vim.env.HC_TERMINAL_SOCKET ~= nil and vim.fn.has('linux') == 1 and not vim.g.neovide
+local herdr_terminal = vim.env.HC_TERMINAL_SOCKET ~= nil and not vim.g.neovide
 if vim.env.SSH_TTY ~= nil or herdr_terminal then
   local osc52 = require('vim.ui.clipboard.osc52')
   local copy_to_clipboard = osc52.copy('+')
+  -- Herdr blocks OSC 52 reads. Preserve native paste on the Mac running Neovim.
+  local mac_paste = vim.env.SSH_TTY == nil and vim.fn.has('mac') == 1 and { 'pbpaste' }
   vim.g.clipboard = {
     name = 'OSC 52',
     copy = {
       ['+'] = copy_to_clipboard,
-      ['*'] = osc52.copy('*'),
+      -- OSC 52 primary selection is Linux-specific in Herdr.
+      ['*'] = herdr_terminal and copy_to_clipboard or osc52.copy('*'),
     },
     paste = {
-      ['+'] = osc52.paste('+'),
-      ['*'] = osc52.paste('*'),
+      ['+'] = mac_paste or osc52.paste('+'),
+      ['*'] = mac_paste or osc52.paste('*'),
     },
   }
 
@@ -133,7 +136,7 @@ if vim.env.SSH_TTY ~= nil or herdr_terminal then
       group = vim.api.nvim_create_augroup('herdr_clipboard', { clear = true }),
       callback = function()
         local event = vim.v.event
-        if event.operator == 'y' and event.regname == '' and not vim.tbl_contains(vim.opt.clipboard:get(), 'unnamedplus') then
+        if event.operator == 'y' and event.regname == '' and vim.o.clipboard == '' then
           copy_to_clipboard(event.regcontents, event.regtype)
         end
       end,
