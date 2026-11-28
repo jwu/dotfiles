@@ -322,7 +322,7 @@ git 先读 XDG 那份、再读 `~/.gitconfig`，后者覆盖前者，所以个�
 代价是源与磁盘会漂移，所以跨机器必须一致的那几个键另走一条**字段级**通道：
 `run_after_55-pi-settings-sync.sh.tmpl` 每次 apply 渲染 `create_settings.json.tmpl`，把
 `$schema`、`extensions`、`packages`、`defaultTools`、`theme`、`tuiMode`、`quietStartup`、
-`enableInstallTelemetry`、`defaultProjectTrust`、`hideThinkingBlock` 合并进已存在的文件，
+`defaultProjectTrust`、`hideThinkingBlock` 合并进已存在的文件，
 其余键（`defaultProvider` / `defaultModel` / `defaultThinkingLevel` / `lastChangelogVersion`，
 以及 pi 或扩展以后新加的任何键）原样保留。合并是幂等的：内容一致就不写盘，所以既不在
 mtime 上与 pi 抢文件，也不留下非空的 `chezmoi diff`。
