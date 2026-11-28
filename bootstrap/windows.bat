@@ -44,6 +44,7 @@ call :DO "scoop buckets (extras, nerd-fonts)" :SCOOP_BUCKETS
 call :DO "scoop packages" :SCOOP_PACKAGES
 call :DO "developer runtimes (uv, bun, nodejs-lts)" :SCOOP_DEV_RUNTIMES
 call :DO "rustup + stable toolchain" :DEV_RUSTUP
+call :DO "zlib (Z-Library CLI)" :INSTALL_ZLIB
 call :DO "user environment variables" :WRITE_ENV
 call :DO "clink: register clink-completions" :CLINK_SCRIPTS
 call :DO "pi-config checkout" :ENSURE_PI_CONFIG
@@ -303,6 +304,16 @@ if not "%RUSTUP_RC%"=="0" exit /b %RUSTUP_RC%
 set "PATH=%PATH%;%USERPROFILE%\.cargo\bin"
 :: rustup ships no toolchain, so cargo does not exist until this runs.
 rustup default stable
+exit /b %errorlevel%
+
+:INSTALL_ZLIB
+:: The winget package is a per-user portable binary, so no elevation is needed.
+where zlib >nul 2>&1
+if not errorlevel 1 (
+  echo     zlib is already installed
+  exit /b 0
+)
+winget install --id heartleo.zlib --exact --accept-package-agreements --accept-source-agreements --disable-interactivity
 exit /b %errorlevel%
 
 :WRITE_ENV

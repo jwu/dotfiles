@@ -78,6 +78,14 @@ Arch extra 里四个包**全都有**（2026-09-30 查询）：
 `~/.cargo/bin`（`dot_zshrc.tmpl` 把 `~/.cargo/bin` 排在 PATH 前，两套并存时生效的是官方那份，
 但 toolchain 仍会写进 pacman rustup 的 `~/.rustup`）。
 
+## Z-Library CLI
+
+[`heartleo/zlib`](https://github.com/heartleo/zlib) 随开发工具一起按「缺失才装」处理：Linux 用
+`go install github.com/heartleo/zlib/cmd/zlib@latest` 装入 `~/.local/bin`，macOS 用上游
+Homebrew tap `heartleo/tap/zlib`，Windows 在 bootstrap 中用 winget 安装 `heartleo.zlib`。
+Linux 没有 Go 时该步骤作为可选步骤跳过，不阻塞 apply；Windows 包是 per-user portable
+binary，不需要提权。账号登录与凭据不属于安装流程。
+
 ## Windows 侧
 
 `run_*.sh` 在 Windows 上会被渲染成空字符串（`exec(3)` 不认 shebang，失败发生在解释器

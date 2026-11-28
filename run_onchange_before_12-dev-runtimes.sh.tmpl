@@ -1,7 +1,7 @@
 {{ if ne .chezmoi.os "windows" -}}
 #!/bin/bash
-# Per-user developer runtimes: rustup, nvm + Node LTS, uv, bun, and on Linux
-# killport.
+# Per-user developer runtimes: rustup, nvm + Node LTS, uv, bun, zlib, and on
+# Linux killport.
 #
 # All of them live under $HOME (.cargo, .nvm, .local/bin, .bun), so nothing here
 # needs root and none of it belongs in bootstrap/. "Missing, so install" is the
@@ -12,6 +12,8 @@
 # re-running is free since every step below probes before it acts. See
 # docs/dev-env.md.
 set -uo pipefail
+
+export PATH="$HOME/.local/bin:$PATH"
 
 FAILED_STEPS=()
 
@@ -154,6 +156,25 @@ install_bun() {
   echo "    bun: installed at $HOME/.bun/bin/bun"
 }
 
+install_zlib() {
+  if command -v zlib > /dev/null 2>&1; then
+    echo "    zlib: $(zlib version)"
+    return 0
+  fi
+{{ if eq .chezmoi.os "darwin" -}}
+  brew install heartleo/tap/zlib || return 1
+{{ else }}
+  if ! command -v go > /dev/null 2>&1; then
+    echo "    Go is required to install zlib on Linux" >&2
+    return 1
+  fi
+  # The module proxy is reachable from networks where proxy.golang.org stalls.
+  GOPROXY="${GOPROXY:-https://goproxy.cn,direct}" GOBIN="$HOME/.local/bin" \
+    go install github.com/heartleo/zlib/cmd/zlib@latest || return 1
+{{ end }}
+  echo "    zlib: $(zlib version)"
+}
+
 {{ if eq .chezmoi.os "linux" -}}
 # killport answers "who owns this port" and kills it. macOS gets the Homebrew
 # bottle from bootstrap/macos.sh; Arch has no package and the AUR entries are
@@ -174,6 +195,7 @@ step "rustup + stable toolchain" install_rustup
 step "nvm + Node LTS" install_nvm
 step "uv" install_uv
 step_optional "bun" install_bun
+step_optional "zlib (Z-Library CLI)" install_zlib
 {{ if eq .chezmoi.os "linux" -}}
 step_optional "killport" install_killport
 {{ end }}
