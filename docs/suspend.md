@@ -197,6 +197,31 @@ hibernate 恢复会**把系统时间还原**成休眠前的值，所以「命令
 （本机踩过，连带把机器搞挂一次）。可靠判据只有两条：**机器是否完全断电（风扇停、屏幕黑）**，
 以及**开机是否跳过 GRUB 直接回到原来的会话与窗口**。
 
+## 观察记录（2026-11-27）：短按电源键后 S3 未正常恢复
+
+设备为 `MacBookPro14,2`，内核为 `7.2.11-arch1-1`。事发时已有 `pcie_port_pm=off`，`apple-alpine-ridge-wakeup.service` 在该轮开机时已成功执行。日常睡眠已改用 hibernate，但这次电源键事件走的是 `suspend`。
+
+| 本机时间（UTC+8） | 观察 |
+| --- | --- |
+| 19:55:10–11 | GenesysLogic USB 集线器及下挂的 Realtek USB 网卡断开。`rtw_8821cu` 报 `firmware failed to leave lps state`。 |
+| 19:56:35–36 | 集线器重新枚举，随后是 USB 键盘和 Realtek 网卡（`0bda:c811`）。 |
+| 19:56:36.662 | `systemd-logind` 记录 `Power key pressed short`，约 79 毫秒后记录来自 `niri` 的 `suspend` 请求。 |
+| 19:56:37.015 | 内核记录 `PM: suspend entry (deep)`，这是该轮启动的最后一条内核日志。 |
+| 19:57:27 | 新一轮启动开始。上一轮没有 `PM: suspend exit`、正常关机或重启记录，`journald` 在新一轮启动时报告日志文件未正常关闭或已损坏。 |
+
+现有日志把故障范围定位在 S3 进入或唤醒阶段。重启方式未知，未找到崩溃转储或内核调用栈。USB 重枚举和网卡告警是可供复发时比对的线索，尚无证据把故障归因于 Realtek 或 Alpine Ridge。
+
+复发时，先记下触发动作、当时的 USB 集线器和网卡连接状态，以及是否手动长按电源。用 `journalctl --list-boots` 找到事发前后的启动 ID，再和本次日志对照。本次使用固定启动 ID，以便多次重启后仍能查询。
+
+```bash
+journalctl -b 38344e85a54342b48e062942be350c99 -u systemd-logind -u systemd-suspend.service \
+  --since '2026-11-27 19:55' -o short-precise --no-pager
+journalctl -b 38344e85a54342b48e062942be350c99 -k \
+  --since '2026-11-27 19:55' -o short-precise --no-pager
+journalctl -b 65e5cacb5f5044b3af1c61218ce18790 -u systemd-journald \
+  --since '2026-11-27 19:57:27' --until '2026-11-27 19:58:00' --no-pager
+```
+
 ## 明确不要做的事
 
 - **不要切 `s2idle`（前提是 deep 可用）**。deep S3 在这套固件上原本是工作的；s2idle 是发热路径，
